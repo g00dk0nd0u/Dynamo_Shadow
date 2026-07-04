@@ -1,0 +1,29 @@
+# Logs and generated outputs
+logs/
+log/
+output/
+outputs/
+backup/
+backups/
+*.log
+*_log.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
