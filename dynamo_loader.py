@@ -1,13 +1,9 @@
 # Dynamo external loader for Shadow.dyn
 # Finds and executes script.py from the same folder as the current .dyn file.
 
+import clr
 import os
 import traceback
-
-try:
-    import clr
-except Exception:
-    clr = None
 
 LOADER_NAME = "Shadow.dyn external loader"
 SCRIPT_NAME = "script.py"
@@ -16,9 +12,6 @@ SCRIPT_NAME = "script.py"
 def get_workspace_info():
     workspace_file = None
     script_dir = None
-
-    if clr is None:
-        return workspace_file, script_dir
 
     try:
         clr.AddReference("DynamoServices")
