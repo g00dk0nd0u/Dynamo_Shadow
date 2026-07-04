@@ -1,0 +1,53 @@
+﻿Revit Filled Region Furniture Count Log
+======================================================================
+Success: True
+CSV Path: C:\Users\22615\OneDrive - Gensler\_REVIT\Other\Other_Dynamo\Dynamo_FunitureDashBoard\FunitureDashBoard.csv
+HTML Path: C:\Users\22615\OneDrive - Gensler\_REVIT\Other\Other_Dynamo\Dynamo_FunitureDashBoard\FunitureDashBoard.html
+Log Path: C:\Users\22615\OneDrive - Gensler\_REVIT\Other\Other_Dynamo\Dynamo_FunitureDashBoard\FunitureDashBoard_log.txt
+Generated At: 2026-06-15 13:17:56
+Overwrite Fixed Files: True
+Revit Title: 202606 SANDBOX - Tokyo Architectural A3 - AP 2025
+Revit Path: Autodesk Docs://031.0000.000 - TK Sandbox - R25/202606 SANDBOX - Tokyo Architectural A3 - AP 2025.rvt
+Region Type Filter: ALL
+Include Unassigned: True
+Use BBox Center: False
+
+Execution Log
+----------------------------------------------------------------------
+[2026-06-15 13:17:56] Start script
+[2026-06-15 13:17:56] Revit file: 202606 SANDBOX - Tokyo Architectural A3 - AP 2025
+[2026-06-15 13:17:56] Region Type filter: ALL
+[2026-06-15 13:17:56] Target view count: 1
+[2026-06-15 13:17:56] Target view: 1FL / Id 3003448 / Type 1 / Level 1FL
+[2026-06-15 13:17:56] View '1FL' / Raw Filled Regions found: 3
+[2026-06-15 13:17:56] View '1FL' / Valid Filled Regions with boundaries: 3
+[2026-06-15 13:17:56] View '1FL' / Visible Furniture found: 24
+[2026-06-15 13:17:56] CSV written: C:\Users\22615\OneDrive - Gensler\_REVIT\Other\Other_Dynamo\Dynamo_FunitureDashBoard\FunitureDashBoard.csv
+[2026-06-15 13:17:56] HTML written: C:\Users\22615\OneDrive - Gensler\_REVIT\Other\Other_Dynamo\Dynamo_FunitureDashBoard\FunitureDashBoard.html
+[2026-06-15 13:17:56] Rows written: 12
+[2026-06-15 13:17:56] Raw Filled Regions total: 3
+[2026-06-15 13:17:56] Valid Filled Regions total: 3
+[2026-06-15 13:17:56] Visible furniture total: 24
+[2026-06-15 13:17:56] Furniture processed total: 24
+[2026-06-15 13:17:56] Assigned furniture: 15
+[2026-06-15 13:17:56] Unassigned furniture: 9
+
+Unassigned Furniture Samples
+----------------------------------------------------------------------
+View=1FL, FurnitureId=3471382, Level=1FL, Family=Furniture - Cabinet - 6H, Type=6H, W900, H2160, D450, Reason=Outside Filled Regions, X=-98.151, Y=209.731
+View=1FL, FurnitureId=3600549, Level=1FL, Family=Furniture - Cabinet - 6H - 2 Rows, Type=4 + 3 Units, W900, H2220, D450, Reason=Outside Filled Regions, X=-87.077, Y=202.349
+View=1FL, FurnitureId=3633904, Level=1FL, Family=Furniture - Cabinet - 6H, Type=6H, W900, H2160, D450, Reason=Outside Filled Regions, X=-98.151, Y=203.826
+View=1FL, FurnitureId=4355871, Level=1FL, Family=Furniture - Cabinet - 6H, Type=6H, W900, H2160, D450, Reason=Outside Filled Regions, X=-98.151, Y=206.778
+View=1FL, FurnitureId=4356283, Level=1FL, Family=Furniture - Cabinet - 6H, Type=6H, W900, H2160, D450, Reason=Outside Filled Regions, X=-98.151, Y=212.684
+View=1FL, FurnitureId=5115383, Level=1FL, Family=Standard Curtain, Type=Default W1200 x H2800, Reason=Outside Filled Regions, X=-95.144, Y=223.578
+View=1FL, FurnitureId=5123664, Level=1FL, Family=Furniture - Cabinet - 3H, Type=3H, W900, H1110, D450, Reason=Outside Filled Regions, X=-98.151, Y=216.678
+View=1FL, FurnitureId=5123665, Level=1FL, Family=Furniture - Cabinet - 3H, Type=3H, W900, H1110, D450, Reason=Outside Filled Regions, X=-98.151, Y=219.631
+View=1FL, FurnitureId=5824819, Level=1FL, Family=Furniture - WORKPOD_4P, Type=Black_A, Reason=Outside Filled Regions, X=-99.273, Y=195.691
+
+Warnings
+----------------------------------------------------------------------
+None
+
+Errors
+----------------------------------------------------------------------
+None
