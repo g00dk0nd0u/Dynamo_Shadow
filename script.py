@@ -5,15 +5,23 @@
 # equal-time contour calculations yet. It only summarizes Dynamo inputs so the
 # next implementation steps can be validated safely from Dynamo/Revit.
 
+import traceback
+
+TOOL_NAME = "Dynamo_Shadow"
+STAGE_NAME = "v0_input_diagnostics"
+
 LEGAL_CONSTANTS = {
     "date_basis": "winter_solstice",
     "standard_start_time": "08:00",
     "standard_end_time": "16:00",
-    "hokkaido_start_time": "09:00",
-    "hokkaido_end_time": "15:00",
-    "interval_minutes": 30,
+    "time_step_minutes": 30,
     "measurement_line_near_m": 5.0,
     "measurement_line_far_m": 10.0,
+    "standard_profile_note": "Standard Building Standard Law shadow period. Regional exceptions such as Hokkaido should be handled by future profiles.",
+    "regional_exception_examples": {
+        "hokkaido_start_time": "09:00",
+        "hokkaido_end_time": "15:00",
+    },
 }
 
 PLANNED_PIPELINE = [
@@ -190,11 +198,15 @@ def _summarize_one(value):
 
 def _summarize_input(value, sample_limit=5):
     items = _to_list(value)
+    sample_type = _type_name(_try_unwrap(items[0])) if items else None
+
     summary = {
+        "is_none": value is None,
         "provided": value is not None,
+        "type": _type_name(value),
         "is_list_like": _is_sequence(value),
         "count": len(items),
-        "type": _type_name(value),
+        "sample_type": sample_type,
         "sample_limit": sample_limit,
         "sample": [],
     }
@@ -202,11 +214,7 @@ def _summarize_input(value, sample_limit=5):
     for item in items[:sample_limit]:
         summary["sample"].append(_summarize_one(item))
 
-    if len(items) > sample_limit:
-        summary["truncated_count"] = len(items) - sample_limit
-    else:
-        summary["truncated_count"] = 0
-
+    summary["truncated_count"] = max(0, len(items) - sample_limit)
     return summary
 
 
@@ -232,6 +240,8 @@ def _build_success():
 
     return {
         "success": True,
+        "tool": TOOL_NAME,
+        "stage": STAGE_NAME,
         "message": "Dynamo_Shadow v0 input diagnostics only; shadow calculation is not implemented yet.",
         "legal_constants": LEGAL_CONSTANTS,
         "inputs": {
@@ -249,6 +259,8 @@ def _build_success():
 def _build_failure(error_text):
     return {
         "success": False,
+        "tool": TOOL_NAME,
+        "stage": STAGE_NAME,
         "message": "script.py failed while building v0 input diagnostics.",
         "legal_constants": LEGAL_CONSTANTS,
         "inputs": {},
@@ -260,5 +272,5 @@ def _build_failure(error_text):
 
 try:
     OUT = _build_success()
-except Exception as exc:
-    OUT = _build_failure(exc)
+except Exception:
+    OUT = _build_failure(traceback.format_exc())
