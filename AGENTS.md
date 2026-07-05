@@ -169,3 +169,13 @@ Before opening a PR, confirm:
 - site_boundary is not required for footprint diagnostics.
 - site_boundary is required later for legal judgement masks.
 - Do not implement true solar time, sun vectors, shadow projection, 5m/10m lines, legal masks, or legal judgement unless explicitly requested.
+
+## Module split rules
+
+- Keep `script.py` focused on orchestration, Dynamo import fallback, and top-level `OUT` construction.
+- Keep policies, safe utilities, input diagnostics, settings normalization, measurement plane diagnostics, geometry diagnostics, footprint diagnostics, and readiness checks in focused `shadow_*.py` modules.
+- Module split PRs must not add new calculation features or change diagnostic semantics.
+- Do not change the top-level `OUT` structure, warning semantics, readiness logic, or policy content during module-only refactors.
+- Do not touch `Shadow.dyn`, the Python Node bootstrap, or `dynamo_loader.py` for module-only refactors.
+- Avoid circular imports; `shadow_revit_api.py` must remain the lowest optional Revit API import layer.
+- Keep Revit API imports optional so normal Python `py_compile` and smoke tests run without Revit.

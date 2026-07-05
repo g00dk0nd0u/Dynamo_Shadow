@@ -169,3 +169,7 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 - 調査メモ: `docs/research_shadow_diagram.md`
 - Revit入力モデル方針: `docs/revit_input_modeling_guide.md`
 - Settings schema: `docs/settings_schema_v1.md`
+
+## Code organization note
+
+`script.py` is the Dynamo-facing orchestration layer that builds the top-level `OUT` payload. Implementation details are split into focused `shadow_*.py` modules for optional Revit API imports, policies, safe utilities, input diagnostics, settings normalization, measurement plane diagnostics, geometry diagnostics, footprint diagnostics, and pipeline readiness. This organization is intended to preserve the existing diagnostics-only behavior while keeping future implementation steps small and reviewable.
