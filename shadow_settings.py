@@ -92,6 +92,49 @@ def _parse_text(value, key):
         return None, None
     return text, None
 
+def _parse_bool(value, key):
+    if value is None:
+        return None, None
+    if isinstance(value, bool):
+        return value, None
+    if isinstance(value, (int, float)) and value in (0, 1):
+        return bool(value), None
+    if _is_string(value):
+        text = value.strip().lower()
+        if text in ("true", "1", "yes", "on"):
+            return True, None
+        if text in ("false", "0", "no", "off", ""):
+            return False, None
+    return None, "settings.{0} must be boolean; got {1}.".format(key, _safe_text(value))
+
+def _parse_debug_log_dir(value):
+    text, warn = _parse_text(value, "debug_log_dir")
+    if warn:
+        return None, warn
+    if text is None:
+        return SETTINGS_DIAGNOSTIC_DEFAULTS["debug_log_dir"], None
+    normalized = text.replace("\\", "/").strip("/")
+    if not normalized:
+        return SETTINGS_DIAGNOSTIC_DEFAULTS["debug_log_dir"], None
+    if text.startswith("/") or ":" in text:
+        return SETTINGS_DIAGNOSTIC_DEFAULTS["debug_log_dir"], "settings.debug_log_dir must be a relative path; absolute paths are rejected and default debug_logs is used."
+    parts = [p for p in normalized.split("/") if p]
+    if ".." in parts:
+        return SETTINGS_DIAGNOSTIC_DEFAULTS["debug_log_dir"], "settings.debug_log_dir must not contain '..'; default debug_logs is used."
+    return "/".join(parts), None
+
+def _parse_debug_log_filename(value):
+    text, warn = _parse_text(value, "debug_log_filename")
+    if warn:
+        return None, warn
+    if text is None:
+        return SETTINGS_DIAGNOSTIC_DEFAULTS["debug_log_filename"], None
+    if "/" in text or "\\" in text or ".." in text or not text.endswith(".json"):
+        return SETTINGS_DIAGNOSTIC_DEFAULTS["debug_log_filename"], "settings.debug_log_filename must be a fixed .json filename without path separators or '..'; default latest_debug.json is used."
+    if text.startswith("run_") or text.startswith("raw_") or text.startswith("private_"):
+        return SETTINGS_DIAGNOSTIC_DEFAULTS["debug_log_filename"], "settings.debug_log_filename must not use run_, raw_, or private_ growth patterns; default latest_debug.json is used."
+    return text, None
+
 def _range_warning(key, value):
     if value is None:
         return None
@@ -119,7 +162,7 @@ def _normalize_settings(settings, level=None):
     defaults_applied = []
     invalid_keys = []
     info = []
-    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m"])
+    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename"])
     ignored_keys = sorted([_safe_text(k) for k in settings_dict.keys() if k not in known])
     if ignored_keys:
         info.append("Unknown settings keys are ignored by v1 diagnostics: {0}".format(", ".join(ignored_keys)))
@@ -130,6 +173,27 @@ def _normalize_settings(settings, level=None):
     if profile is None:
         profile = SETTINGS_DIAGNOSTIC_DEFAULTS["profile"]; defaults_applied.append("profile")
     normalized["profile"] = profile
+
+    debug_log_enabled, warn = _parse_bool(settings_dict.get("debug_log_enabled"), "debug_log_enabled")
+    if warn:
+        warnings.append(warn); invalid_keys.append("debug_log_enabled")
+    if debug_log_enabled is None:
+        debug_log_enabled = SETTINGS_DIAGNOSTIC_DEFAULTS["debug_log_enabled"]; defaults_applied.append("debug_log_enabled")
+    normalized["debug_log_enabled"] = debug_log_enabled
+
+    debug_log_dir, warn = _parse_debug_log_dir(settings_dict.get("debug_log_dir"))
+    if warn:
+        warnings.append(warn); invalid_keys.append("debug_log_dir")
+    if settings_dict.get("debug_log_dir") is None:
+        defaults_applied.append("debug_log_dir")
+    normalized["debug_log_dir"] = debug_log_dir
+
+    debug_log_filename, warn = _parse_debug_log_filename(settings_dict.get("debug_log_filename"))
+    if warn:
+        warnings.append(warn); invalid_keys.append("debug_log_filename")
+    if settings_dict.get("debug_log_filename") is None:
+        defaults_applied.append("debug_log_filename")
+    normalized["debug_log_filename"] = debug_log_filename
 
     for key in ["average_ground_level_elevation_m", "measurement_height_m", "latitude", "longitude", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m"]:
         value, warn = _parse_float(settings_dict.get(key), key)

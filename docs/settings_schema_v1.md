@@ -91,3 +91,13 @@ JSON parse や dict 化に失敗しても fatal error にはせず、空 setting
 - `settings.profile` may be used for time-window awareness. `standard_8_16` is diagnostic awareness for the 08:00-16:00 profile, and `hokkaido_9_15` / `hokkaido` is diagnostic awareness for the 09:00-15:00 profile.
 - These profile values do not implement true solar time calculation, JST clock-time conversion, sun vectors, shadow projection, or legal judgement.
 - Future legal judgement will require inputs such as `ordinance_profile`, target-area status, applicable building threshold, allowed shadow duration profile, site boundary, own-site boundary, exclusion masks, relaxation profiles, true-solar-time profile, and same-site building grouping.
+
+## Development debug log settings
+
+The following development-only settings are accepted for sanitized review logs:
+
+- `debug_log_enabled`: boolean, default `false`. Safe string / numeric values such as `"true"`, `"false"`, `1`, and `0` are accepted.
+- `debug_log_dir`: optional relative directory, default `debug_logs`. Absolute paths and paths containing `..` are rejected with a warning and fall back to `debug_logs`.
+- `debug_log_filename`: optional fixed JSON filename, default `latest_debug.json`. Filenames containing `/`, `\\`, `..`, or growth/private prefixes such as `run_`, `raw_`, or `private_` are rejected with a warning and fall back to `latest_debug.json`.
+
+Debug logging is disabled by default, uses fixed filename overwrite behavior, and write failures are non-fatal diagnostics warnings only.

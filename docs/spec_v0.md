@@ -105,6 +105,8 @@ measurement_plane_policy
 pipeline_readiness
 planned_pipeline
 warnings
+debug_log
+debug_log_policy
 error
 ```
 

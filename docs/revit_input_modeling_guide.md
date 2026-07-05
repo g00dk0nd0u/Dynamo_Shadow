@@ -185,3 +185,9 @@ Avoid overly complex, curved, or self-intersecting proxy shapes where possible. 
 ## Implementation organization note
 
 The Dynamo entry point remains `script.py`, but it now primarily orchestrates diagnostics and constructs `OUT`. The diagnostic implementation is organized into focused `shadow_*.py` modules, including policies, utilities, inputs, settings, measurement plane, geometry, footprint, and readiness modules. This is a code organization change only; the Dynamo graph, loader, input modeling expectations, and diagnostics-only scope are unchanged.
+
+## Development debug logs
+
+For GitHub review of diagnostics without exposing raw Revit data, set `settings.debug_log_enabled` to `true`. The script writes a small sanitized JSON summary to `debug_logs/latest_debug.json` by default and overwrites that fixed file on each enabled run.
+
+Committed sample logs under `debug_logs/sample_*.json` are allowed when they remain small, sanitized, and review-oriented. Do not include raw Revit objects, full geometry arrays, project/client names, personal paths, or timestamped run logs.

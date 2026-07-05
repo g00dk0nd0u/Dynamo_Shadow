@@ -27,3 +27,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Debug review logs: keep fixed/sample JSON files tracked, ignore growth/private dumps only.
+debug_logs/run_*.json
+debug_logs/raw_*.json
+debug_logs/private_*.json
