@@ -130,6 +130,7 @@
     {
       "ConcreteType": "Dynamo.Nodes.DSModelElementsSelection, DSRevitNodesUI",
       "NodeType": "ExtensionNode",
+      "InstanceId": [],
       "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
       "Inputs": [],
       "Outputs": [
