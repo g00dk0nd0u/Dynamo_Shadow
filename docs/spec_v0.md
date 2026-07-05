@@ -45,7 +45,7 @@ site_boundary がある場合の第一候補は Revit Property Line / Site Prope
 
 Model Lines の閉じたループは fallback として許容するが、第一候補ではない。Detail Lines はビュー依存のため非推奨または rejected/warning とする。CAD import lines や Toposolid / SiteSurface / Topography 外周は、敷地境界として自動採用しない。Revit上に敷地境界用の一時モデルは作成しない。
 
-v1 出力候補には `site_boundary` diagnostics、`site_boundary_policy`、`settings_normalized`、`settings_policy`、`pipeline_readiness` を追加する。今回PRでは入力診断と簡易 loop_diagnostics までとし、5m / 10m 測定線生成、日影計算、太陽位置計算、影ポリゴン生成、等時間線生成は非スコープとする。
+v1 出力候補には `site_boundary` diagnostics、`site_boundary_policy`、`settings_normalized`、`settings_policy`、`shadow_caster_geometry`、`geometry_extraction_policy`、`pipeline_readiness` を追加する。今回PRでは入力診断と簡易 loop_diagnostics までとし、5m / 10m 測定線生成、日影計算、太陽位置計算、影ポリゴン生成、等時間線生成は非スコープとする。
 
 ## 固定値候補
 
@@ -93,6 +93,8 @@ site_boundary
 site_boundary_policy
 settings_normalized
 settings_policy
+shadow_caster_geometry
+geometry_extraction_policy
 pipeline_readiness
 planned_pipeline
 warnings
@@ -106,20 +108,24 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 1. input diagnostics
 2. shadow caster proxy validation
 3. shadow caster geometry access check
-4. optional site boundary source validation
-5. property line / site property diagnostics when provided
-6. model lines fallback closed-loop diagnostics when provided
-7. settings coercion and normalization
-8. measurement plane readiness check
-9. pipeline readiness diagnostics
-10. footprint extraction from user-defined shadow proxy geometry
-11. optional site boundary loop extraction
-12. optional 5m / 10m measurement line generation when site_boundary is available
-13. sun vector calculation
-14. time-slice shadow projection per caster
-15. logical union of shadows per time slice
-16. shadow duration accumulation without double counting
-17. equal-time contour generation
+4. shadow caster geometry extraction diagnostics
+5. solid / face / edge summary
+6. footprint candidate diagnostics
+7. optional site boundary source validation
+8. property line / site property diagnostics when provided
+9. model lines fallback closed-loop diagnostics when provided
+10. settings coercion and normalization
+11. measurement plane readiness check
+12. pipeline readiness diagnostics
+13. measurement plane construction
+14. footprint extraction from user-defined shadow proxy geometry
+15. optional site boundary loop extraction
+16. optional 5m / 10m measurement line generation when site_boundary is available
+17. sun vector calculation
+18. time-slice shadow projection per caster
+19. logical union of shadows per time slice
+20. shadow duration accumulation without double counting
+21. equal-time contour generation
 
 ## 非スコープ
 
@@ -127,6 +133,8 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 
 - 実建物全カテゴリの自動収集
 - Walls / Floors / Roofs の一括自動対象化または外径自動推定
+- footprint polygon generation
+- measurement plane construction
 - BoundingBox を使った日影外形、影ポリゴン、日影判定
 - Revit上での一体化済み一時モデル作成
 - 平均地盤面の自動算定
@@ -134,8 +142,13 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 - CADリンク境界自動認識または CAD lines の site_boundary 自動採用
 - 5m / 10m 測定線生成
 - 日影計算ロジック
+- sun vector calculation
+- time-slice shadow projection
+- grid accumulation
 - 厳密な太陽位置計算
 - 影ポリゴン生成
+- equal-time contour generation
+- Revit element creation
 - 等時間線生成アルゴリズム
 - 建築確認申請に提出できる図面品質の出力
 
