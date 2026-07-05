@@ -1,0 +1,303 @@
+# Policy constants for Dynamo_Shadow diagnostics.
+
+TOOL_NAME = "Dynamo_Shadow"
+STAGE_NAME = "v1_footprint_extraction_diagnostics"
+
+LEGAL_CONSTANTS = {
+    "date_basis": "winter_solstice",
+    "standard_start_time": "08:00",
+    "standard_end_time": "16:00",
+    "time_step_minutes": 30,
+    "measurement_line_near_m": 5.0,
+    "measurement_line_far_m": 10.0,
+    "standard_profile_note": "Standard Building Standard Law shadow period. Regional exceptions such as Hokkaido should be handled by future profiles.",
+    "regional_exception_examples": {
+        "hokkaido_start_time": "09:00",
+        "hokkaido_end_time": "15:00",
+    },
+}
+
+PLANNED_PIPELINE = [
+    "input diagnostics",
+    "shadow caster proxy validation",
+    "shadow caster geometry access check",
+    "shadow caster geometry extraction diagnostics",
+    "solid / face / edge summary",
+    "footprint candidate diagnostics",
+    "footprint edge loop diagnostics",
+    "footprint extraction readiness diagnostics",
+    "optional site boundary source validation",
+    "property line / site property diagnostics when provided",
+    "model lines fallback closed-loop diagnostics when provided",
+    "settings coercion and normalization",
+    "law56_2 awareness context diagnostics",
+    "measurement plane readiness check",
+    "measurement plane construction diagnostics",
+    "pipeline readiness diagnostics",
+    "formal footprint polygon generation",
+    "optional site boundary loop extraction",
+    "legal judgement mask preparation",
+    "optional 5m / 10m measurement line generation when site_boundary is available",
+    "true solar time diagnostics",
+    "sun vector calculation",
+    "time-slice shadow projection per caster",
+    "logical union of shadows per time slice",
+    "shadow duration accumulation without double counting",
+    "equal-time contour generation",
+    "legal judgement report",
+]
+
+INPUT_KEYS = [
+    "building_elements",
+    "site_boundary",
+    "level",
+    "settings",
+]
+
+SUPPORTED_CATEGORY_NAMES = set([
+    "mass",
+    "masses",
+    "generic model",
+    "generic models",
+    "一般モデル",
+    "マス",
+])
+
+ACCEPTED_BUILT_IN_CATEGORY_NAMES = set([
+    "OST_GenericModel",
+    "OST_Mass",
+])
+
+SITE_BOUNDARY_PRIMARY_CATEGORY_NAMES = set([
+    "OST_SiteProperty",
+    "OST_SitePropertyLineSegment",
+])
+
+SITE_BOUNDARY_RELATED_CATEGORY_NAMES = set([
+    "OST_SitePointBoundary",
+    "OST_SitePropertyTags",
+    "OST_Site",
+    "OST_Property",
+])
+
+SITE_BOUNDARY_FALLBACK_LINE_CATEGORY_NAMES = set([
+    "OST_Lines",
+    "OST_SketchLines",
+    "OST_Curves",
+    "OST_GenericLines",
+])
+
+SITE_BOUNDARY_TOPO_CATEGORY_NAMES = set([
+    "OST_Toposolid",
+    "OST_SiteSurface",
+    "OST_Topography",
+    "OST_TopographySurface",
+])
+
+SETTINGS_SCHEMA_VERSION = "v1"
+
+SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW = [
+    "average_ground_level_elevation_m",
+    "measurement_height_m",
+    "latitude",
+    "longitude",
+    "true_north_deg",
+]
+
+SETTINGS_DIAGNOSTIC_DEFAULTS = {
+    "profile": "standard_8_16",
+    "grid_resolution_m": 1.0,
+    "analysis_margin_m": 20.0,
+    "closure_tolerance_m": 0.01,
+}
+
+SETTINGS_POLICY = {
+    "optional": True,
+    "missing_settings_is_fatal": False,
+    "units": {
+        "length": "meter",
+        "angle": "degree",
+        "latitude_longitude": "decimal_degree",
+    },
+    "level_used_as_average_ground_level": False,
+    "level_used_as_measurement_plane": False,
+    "required_for_equal_time_shadow": SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW,
+    "diagnostic_defaults": SETTINGS_DIAGNOSTIC_DEFAULTS,
+    "no_legal_assumption_defaults": SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW,
+    "formal_permit_check": "external_tool_such_as_ADS",
+}
+
+SITE_BOUNDARY_POLICY = {
+    "optional": True,
+    "required_for_equal_time_shadow": False,
+    "required_for_boundary_dependent_steps": True,
+    "missing_site_boundary_is_fatal": False,
+    "equal_time_shadow_available_without_site_boundary": True,
+    "missing_site_boundary_behavior": "skip_boundary_dependent_steps_only",
+    "boundary_dependent_steps": [
+        "property_line_or_site_boundary_based_offset",
+        "5m_10m_measurement_line_generation",
+        "boundary_based_regulation_reference_check",
+    ],
+    "non_boundary_dependent_steps_continue": [
+        "shadow_caster_geometry_reading",
+        "time_slice_shadow_projection",
+        "logical_union_of_shadows_per_time_slice",
+        "shadow_duration_accumulation",
+        "equal_time_shadow_output",
+    ],
+    "primary_source": "revit_property_line_or_site_property",
+    "primary_built_in_categories": [
+        "BuiltInCategory.OST_SiteProperty",
+        "BuiltInCategory.OST_SitePropertyLineSegment",
+    ],
+    "related_site_categories_diagnostic_only": [
+        "BuiltInCategory.OST_SitePointBoundary",
+        "BuiltInCategory.OST_Site",
+        "BuiltInCategory.OST_Property",
+    ],
+    "fallback_source": "model_lines_closed_loop",
+    "fallback_line_categories": [
+        "BuiltInCategory.OST_Lines",
+        "BuiltInCategory.OST_SketchLines",
+        "BuiltInCategory.OST_Curves",
+        "BuiltInCategory.OST_GenericLines",
+    ],
+    "detail_lines_allowed": False,
+    "cad_import_auto_boundary": False,
+    "toposolid_auto_boundary": False,
+    "temporary_revit_boundary_model": False,
+    "measurement_lines_generated": False,
+    "formal_permit_check": "external_tool_such_as_ADS",
+}
+
+SHADOW_CASTER_POLICY = {
+    "purpose": "conceptual_design_shadow_study",
+    "formal_permit_check": "external_tool_such_as_ADS",
+    "source_geometry": "user_defined_mass_or_generic_model_proxy",
+    "multiple_shadow_casters_supported": True,
+    "temporary_unified_revit_model": False,
+    "per_caster_geometry_reading": True,
+    "bounding_box_for_shadow_geometry": False,
+    "bounding_box_for_shadow_judgement": False,
+    "existing_model_auto_extraction": False,
+    "allowed_initial_categories": ["BuiltInCategory.OST_Mass", "BuiltInCategory.OST_GenericModel"],
+    "category_detection_priority": "built_in_category_then_localized_category_name",
+    "localized_category_names_are_fallback_only": True,
+    "shadow_role_overrides_category": False,
+    "future_time_slice_union_policy": "logical_union",
+    "double_count_overlapping_shadows": False,
+}
+
+GEOMETRY_EXTRACTION_POLICY = {
+    "purpose": "shadow_caster_geometry_extraction_diagnostics",
+    "read_only": True,
+    "create_revit_elements": False,
+    "accepted_shadow_caster_sources": ["user_selected_mass", "user_selected_generic_model"],
+    "auto_extract_existing_building_model": False,
+    "use_bounding_box_for_shadow_geometry": False,
+    "use_bounding_box_for_shadow_judgement": False,
+    "bounding_box_allowed_for": ["diagnostic_summary", "future_analysis_extent_estimation"],
+    "geometry_units": "revit_raw_internal_units",
+    "official_unit_conversion": "not_implemented_in_this_pr",
+    "footprint_polygon_generated": False,
+    "shadow_projection_generated": False,
+    "equal_time_contours_generated": False,
+}
+
+FOOTPRINT_EXTRACTION_POLICY = {
+    "purpose": "footprint_extraction_diagnostics_from_user_selected_shadow_caster_proxy",
+    "diagnostic_only": True,
+    "read_only": True,
+    "create_revit_elements": False,
+    "accepted_sources": ["bottom_face_candidate", "planar_face_edge_loops", "edge_loop_candidates"],
+    "accepted_shadow_caster_sources": ["user_selected_mass", "user_selected_generic_model"],
+    "auto_extract_existing_building_model": False,
+    "auto_extract_walls_floors_roofs_equipment": False,
+    "per_caster_extraction": True,
+    "merge_casters": False,
+    "temporary_unified_revit_model": False,
+    "formal_footprint_polygon_generated": False,
+    "curve_loop_generated": False,
+    "offset_generated": False,
+    "self_intersection_checked": False,
+    "polygon_boolean_generated": False,
+    "formal_unit_conversion": "not_implemented_in_this_pr",
+    "geometry_units": "revit_raw_internal_units",
+    "measurement_plane_units": "meter",
+    "bounding_box_used_for_footprint": False,
+    "bounding_box_used_for_shadow_geometry": False,
+    "bounding_box_used_for_legal_judgement": False,
+    "same_site_multiple_buildings_awareness": "buildings_on_same_site_are_treated_as_one_building_in_future_duration_accumulation",
+    "not_implemented_in_this_pr": [
+        "formal footprint polygon generation", "CurveLoop creation", "polygon validity check",
+        "self-intersection check", "boolean union across casters", "site boundary clipping",
+        "own-site exclusion", "beyond-5m legal range", "shadow projection", "legal OK/NG judgement",
+    ],
+}
+
+FOOTPRINT_READINESS_REQUIRED_FOR_FUTURE_SHADOW = [
+    "at least one accepted shadow caster",
+    "at least one bottom face candidate",
+    "at least one edge loop candidate",
+    "at least one closed loop candidate",
+    "measurement plane constructed for future projection context",
+    "settings ready for future shadow calculation",
+]
+
+LAW56_2_AWARENESS_POLICY = {
+    "purpose": "building_standard_law_article_56_2_shadow_restriction_awareness",
+    "formal_permit_check": "external_tool_such_as_ADS",
+    "implemented_as_legal_judgement": False,
+    "legal_judgement_generated": False,
+    "date_basis": "winter_solstice",
+    "time_basis": "true_solar_time",
+    "standard_time_window": {"start": "08:00", "end": "16:00"},
+    "hokkaido_time_window": {"start": "09:00", "end": "15:00"},
+    "measurement_plane_basis": "average_ground_level_plus_designated_measurement_height",
+    "measurement_plane_formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
+    "boundary_distance_rule_awareness": "beyond_5m_from_site_boundary",
+    "exclusion_awareness": ["outside_target_area", "high_rise_residential_inducement_district", "urban_renaissance_special_district", "own_site_area"],
+    "multiple_buildings_policy_awareness": "buildings_on_same_site_are_treated_as_one_building",
+    "relaxation_awareness": ["road", "river", "sea", "significant_elevation_difference", "other_special_conditions_by_enforcement_order"],
+    "outside_target_area_building_awareness": "building_over_10m_outside_target_area_casting_shadow_into_target_area_may_be_treated_as_in_target_area",
+    "different_restriction_zones_awareness": "ordinance_and_enforcement_order_required",
+    "ordinance_dependent_values": ["target_area", "applicable_building_threshold", "measurement_height_m", "allowed_shadow_duration", "selected_table_row"],
+    "not_implemented_in_this_pr": ["ordinance lookup", "target area mask", "own site exclusion", "beyond 5m judgement range", "5m/10m measurement lines", "relaxation handling", "legal OK/NG judgement", "true solar time calculation", "sun vector calculation", "shadow projection", "equal-time contour generation"],
+}
+
+MEASUREMENT_PLANE_POLICY = {
+    "purpose": "article_56_2_measurement_plane_construction_diagnostics",
+    "create_revit_element": False,
+    "internal_data_only": True,
+    "plane_type": "horizontal_plane",
+    "normal": "+Z",
+    "coordinate_system": "legal_si_meters",
+    "formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
+    "average_ground_level_source": "settings.average_ground_level_elevation_m",
+    "measurement_height_source": "settings.measurement_height_m",
+    "revit_level_used_as_average_ground_level": False,
+    "revit_level_used_as_measurement_plane": False,
+    "revit_internal_unit_conversion": "not_implemented_in_this_pr",
+    "geometry_relation": "diagnostic_only",
+    "formal_intersection_with_revit_geometry": "not_implemented_in_this_pr",
+    "site_boundary_required_for_plane_construction": False,
+    "site_boundary_required_for_legal_judgement_masks": True,
+    "legal_judgement_generated": False,
+}
+
+LAW56_2_FUTURE_REQUIRED_INPUTS = [
+    "ordinance_profile", "target_area_status", "applicable_building_threshold",
+    "measurement_height_m", "allowed_shadow_duration_profile", "site_boundary",
+    "own_site_boundary", "target_area_mask", "exclusion_area_masks",
+    "road_water_relaxation_profile", "elevation_difference_relaxation_profile",
+    "true_solar_time_profile", "same_site_building_group",
+]
+
+GEOMETRY_READINESS_REQUIRED_FOR_FUTURE_SHADOW = [
+    "at least one accepted shadow caster",
+    "at least one readable solid or mesh",
+    "at least one footprint candidate or bottom face candidate",
+    "measurement plane readiness from settings is recommended, but geometry diagnostics can run without it",
+]
+

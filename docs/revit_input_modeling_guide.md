@@ -181,3 +181,7 @@ Avoid overly complex, curved, or self-intersecting proxy shapes where possible. 
 25. shadow duration accumulation without double counting
 26. equal-time contour generation
 27. legal judgement report
+
+## Implementation organization note
+
+The Dynamo entry point remains `script.py`, but it now primarily orchestrates diagnostics and constructs `OUT`. The diagnostic implementation is organized into focused `shadow_*.py` modules, including policies, utilities, inputs, settings, measurement plane, geometry, footprint, and readiness modules. This is a code organization change only; the Dynamo graph, loader, input modeling expectations, and diagnostics-only scope are unchanged.
