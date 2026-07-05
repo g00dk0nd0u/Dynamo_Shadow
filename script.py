@@ -18,7 +18,7 @@ except Exception:
     BuiltInCategory = Options = Solid = GeometryInstance = Face = PlanarFace = Edge = Curve = Mesh = None
 
 TOOL_NAME = "Dynamo_Shadow"
-STAGE_NAME = "v1_measurement_plane_construction_diagnostics"
+STAGE_NAME = "v1_footprint_extraction_diagnostics"
 
 LEGAL_CONSTANTS = {
     "date_basis": "winter_solstice",
@@ -41,6 +41,8 @@ PLANNED_PIPELINE = [
     "shadow caster geometry extraction diagnostics",
     "solid / face / edge summary",
     "footprint candidate diagnostics",
+    "footprint edge loop diagnostics",
+    "footprint extraction readiness diagnostics",
     "optional site boundary source validation",
     "property line / site property diagnostics when provided",
     "model lines fallback closed-loop diagnostics when provided",
@@ -49,7 +51,7 @@ PLANNED_PIPELINE = [
     "measurement plane readiness check",
     "measurement plane construction diagnostics",
     "pipeline readiness diagnostics",
-    "footprint extraction from user-defined shadow proxy geometry",
+    "formal footprint polygon generation",
     "optional site boundary loop extraction",
     "legal judgement mask preparation",
     "optional 5m / 10m measurement line generation when site_boundary is available",
@@ -220,6 +222,45 @@ GEOMETRY_EXTRACTION_POLICY = {
     "equal_time_contours_generated": False,
 }
 
+FOOTPRINT_EXTRACTION_POLICY = {
+    "purpose": "footprint_extraction_diagnostics_from_user_selected_shadow_caster_proxy",
+    "diagnostic_only": True,
+    "read_only": True,
+    "create_revit_elements": False,
+    "accepted_sources": ["bottom_face_candidate", "planar_face_edge_loops", "edge_loop_candidates"],
+    "accepted_shadow_caster_sources": ["user_selected_mass", "user_selected_generic_model"],
+    "auto_extract_existing_building_model": False,
+    "auto_extract_walls_floors_roofs_equipment": False,
+    "per_caster_extraction": True,
+    "merge_casters": False,
+    "temporary_unified_revit_model": False,
+    "formal_footprint_polygon_generated": False,
+    "curve_loop_generated": False,
+    "offset_generated": False,
+    "self_intersection_checked": False,
+    "polygon_boolean_generated": False,
+    "formal_unit_conversion": "not_implemented_in_this_pr",
+    "geometry_units": "revit_raw_internal_units",
+    "measurement_plane_units": "meter",
+    "bounding_box_used_for_footprint": False,
+    "bounding_box_used_for_shadow_geometry": False,
+    "bounding_box_used_for_legal_judgement": False,
+    "same_site_multiple_buildings_awareness": "buildings_on_same_site_are_treated_as_one_building_in_future_duration_accumulation",
+    "not_implemented_in_this_pr": [
+        "formal footprint polygon generation", "CurveLoop creation", "polygon validity check",
+        "self-intersection check", "boolean union across casters", "site boundary clipping",
+        "own-site exclusion", "beyond-5m legal range", "shadow projection", "legal OK/NG judgement",
+    ],
+}
+
+FOOTPRINT_READINESS_REQUIRED_FOR_FUTURE_SHADOW = [
+    "at least one accepted shadow caster",
+    "at least one bottom face candidate",
+    "at least one edge loop candidate",
+    "at least one closed loop candidate",
+    "measurement plane constructed for future projection context",
+    "settings ready for future shadow calculation",
+]
 
 LAW56_2_AWARENESS_POLICY = {
     "purpose": "building_standard_law_article_56_2_shadow_restriction_awareness",
@@ -790,6 +831,161 @@ def _summarize_face(face):
     return {"type": _type_name(face), "is_planar": _is_planar_face_like(face), "area_raw": _safe_float_attr(face, "Area"), "normal_raw": normal_raw, "origin_raw": _xyz_to_raw_dict(_safe_attr(face, "Origin")), "edge_loop_count": len(loops) if loops else None, "edge_count": edge_count if loops else None, "orientation_candidate": orientation, "height_role_candidate": role, "warnings": warnings}
 
 
+
+def _safe_count(value):
+    try:
+        return len(value)
+    except Exception:
+        try:
+            return sum(1 for _ in value)
+        except Exception:
+            return 0
+
+
+def _edge_to_curve(edge):
+    if edge is None:
+        return None
+    if _is_edge_like(edge):
+        curve, err = _safe_call(edge, "AsCurve")
+        return None if err else curve
+    return edge if _is_curve_like(edge) else None
+
+
+def _safe_curve_endpoints(curve_or_edge):
+    curve = _edge_to_curve(curve_or_edge)
+    if curve is None:
+        return None, None, "curve unavailable"
+    p0, e0 = _safe_call(curve, "GetEndPoint", 0)
+    p1, e1 = _safe_call(curve, "GetEndPoint", 1)
+    if e0 or e1 or p0 is None or p1 is None:
+        return None, None, e0 or e1 or "endpoints unavailable"
+    return p0, p1, None
+
+
+def _safe_curve_length(curve_or_edge):
+    curve = _edge_to_curve(curve_or_edge)
+    return _safe_float_attr(curve, "Length") if curve is not None else None
+
+
+def _safe_curve_type(value):
+    curve = _edge_to_curve(value)
+    return _type_name(curve if curve is not None else value)
+
+
+def _curve_endpoint_raw_dicts(curve):
+    p0, p1, err = _safe_curve_endpoints(curve)
+    if err:
+        return [], err
+    return [_xyz_to_raw_dict(p0), _xyz_to_raw_dict(p1)], None
+
+
+def _points_close_raw(p0, p1, tolerance=None):
+    if p0 is None or p1 is None:
+        return None
+    tol = 1e-6 if tolerance is None else tolerance
+    try:
+        return all(abs(float(p0.get(k)) - float(p1.get(k))) <= tol for k in ("x", "y", "z"))
+    except Exception:
+        return None
+
+
+def _raw_z_values_from_points(points):
+    values = []
+    for p in points or []:
+        try:
+            if p is not None and p.get("z") is not None:
+                values.append(float(p.get("z")))
+        except Exception:
+            pass
+    return values
+
+
+def _raw_xy_key(point, precision=6):
+    try:
+        return (round(float(point.get("x")), precision), round(float(point.get("y")), precision))
+    except Exception:
+        return None
+
+
+def _dedupe_raw_points(points):
+    seen = set(); out = []
+    for point in points or []:
+        key = None
+        try:
+            key = (round(float(point.get("x")), 6), round(float(point.get("y")), 6), round(float(point.get("z")), 6))
+        except Exception:
+            key = _safe_text(point)
+        if key not in seen:
+            seen.add(key); out.append(point)
+    return out
+
+
+def _summarize_curve_for_footprint(value):
+    warnings = []
+    curve = _edge_to_curve(value)
+    if curve is None:
+        warnings.append("curve unavailable")
+    endpoints, err = _curve_endpoint_raw_dicts(curve) if curve is not None else ([], "curve unavailable")
+    if err:
+        warnings.append(err)
+    tess_count = None
+    if curve is not None:
+        tess, terr = _safe_call(curve, "Tessellate")
+        if not terr and tess is not None:
+            tess_count = min(_safe_count(_safe_iter(tess)), 20)
+    z = _raw_z_values_from_points(endpoints)
+    return {"input_type": _type_name(value), "curve_type": _safe_curve_type(value), "length_raw": _safe_curve_length(value), "endpoints_raw": endpoints, "endpoint_count": len(endpoints), "z_min_raw": min(z) if z else None, "z_max_raw": max(z) if z else None, "tessellation_sample_point_count": tess_count, "formal_discretization_generated": False, "warnings": warnings}
+
+
+def _extract_edge_loop_candidates_from_face(face, face_summary=None):
+    warnings=[]; loops_out=[]
+    loops = _safe_iter(_safe_attr(face, "EdgeLoops"))
+    fs = face_summary or _summarize_face(face)
+    for li, loop in enumerate(loops):
+        endpoints=[]; curve_types=[]; total=0.0; total_known=True; curve_count=0; lw=[]
+        for edge in _safe_iter(loop):
+            cs = _summarize_curve_for_footprint(edge); curve_count += 1
+            curve_types.append(cs.get("curve_type")); endpoints.extend(cs.get("endpoints_raw") or [])
+            if cs.get("length_raw") is None: total_known=False
+            else: total += cs.get("length_raw")
+            lw.extend(cs.get("warnings") or [])
+        zvals=_raw_z_values_from_points(endpoints); unique=_dedupe_raw_points(endpoints)
+        if endpoints:
+            closed=_points_close_raw(endpoints[0], endpoints[-1]); method="raw_endpoint_comparison"
+        else:
+            closed=None; method="assumed_by_revit_edge_loop_but_not_verified" if loop is not None else "unavailable"
+        if zvals:
+            horiz=(max(zvals)-min(zvals)) <= 1e-6
+        else:
+            horiz=None
+        non_line=any((ct or "").lower() not in ("line", "db.line") and "line" not in (ct or "").lower() for ct in curve_types)
+        loops_out.append({"loop_index":li,"edge_count":_safe_count(_safe_iter(loop)),"curve_count":curve_count,"endpoint_count":len(endpoints),"unique_endpoint_count":len(unique),"endpoints_raw_sample":endpoints[:12],"z_min_raw":min(zvals) if zvals else None,"z_max_raw":max(zvals) if zvals else None,"z_variation_raw":(max(zvals)-min(zvals)) if zvals else None,"closed_candidate":closed,"closure_method":method,"horizontal_candidate":horiz,"curve_types":sorted(set([c for c in curve_types if c])),"total_length_raw":total if total_known else None,"has_arc_or_non_line_curve":non_line,"formal_polygon_generated":False,"self_intersection_checked":False,"warnings":lw})
+    if not loops:
+        warnings.append("face EdgeLoops unavailable or empty; no footprint edge loop candidate was read.")
+    return {"available": bool(loops_out), "source_face_type": fs.get("type") or _type_name(face), "source_face_role_candidate": fs.get("height_role_candidate"), "source_face_orientation_candidate": fs.get("orientation_candidate"), "face_area_raw": fs.get("area_raw"), "face_origin_raw": fs.get("origin_raw"), "face_normal_raw": fs.get("normal_raw"), "edge_loop_count": len(loops_out), "loops": loops_out, "warnings": warnings}
+
+
+def _extract_footprint_candidates_from_faces(face_summaries, face_objects, measurement_plane=None):
+    candidates=[]; warnings=[]; info=[]; bi=0
+    for idx, fs in enumerate(face_summaries or []):
+        if fs.get("height_role_candidate") != "bottom_face_candidate":
+            continue
+        face = face_objects[idx] if idx < len(face_objects or []) else None
+        loops = _extract_edge_loop_candidates_from_face(face, fs) if face is not None else {"available":False,"loops":[],"warnings":["bottom face object unavailable; summary only."]}
+        warnings.extend(loops.get("warnings") or [])
+        for loop in loops.get("loops") or []:
+            candidates.append({"candidate_index":len(candidates),"source":"bottom_face_candidate_edge_loop","source_face_index":idx,"source_face_type":fs.get("type"),"source_face_area_raw":fs.get("area_raw"),"source_face_origin_raw":fs.get("origin_raw"),"source_face_normal_raw":fs.get("normal_raw"),"loop_index":loop.get("loop_index"),"edge_count":loop.get("edge_count"),"curve_count":loop.get("curve_count"),"closed_candidate":loop.get("closed_candidate"),"horizontal_candidate":loop.get("horizontal_candidate"),"z_min_raw":loop.get("z_min_raw"),"z_max_raw":loop.get("z_max_raw"),"z_variation_raw":loop.get("z_variation_raw"),"total_length_raw":loop.get("total_length_raw"),"curve_types":loop.get("curve_types"),"endpoints_raw_sample":loop.get("endpoints_raw_sample"),"formal_footprint_polygon_generated":False,"units":"revit_raw_internal_units","relation_to_measurement_plane":{"measurement_plane_available":(measurement_plane or {}).get("available") is True,"diagnostic_only":True,"formal_unit_conversion":"not_implemented_in_this_pr"},"warnings":loop.get("warnings") or []})
+    def score(c):
+        return (1 if c.get("closed_candidate") is True else 0, 1 if c.get("horizontal_candidate") is True else 0, c.get("edge_count") or 0, c.get("source_face_area_raw") or 0)
+    best = sorted(candidates, key=score, reverse=True)[0] if candidates else None
+    bottom=sum(1 for f in face_summaries or [] if f.get("height_role_candidate")=="bottom_face_candidate")
+    closed=sum(1 for c in candidates if c.get("closed_candidate") is True); horiz=sum(1 for c in candidates if c.get("horizontal_candidate") is True)
+    blockers=[]
+    if bottom<=0: blockers.append("No bottom face candidate was found.")
+    if not candidates: blockers.append("No edge loop candidate was found from bottom face candidates.")
+    if closed<=0: blockers.append("No closed loop candidate was verified by raw endpoint comparison.")
+    return {"available": bool(candidates), "bottom_face_candidate_count": bottom, "loop_candidate_count": len(candidates), "closed_loop_candidate_count": closed, "horizontal_loop_candidate_count": horiz, "best_candidate": best, "candidates": candidates, "readiness": {"ready_for_future_footprint_polygon_generation": bool(closed>0), "blockers": blockers}, "warnings": warnings, "info": info}
+
 def _summarize_edge_or_curve(value):
     warnings = []
     curve = value
@@ -926,7 +1122,7 @@ def _measurement_plane_relation(bbox, face_summaries, measurement_plane):
 
 def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings_normalized, measurement_plane=None):
     items_in = _to_list(building_elements)
-    diag = {"policy": GEOMETRY_EXTRACTION_POLICY, "provided": bool(items_in), "count": len(items_in), "accepted_caster_count": (shadow_casters or {}).get("accepted_count", 0), "geometry_readable_caster_count": 0, "solid_count": 0, "positive_solid_count": 0, "face_count": 0, "edge_count": 0, "mesh_count": 0, "bottom_face_candidate_count": 0, "top_face_candidate_count": 0, "vertical_face_candidate_count": 0, "footprint_candidate_count": 0, "measurement_plane_relation_available": False, "measurement_plane_elevation_m": ((measurement_plane or {}).get("elevation_m")), "units": {"geometry": "revit_raw_internal_units", "official_unit_conversion": "not_implemented_in_this_pr"}, "items": [], "readiness": {}, "warnings": [], "info": ["Geometry extraction diagnostics are read-only and create no Revit elements.", "Footprint candidates are diagnostic only; no footprint polygon, shadow polygon, projection, grid accumulation, or equal-time contour is generated."]}
+    diag = {"policy": GEOMETRY_EXTRACTION_POLICY, "provided": bool(items_in), "count": len(items_in), "accepted_caster_count": (shadow_casters or {}).get("accepted_count", 0), "geometry_readable_caster_count": 0, "solid_count": 0, "positive_solid_count": 0, "face_count": 0, "edge_count": 0, "mesh_count": 0, "bottom_face_candidate_count": 0, "top_face_candidate_count": 0, "vertical_face_candidate_count": 0, "footprint_candidate_count": 0, "footprint_loop_candidate_count": 0, "closed_footprint_loop_candidate_count": 0, "best_candidate_count": 0, "casters_with_footprint_candidate_count": 0, "casters_with_closed_footprint_loop_candidate_count": 0, "measurement_plane_relation_available": False, "measurement_plane_elevation_m": ((measurement_plane or {}).get("elevation_m")), "units": {"geometry": "revit_raw_internal_units", "official_unit_conversion": "not_implemented_in_this_pr"}, "items": [], "readiness": {}, "warnings": [], "info": ["Geometry extraction diagnostics are read-only and create no Revit elements.", "Footprint candidates are diagnostic only; no footprint polygon, shadow polygon, projection, grid accumulation, or equal-time contour is generated."]}
     caster_items = (shadow_casters or {}).get("items") or []
     for index, item in enumerate(items_in):
         unwrapped = _try_unwrap(item)
@@ -936,17 +1132,17 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
         collected = _collect_geometry_objects(unwrapped) if accepted else {"objects": [], "warnings": ["shadow caster category is not accepted; geometry diagnostics skipped for this item."]}
         item_warnings.extend(collected.get("warnings", []))
         objs = collected.get("objects") or []
-        solids=[]; faces=[]; edges=[]; mesh_count=0
+        solids=[]; faces=[]; face_objects=[]; edges=[]; mesh_count=0
         for obj in objs:
             val = obj.get("object")
             if _is_solid_like(val):
                 ss = _summarize_solid(val); solids.append(ss)
                 for f in _safe_iter(_safe_attr(val, "Faces")):
-                    faces.append(_summarize_face(f))
+                    faces.append(_summarize_face(f)); face_objects.append(f)
                 for e in _safe_iter(_safe_attr(val, "Edges")):
                     edges.append(_summarize_edge_or_curve(e))
             elif _is_face_like(val):
-                faces.append(_summarize_face(val))
+                faces.append(_summarize_face(val)); face_objects.append(val)
             elif _is_edge_like(val) or _is_curve_like(val):
                 edges.append(_summarize_edge_or_curve(val))
             elif _is_mesh_like(val):
@@ -959,24 +1155,28 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
             item_warnings.append("No bottom face candidate was found; future footprint extraction may be blocked for this caster.")
         bbox = _safe_get_bounding_box(unwrapped)
         relation = _measurement_plane_relation(bbox, faces[:20], measurement_plane)
+        footprint = _extract_footprint_candidates_from_faces(faces, face_objects, measurement_plane) if accepted else {"available": False, "bottom_face_candidate_count": 0, "loop_candidate_count": 0, "closed_loop_candidate_count": 0, "horizontal_loop_candidate_count": 0, "best_candidate": None, "candidates": [], "readiness": {"ready_for_future_footprint_polygon_generation": False, "blockers": ["shadow caster category is not accepted; footprint diagnostics skipped."]}, "warnings": [], "info": []}
+        if footprint.get("warnings"):
+            item_warnings.extend(footprint.get("warnings") or [])
         if relation.get("available"):
             diag["measurement_plane_relation_available"] = True
-        entry={"index": index, "element_id": _element_id(unwrapped), "name": _element_name(unwrapped), "category_name": _category_name(unwrapped), "accepted_shadow_caster": accepted, "geometry_attempted": accepted, "geometry_available": len(objs)>0, "geometry_object_count": len(objs), "solid_count": len(solids), "positive_solid_count": pos, "face_count": len(faces), "edge_count": len(edges), "mesh_count": mesh_count, "bottom_face_candidate_count": bottom, "top_face_candidate_count": top, "vertical_face_candidate_count": vertical, "footprint_candidate_count": bottom, "bounding_box_diagnostic": bbox, "measurement_plane_relation": relation, "solids": solids[:20], "faces_summary": faces[:20], "edges_summary_sample": edges[:20], "warnings": item_warnings}
+        entry={"index": index, "element_id": _element_id(unwrapped), "name": _element_name(unwrapped), "category_name": _category_name(unwrapped), "accepted_shadow_caster": accepted, "geometry_attempted": accepted, "geometry_available": len(objs)>0, "geometry_object_count": len(objs), "solid_count": len(solids), "positive_solid_count": pos, "face_count": len(faces), "edge_count": len(edges), "mesh_count": mesh_count, "bottom_face_candidate_count": bottom, "top_face_candidate_count": top, "vertical_face_candidate_count": vertical, "footprint_candidate_count": len(footprint.get("candidates") or []), "footprint_loop_candidate_count": footprint.get("loop_candidate_count", 0), "closed_footprint_loop_candidate_count": footprint.get("closed_loop_candidate_count", 0), "best_footprint_candidate": footprint.get("best_candidate"), "footprint_extraction": footprint, "footprint_extraction_warnings": footprint.get("warnings", []), "bounding_box_diagnostic": bbox, "measurement_plane_relation": relation, "solids": solids[:20], "faces_summary": faces[:20], "edges_summary_sample": edges[:20], "warnings": item_warnings}
         diag["items"].append(entry); diag["warnings"].extend(item_warnings)
         if len(objs)>0: diag["geometry_readable_caster_count"] += 1
-        diag["solid_count"] += len(solids); diag["positive_solid_count"] += pos; diag["face_count"] += len(faces); diag["edge_count"] += len(edges); diag["mesh_count"] += mesh_count; diag["bottom_face_candidate_count"] += bottom; diag["top_face_candidate_count"] += top; diag["vertical_face_candidate_count"] += vertical; diag["footprint_candidate_count"] += bottom
-    fp_ready = diag["accepted_caster_count"] > 0 and diag["positive_solid_count"] > 0 and diag["footprint_candidate_count"] > 0
+        diag["solid_count"] += len(solids); diag["positive_solid_count"] += pos; diag["face_count"] += len(faces); diag["edge_count"] += len(edges); diag["mesh_count"] += mesh_count; diag["bottom_face_candidate_count"] += bottom; diag["top_face_candidate_count"] += top; diag["vertical_face_candidate_count"] += vertical; diag["footprint_candidate_count"] += len(footprint.get("candidates") or []); diag["footprint_loop_candidate_count"] += footprint.get("loop_candidate_count", 0); diag["closed_footprint_loop_candidate_count"] += footprint.get("closed_loop_candidate_count", 0); diag["best_candidate_count"] += 1 if footprint.get("best_candidate") else 0; diag["casters_with_footprint_candidate_count"] += 1 if footprint.get("loop_candidate_count", 0) > 0 else 0; diag["casters_with_closed_footprint_loop_candidate_count"] += 1 if footprint.get("closed_loop_candidate_count", 0) > 0 else 0
+    fp_ready = diag["accepted_caster_count"] > 0 and diag["closed_footprint_loop_candidate_count"] > 0
     settings_ready = (((settings_normalized or {}).get("readiness") or {}).get("ready_for_equal_time_shadow_calculation") is True)
     fp_blockers=[]; proj_blockers=[]
     if diag["accepted_caster_count"] <= 0: fp_blockers.append("No accepted shadow caster proxy elements are available.")
-    if diag["positive_solid_count"] <= 0: fp_blockers.append("No positive-volume solid was found in accepted shadow caster geometry.")
-    if diag["footprint_candidate_count"] <= 0: fp_blockers.append("No bottom face / footprint candidate was found.")
+    if diag["bottom_face_candidate_count"] <= 0: fp_blockers.append("No bottom face candidate was found.")
+    if diag["footprint_loop_candidate_count"] <= 0: fp_blockers.append("No edge loop candidate was found from bottom face candidates.")
+    if diag["closed_footprint_loop_candidate_count"] <= 0: fp_blockers.append("No closed footprint loop candidate was verified.")
     if not fp_ready: proj_blockers.extend(fp_blockers)
     if not settings_ready: proj_blockers.append("Settings are not ready for future equal-time shadow calculation.")
     mp_ready = ((measurement_plane or {}).get("readiness") or {}).get("measurement_plane_constructed") is True
     if not mp_ready:
         proj_blockers.append("Measurement plane is not constructed; future shadow projection context is blocked.")
-    diag["readiness"]={"geometry_diagnostics_ready": True, "ready_for_future_footprint_extraction": fp_ready, "ready_for_future_shadow_projection": fp_ready and settings_ready and mp_ready, "blockers_for_future_footprint_extraction": fp_blockers, "blockers_for_future_shadow_projection": proj_blockers}
+    diag["readiness"]={"geometry_diagnostics_ready": True, "ready_for_future_footprint_extraction": fp_ready, "ready_for_future_footprint_polygon_generation": fp_ready, "ready_for_future_shadow_projection": fp_ready and settings_ready and mp_ready, "blockers_for_future_footprint_extraction": fp_blockers, "blockers_for_future_shadow_projection": proj_blockers}
     return diag
 
 
@@ -1579,20 +1779,50 @@ def _normalize_settings(settings, level=None):
     }
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None):
+def _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized, site_boundary):
+    items = (shadow_caster_geometry or {}).get("items") or []
+    accepted = (shadow_caster_geometry or {}).get("accepted_caster_count", 0)
+    candidates=[]; best=[]; with_c=[]; without=[]; warnings=[]
+    for item in items:
+        fp=item.get("footprint_extraction") or {}
+        if item.get("accepted_shadow_caster"):
+            if fp.get("candidates"):
+                with_c.append(item.get("index")); candidates.extend(fp.get("candidates") or [])
+            else:
+                without.append(item.get("index"))
+            if fp.get("best_candidate"):
+                best.append(fp.get("best_candidate"))
+        warnings.extend(fp.get("warnings") or [])
+    closed=sum(1 for c in candidates if c.get("closed_candidate") is True)
+    settings_ready=((settings_normalized or {}).get("readiness") or {}).get("ready_for_equal_time_shadow_calculation") is True
+    mp_ready=((measurement_plane or {}).get("readiness") or {}).get("measurement_plane_constructed") is True
+    site_ready=(site_boundary or {}).get("boundary_dependent_steps_available") is True
+    ready_poly=accepted>0 and closed>0
+    blockers_poly=[]
+    if accepted<=0: blockers_poly.append("No accepted shadow caster proxy elements are available.")
+    if closed<=0: blockers_poly.append("No closed footprint loop candidate was verified by raw endpoint comparison.")
+    blockers_proj=list(blockers_poly)
+    if not mp_ready: blockers_proj.append("Measurement plane is not constructed; future shadow projection context is blocked.")
+    if not settings_ready: blockers_proj.append("Settings are not ready for future equal-time shadow calculation.")
+    blockers_legal=["site boundary loop extraction is not implemented", "own-site exclusion mask is not implemented", "target area mask is not implemented", "ordinance profile / beyond-5m legal range are not implemented"]
+    if not site_ready: blockers_legal.append("site_boundary is missing or not usable; future legal judgement masks are blocked, but footprint diagnostics continue.")
+    return {"policy": FOOTPRINT_EXTRACTION_POLICY, "provided": accepted>0, "diagnostic_only": True, "formal_footprint_polygon_generated": False, "count": len(items), "accepted_caster_count": accepted, "candidate_count": len(candidates), "loop_candidate_count": (shadow_caster_geometry or {}).get("footprint_loop_candidate_count", len(candidates)), "closed_loop_candidate_count": closed, "casters_with_candidates": with_c, "casters_without_candidates": without, "best_candidates": best, "readiness": {"footprint_diagnostics_ready": True, "ready_for_future_footprint_polygon_generation": ready_poly, "ready_for_future_shadow_projection": ready_poly and mp_ready and settings_ready, "ready_for_future_legal_judgement_masks": False, "blockers_for_future_footprint_polygon_generation": blockers_poly, "blockers_for_future_shadow_projection": blockers_proj, "blockers_for_future_legal_judgement_masks": blockers_legal}, "warnings": warnings, "info": ["Footprint candidates are Revit raw_internal_units diagnostics only; no formal footprint polygon or CurveLoop is generated.", "site_boundary is not required for footprint diagnostics, but is required later for legal judgement masks.", "Same-site multiple buildings awareness is retained for future duration accumulation; no caster union is performed in this PR."]}
+
+
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
     settings_ready = ((settings_normalized or {}).get("readiness") or {}).get("ready_for_equal_time_shadow_calculation") is True
     boundary_ready = (site_boundary or {}).get("boundary_dependent_steps_available") is True
     geom_ready = ((shadow_caster_geometry or {}).get("readiness") or {}).get("geometry_diagnostics_ready") is True
-    footprint_ready = ((shadow_caster_geometry or {}).get("readiness") or {}).get("ready_for_future_footprint_extraction") is True
+    footprint_ready = ((footprint_extraction or {}).get("readiness") or {}).get("ready_for_future_footprint_polygon_generation") is True
     mp_readiness = (measurement_plane or {}).get("readiness") or {}
     measurement_plane_ready = mp_readiness.get("measurement_plane_constructed") is True
     future_projection_context_ready = mp_readiness.get("ready_for_future_shadow_projection_context") is True
     legal_judgement_masks_ready = False
     future_projection_ready = footprint_ready and measurement_plane_ready and settings_ready
-    blockers_fp = list(((shadow_caster_geometry or {}).get("readiness") or {}).get("blockers_for_future_footprint_extraction") or [])
+    blockers_fp = list(((footprint_extraction or {}).get("readiness") or {}).get("blockers_for_future_footprint_polygon_generation") or [])
     blockers_mp = list(mp_readiness.get("blockers_for_measurement_plane") or [])
     blockers_projection = []
     if not footprint_ready:
@@ -1612,7 +1842,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         blockers_equal.append("Settings are not ready for future equal-time shadow calculation; missing={0}, invalid={1}.".format(missing, invalid))
     if not measurement_plane_ready:
         blockers_equal.extend(blockers_mp)
-    equal_ready = shadow_ready and settings_ready and measurement_plane_ready
+    equal_ready = shadow_ready and settings_ready and measurement_plane_ready and footprint_ready
     if not equal_ready:
         blockers_boundary.append("Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.")
     if not boundary_ready:
@@ -1621,6 +1851,9 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "input_diagnostics_ready": True,
         "shadow_caster_ready": shadow_ready,
         "shadow_caster_geometry_ready": geom_ready,
+        "footprint_diagnostics_ready": ((footprint_extraction or {}).get("readiness") or {}).get("footprint_diagnostics_ready") is True,
+        "footprint_loop_candidates_ready": footprint_ready,
+        "future_footprint_polygon_generation_ready": footprint_ready,
         "footprint_extraction_ready": footprint_ready,
         "measurement_plane_ready": measurement_plane_ready,
         "measurement_plane_constructed": measurement_plane_ready,
@@ -1634,12 +1867,14 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "boundary_dependent_steps_ready": equal_ready and boundary_ready,
         "blockers_for_equal_time_shadow": blockers_equal,
         "blockers_for_footprint_extraction": blockers_fp,
+        "blockers_for_future_footprint_polygon_generation": blockers_fp,
         "blockers_for_measurement_plane": blockers_mp,
         "blockers_for_future_projection_context": list(mp_readiness.get("blockers_for_future_shadow_projection_context") or []),
         "blockers_for_future_shadow_projection": blockers_projection,
         "blockers_for_legal_judgement_masks": blockers_legal,
         "blockers_for_boundary_dependent_steps": blockers_boundary,
-        "next_implementation_steps": ["footprint extraction from user-defined shadow proxy geometry", "optional site boundary loop extraction", "legal judgement mask preparation", "true solar time diagnostics", "sun vector calculation", "time-slice shadow projection", "logical union", "shadow duration accumulation", "equal-time contour generation", "legal judgement report"],
+        "info": ["equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generation and legal masks remain unimplemented."],
+        "next_implementation_steps": ["formal footprint polygon generation", "optional site boundary loop extraction", "legal judgement mask preparation", "true solar time diagnostics", "sun vector calculation", "time-slice shadow projection", "logical union", "shadow duration accumulation", "equal-time contour generation", "legal judgement report"],
     }
 
 def _build_success():
@@ -1658,13 +1893,15 @@ def _build_success():
     law56_2_awareness = _build_law56_2_awareness_context(settings_normalized, site_boundary)
     measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
     shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized, measurement_plane)
-    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane)
+    footprint_extraction = _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized, site_boundary)
+    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
     warnings.extend(settings_normalized.get("warnings", []))
     warnings.extend(law56_2_awareness.get("warnings", []))
     warnings.extend(measurement_plane.get("warnings", []))
     warnings.extend(shadow_caster_geometry.get("warnings", []))
+    warnings.extend(footprint_extraction.get("warnings", []))
     warnings.extend(pipeline_readiness.get("blockers_for_equal_time_shadow", []))
     warnings.extend(pipeline_readiness.get("blockers_for_footprint_extraction", []))
     warnings.extend(pipeline_readiness.get("blockers_for_measurement_plane", []))
@@ -1678,7 +1915,7 @@ def _build_success():
         "success": True,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow v1 input diagnostics only; measurement plane construction diagnostics and Building Standard Law Article 56-2 awareness were added. The measurement plane is an internal diagnostic data object only; no Revit element creation, true solar time calculation, sun vector calculation, shadow projection, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented.",
+        "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint polygon generation, Revit element creation, true solar time calculation, sun vector calculation, shadow projection, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented.",
         "legal_constants": LEGAL_CONSTANTS,
         "inputs": {
             "source": input_source,
@@ -1690,6 +1927,8 @@ def _build_success():
         "shadow_casters": shadow_casters,
         "shadow_caster_policy": SHADOW_CASTER_POLICY,
         "shadow_caster_geometry": shadow_caster_geometry,
+        "footprint_extraction": footprint_extraction,
+        "footprint_extraction_policy": FOOTPRINT_EXTRACTION_POLICY,
         "law56_2_awareness": law56_2_awareness,
         "measurement_plane": measurement_plane,
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
@@ -1712,6 +1951,7 @@ def _build_failure(error_text):
     shadow_caster_geometry = None
     law56_2_awareness = None
     measurement_plane = None
+    footprint_extraction = None
     try:
         shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
     except Exception:
@@ -1734,7 +1974,8 @@ def _build_failure(error_text):
         measurement_plane = None
     try:
         shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters or {}, settings_normalized or {}, measurement_plane)
-        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane)
+        footprint_extraction = _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized or {}, site_boundary or {})
+        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane, footprint_extraction)
     except Exception:
         pipeline_readiness = None
 
@@ -1742,7 +1983,7 @@ def _build_failure(error_text):
         "success": False,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "script.py failed while building v1 measurement plane construction diagnostics.",
+        "message": "script.py failed while building v1 footprint extraction diagnostics.",
         "legal_constants": LEGAL_CONSTANTS,
         "inputs": {
             "source": input_source,
@@ -1754,6 +1995,8 @@ def _build_failure(error_text):
         "shadow_casters": shadow_casters,
         "shadow_caster_policy": SHADOW_CASTER_POLICY,
         "shadow_caster_geometry": shadow_caster_geometry,
+        "footprint_extraction": footprint_extraction,
+        "footprint_extraction_policy": FOOTPRINT_EXTRACTION_POLICY,
         "law56_2_awareness": law56_2_awareness,
         "measurement_plane": measurement_plane,
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,

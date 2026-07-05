@@ -173,3 +173,41 @@ measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_h
 - If site_boundary is missing, future legal judgement ranges such as beyond-5m range and own-site exclusion are not constructed.
 
 See `docs/measurement_plane_v1.md` for the detailed measurement plane diagnostics policy.
+
+## Footprint extraction diagnostics guidance
+
+For future footprint extraction, model shadow caster proxies as user-selected Mass or Generic Model elements with clear bottom faces. A simple, planar bottom face with readable edge loops will be easier to diagnose and to support in later PRs.
+
+Avoid overly complex, curved, or self-intersecting proxy shapes where possible. This stage only diagnoses bottom face candidates, edge loop candidates, raw endpoint closure, and horizontal candidates. It does not create formal polygons, offsets, booleans, CurveLoops, shadow projections, 5m / 10m lines, or legal judgement outputs.
+
+`site_boundary` is not required for footprint diagnostics. It will be needed later for own-site exclusion, beyond-5m ranges, target-area masks, and legal judgement masks. See [`footprint_extraction_v1.md`](footprint_extraction_v1.md).
+
+## Roadmap order
+
+1. input diagnostics
+2. shadow caster proxy validation
+3. shadow caster geometry access check
+4. shadow caster geometry extraction diagnostics
+5. solid / face / edge summary
+6. footprint candidate diagnostics
+7. footprint edge loop diagnostics
+8. footprint extraction readiness diagnostics
+9. optional site boundary source validation
+10. property line / site property diagnostics when provided
+11. model lines fallback closed-loop diagnostics when provided
+12. settings coercion and normalization
+13. law56_2 awareness context diagnostics
+14. measurement plane readiness check
+15. measurement plane construction diagnostics
+16. pipeline readiness diagnostics
+17. formal footprint polygon generation
+18. optional site boundary loop extraction
+19. legal judgement mask preparation
+20. optional 5m / 10m measurement line generation when site_boundary is available
+21. true solar time diagnostics
+22. sun vector calculation
+23. time-slice shadow projection per caster
+24. logical union of shadows per time slice
+25. shadow duration accumulation without double counting
+26. equal-time contour generation
+27. legal judgement report

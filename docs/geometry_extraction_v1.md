@@ -76,3 +76,11 @@ Revit geometry 座標は `revit_raw_internal_units` として扱い、meters へ
 - Any raw Z relation to `measurement_plane_elevation_m` is a placeholder diagnostic only.
 - Raw relation diagnostics are not formal intersections, not legal judgement, and not shadow geometry decisions.
 - Even when measurement plane construction succeeds, this PR does not perform footprint polygon generation, true solar time, sun vector calculation, shadow projection, duration accumulation, or equal-time contour generation.
+
+## Footprint loop diagnostics added in v1 footprint stage
+
+The geometry diagnostics now continue from bottom face candidates to edge loop candidates for each accepted user-selected Mass / Generic Model shadow caster proxy. The output remains diagnostic-only: no formal footprint polygon is generated, no `CurveLoop` is created, and no 2D projection or offset is performed.
+
+Edge loop closure is checked only by raw endpoint comparison when endpoints are readable. Arc, spline, ellipse, or other non-Line curves are reported by type and endpoint availability; formal discretization is not implemented. These footprint candidates are not yet used for shadow projection or legal judgement.
+
+See [`footprint_extraction_v1.md`](footprint_extraction_v1.md) for the detailed policy.

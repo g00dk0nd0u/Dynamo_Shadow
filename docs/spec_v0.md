@@ -165,3 +165,14 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 - 調査メモ: `docs/research_shadow_diagram.md`
 - Revit入力モデル方針: `docs/revit_input_modeling_guide.md`
 - Settings schema: `docs/settings_schema_v1.md`
+
+## v1 footprint extraction diagnostics output candidates
+
+The v1 diagnostic output now includes:
+
+- `footprint_extraction`
+- `footprint_extraction_policy`
+
+The planned pipeline includes footprint edge loop diagnostics, footprint extraction readiness diagnostics, and a future formal footprint polygon generation stage.
+
+Current non-scope remains: formal footprint polygon generation, CurveLoop creation, polygon boolean / union, self-intersection check, offset, site boundary loop extraction, own-site exclusion mask, target area mask, 5m / 10m measurement line generation, true solar time calculation, sun vector calculation, shadow projection, legal OK/NG judgement, equal-time contour generation, and Revit element creation.

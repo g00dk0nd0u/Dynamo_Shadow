@@ -154,3 +154,18 @@ Before opening a PR, confirm:
 - site_boundary is not required to construct the measurement plane.
 - site_boundary is required for future legal judgement masks such as beyond-5m range and own-site exclusion.
 - Same-site multiple buildings should be treated as one building in future duration accumulation; do not double-count overlapping shadows.
+
+## Footprint extraction rules
+
+- Footprint extraction diagnostics must be read-only.
+- Footprint candidates must come from user-selected Mass / Generic Model proxy geometry.
+- Do not auto-extract footprints from Walls / Floors / Roofs / Equipment.
+- Bottom face candidates may be used to diagnose edge loop candidates.
+- Do not generate formal footprint polygons unless explicitly requested.
+- Do not create CurveLoops, offsets, booleans, or self-intersection checks unless explicitly requested.
+- Do not use BoundingBox as footprint geometry.
+- Keep each selected caster separate; do not merge into a temporary unified Revit model.
+- Same-site multiple buildings should be handled later during union / duration accumulation, not by merging Revit elements now.
+- site_boundary is not required for footprint diagnostics.
+- site_boundary is required later for legal judgement masks.
+- Do not implement true solar time, sun vectors, shadow projection, 5m/10m lines, legal masks, or legal judgement unless explicitly requested.
