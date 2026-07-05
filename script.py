@@ -18,7 +18,7 @@ except Exception:
     BuiltInCategory = Options = Solid = GeometryInstance = Face = PlanarFace = Edge = Curve = Mesh = None
 
 TOOL_NAME = "Dynamo_Shadow"
-STAGE_NAME = "v1_shadow_caster_geometry_extraction_diagnostics"
+STAGE_NAME = "v1_measurement_plane_construction_diagnostics"
 
 LEGAL_CONSTANTS = {
     "date_basis": "winter_solstice",
@@ -45,17 +45,21 @@ PLANNED_PIPELINE = [
     "property line / site property diagnostics when provided",
     "model lines fallback closed-loop diagnostics when provided",
     "settings coercion and normalization",
+    "law56_2 awareness context diagnostics",
     "measurement plane readiness check",
+    "measurement plane construction diagnostics",
     "pipeline readiness diagnostics",
-    "measurement plane construction",
     "footprint extraction from user-defined shadow proxy geometry",
     "optional site boundary loop extraction",
+    "legal judgement mask preparation",
     "optional 5m / 10m measurement line generation when site_boundary is available",
+    "true solar time diagnostics",
     "sun vector calculation",
     "time-slice shadow projection per caster",
     "logical union of shadows per time slice",
     "shadow duration accumulation without double counting",
     "equal-time contour generation",
+    "legal judgement report",
 ]
 
 INPUT_KEYS = [
@@ -215,6 +219,56 @@ GEOMETRY_EXTRACTION_POLICY = {
     "shadow_projection_generated": False,
     "equal_time_contours_generated": False,
 }
+
+
+LAW56_2_AWARENESS_POLICY = {
+    "purpose": "building_standard_law_article_56_2_shadow_restriction_awareness",
+    "formal_permit_check": "external_tool_such_as_ADS",
+    "implemented_as_legal_judgement": False,
+    "legal_judgement_generated": False,
+    "date_basis": "winter_solstice",
+    "time_basis": "true_solar_time",
+    "standard_time_window": {"start": "08:00", "end": "16:00"},
+    "hokkaido_time_window": {"start": "09:00", "end": "15:00"},
+    "measurement_plane_basis": "average_ground_level_plus_designated_measurement_height",
+    "measurement_plane_formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
+    "boundary_distance_rule_awareness": "beyond_5m_from_site_boundary",
+    "exclusion_awareness": ["outside_target_area", "high_rise_residential_inducement_district", "urban_renaissance_special_district", "own_site_area"],
+    "multiple_buildings_policy_awareness": "buildings_on_same_site_are_treated_as_one_building",
+    "relaxation_awareness": ["road", "river", "sea", "significant_elevation_difference", "other_special_conditions_by_enforcement_order"],
+    "outside_target_area_building_awareness": "building_over_10m_outside_target_area_casting_shadow_into_target_area_may_be_treated_as_in_target_area",
+    "different_restriction_zones_awareness": "ordinance_and_enforcement_order_required",
+    "ordinance_dependent_values": ["target_area", "applicable_building_threshold", "measurement_height_m", "allowed_shadow_duration", "selected_table_row"],
+    "not_implemented_in_this_pr": ["ordinance lookup", "target area mask", "own site exclusion", "beyond 5m judgement range", "5m/10m measurement lines", "relaxation handling", "legal OK/NG judgement", "true solar time calculation", "sun vector calculation", "shadow projection", "equal-time contour generation"],
+}
+
+MEASUREMENT_PLANE_POLICY = {
+    "purpose": "article_56_2_measurement_plane_construction_diagnostics",
+    "create_revit_element": False,
+    "internal_data_only": True,
+    "plane_type": "horizontal_plane",
+    "normal": "+Z",
+    "coordinate_system": "legal_si_meters",
+    "formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
+    "average_ground_level_source": "settings.average_ground_level_elevation_m",
+    "measurement_height_source": "settings.measurement_height_m",
+    "revit_level_used_as_average_ground_level": False,
+    "revit_level_used_as_measurement_plane": False,
+    "revit_internal_unit_conversion": "not_implemented_in_this_pr",
+    "geometry_relation": "diagnostic_only",
+    "formal_intersection_with_revit_geometry": "not_implemented_in_this_pr",
+    "site_boundary_required_for_plane_construction": False,
+    "site_boundary_required_for_legal_judgement_masks": True,
+    "legal_judgement_generated": False,
+}
+
+LAW56_2_FUTURE_REQUIRED_INPUTS = [
+    "ordinance_profile", "target_area_status", "applicable_building_threshold",
+    "measurement_height_m", "allowed_shadow_duration_profile", "site_boundary",
+    "own_site_boundary", "target_area_mask", "exclusion_area_masks",
+    "road_water_relaxation_profile", "elevation_difference_relaxation_profile",
+    "true_solar_time_profile", "same_site_building_group",
+]
 
 GEOMETRY_READINESS_REQUIRED_FOR_FUTURE_SHADOW = [
     "at least one accepted shadow caster",
@@ -756,32 +810,123 @@ def _summarize_edge_or_curve(value):
     return {"type": _type_name(value), "curve_type": _type_name(curve) if curve is not None else None, "length_raw": length, "endpoint0_raw": _xyz_to_raw_dict(p0), "endpoint1_raw": _xyz_to_raw_dict(p1), "is_horizontal_candidate": (z0 is not None and z1 is not None and abs(z0 - z1) < 1e-9), "z_min_raw": min([z for z in (z0, z1) if z is not None]) if z0 is not None or z1 is not None else None, "z_max_raw": max([z for z in (z0, z1) if z is not None]) if z0 is not None or z1 is not None else None, "warnings": warnings}
 
 
-def _measurement_plane_relation(bbox, face_summaries, settings_normalized):
-    mp = ((settings_normalized or {}).get("measurement_plane") or {})
-    elev = mp.get("elevation_m")
-    if mp.get("available") is not True:
-        return {"available": False, "measurement_plane_elevation_m": None, "relation_candidate": "unknown", "reason": "measurement plane elevation is unavailable; geometry diagnostics continue."}
+def _build_law56_2_awareness_context(settings_normalized, site_boundary=None):
+    normalized = (settings_normalized or {}).get("normalized") or {}
+    profile = normalized.get("profile")
+    if profile in ("hokkaido_9_15", "hokkaido"):
+        selected = LAW56_2_AWARENESS_POLICY["hokkaido_time_window"]
+        source = "settings.profile"
+    else:
+        selected = LAW56_2_AWARENESS_POLICY["standard_time_window"]
+        source = "standard_8_16_default_diagnostic"
+    warnings = []
+    if (site_boundary or {}).get("provided") is not True:
+        warnings.append("site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.")
+    return {
+        "policy": LAW56_2_AWARENESS_POLICY,
+        "article": "Building Standard Law Article 56-2 shadow restriction awareness",
+        "date_basis": LAW56_2_AWARENESS_POLICY["date_basis"],
+        "time_basis": LAW56_2_AWARENESS_POLICY["time_basis"],
+        "active_time_window_profile": profile,
+        "standard_time_window": LAW56_2_AWARENESS_POLICY["standard_time_window"],
+        "hokkaido_time_window": LAW56_2_AWARENESS_POLICY["hokkaido_time_window"],
+        "selected_time_window": selected,
+        "selected_time_window_source": source,
+        "measurement_plane_basis": LAW56_2_AWARENESS_POLICY["measurement_plane_basis"],
+        "boundary_distance_rule_awareness": LAW56_2_AWARENESS_POLICY["boundary_distance_rule_awareness"],
+        "exclusion_awareness": LAW56_2_AWARENESS_POLICY["exclusion_awareness"],
+        "multiple_buildings_policy_awareness": LAW56_2_AWARENESS_POLICY["multiple_buildings_policy_awareness"],
+        "relaxation_awareness": LAW56_2_AWARENESS_POLICY["relaxation_awareness"],
+        "ordinance_dependent_values": LAW56_2_AWARENESS_POLICY["ordinance_dependent_values"],
+        "future_required_inputs": LAW56_2_FUTURE_REQUIRED_INPUTS,
+        "implemented_now": ["awareness diagnostics", "time window profile selection for diagnostics", "measurement plane policy context"],
+        "not_implemented_in_this_pr": LAW56_2_AWARENESS_POLICY["not_implemented_in_this_pr"],
+        "warnings": warnings,
+        "info": ["Time windows are true-solar-time awareness only; no true solar time calculation, JST clock-time conversion, sun vector calculation, or legal judgement is performed."],
+    }
+
+
+def _construct_measurement_plane(settings_normalized, level=None):
+    normalized = (settings_normalized or {}).get("normalized") or {}
+    mp_norm = (settings_normalized or {}).get("measurement_plane") or {}
+    agl = normalized.get("average_ground_level_elevation_m")
+    mh = normalized.get("measurement_height_m")
+    available = mp_norm.get("available") is True and agl is not None and mh is not None
+    elevation = agl + mh if available else None
+    settings_ready = ((settings_normalized or {}).get("readiness") or {}).get("ready_for_equal_time_shadow_calculation") is True
+    blockers_mp = []
+    if agl is None:
+        blockers_mp.append("average_ground_level_elevation_m missing")
+    if mh is None:
+        blockers_mp.append("measurement_height_m missing")
+    if mp_norm.get("available") is not True:
+        blockers_mp.append("measurement plane unavailable")
+    blockers_projection = [] if available and settings_ready else list(blockers_mp)
+    if not settings_ready:
+        blockers_projection.append("settings not ready for equal-time shadow calculation")
+    blockers_legal = ["legal judgement masks not implemented", "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR"]
+    warnings = []
+    if not available:
+        warnings.append("Measurement plane could not be constructed; this is non-fatal for input diagnostics.")
+    if level is not None:
+        warnings.append("Level reference is present but is not used as average ground level or measurement plane.")
+    warnings.append("Geometry raw_internal_units and measurement plane meters are not formally converted in this PR.")
+    return {
+        "policy": MEASUREMENT_PLANE_POLICY,
+        "law56_2_awareness": LAW56_2_AWARENESS_POLICY,
+        "provided": (settings_normalized or {}).get("provided") is True,
+        "available": available,
+        "construction_attempted": True,
+        "coordinate_system": "legal_si_meters",
+        "units": "meter",
+        "plane_type": "horizontal_plane",
+        "horizontal": True,
+        "normal_raw": {"x": 0.0, "y": 0.0, "z": 1.0, "units": "unitless", "note": "same abstract +Z direction; not derived from Revit geometry"},
+        "normal_m": {"x": 0.0, "y": 0.0, "z": 1.0, "units": "unitless"},
+        "origin_m": {"x": 0.0, "y": 0.0, "z": elevation, "units": "meter", "note": "abstract legal SI coordinate origin for diagnostics only; not a Revit point"} if available else None,
+        "elevation_m": elevation,
+        "plane_equation": "z = {0}".format(elevation) if available else None,
+        "average_ground_level_elevation_m": agl,
+        "measurement_height_m": mh,
+        "formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
+        "source_keys": {"average_ground_level_elevation_m": "settings.average_ground_level_elevation_m", "measurement_height_m": "settings.measurement_height_m"},
+        "level_reference_present": level is not None,
+        "level_used_as_average_ground_level": False,
+        "level_used_as_measurement_plane": False,
+        "legal_meaning": ["Article 56-2 measurement horizontal plane at designated height above average ground level.", "This is not a Revit Level.", "This is not a Revit element.", "This is not a legal judgement result."],
+        "readiness": {"measurement_plane_constructed": available, "ready_for_future_footprint_projection_context": available, "ready_for_future_shadow_projection_context": available and settings_ready, "ready_for_legal_judgement_masks": False, "blockers_for_measurement_plane": blockers_mp, "blockers_for_future_shadow_projection_context": blockers_projection, "blockers_for_legal_judgement_masks": blockers_legal},
+        "blockers": blockers_mp + blockers_legal,
+        "warnings": warnings,
+        "info": ["Measurement plane is an internal diagnostic data object only; no Revit element, DirectShape, ModelCurve, or debug plane is created."],
+    }
+
+
+def _measurement_plane_relation(bbox, face_summaries, measurement_plane):
+    elev = (measurement_plane or {}).get("elevation_m")
+    if (measurement_plane or {}).get("available") is not True:
+        return {"available": False, "formal_intersection_available": False, "raw_comparison_available": False, "measurement_plane_elevation_m": None, "geometry_units": "revit_raw_internal_units", "measurement_plane_units": "meter", "unit_conversion_status": "not_implemented_in_this_pr", "raw_relation_candidate": "unknown", "reason": "measurement plane is unavailable; geometry diagnostics continue.", "used_for_legal_judgement": False, "used_for_shadow_geometry": False}
     zs = []
     for key in ("min_raw", "max_raw"):
         z = ((bbox or {}).get(key) or {}).get("z")
-        if z is not None: zs.append(z)
+        if z is not None:
+            zs.append(z)
     for f in face_summaries:
         z = ((f.get("origin_raw") or {}).get("z"))
-        if z is not None: zs.append(z)
+        if z is not None:
+            zs.append(z)
     if not zs:
-        rel = "unknown"; reason = "no raw z values available for diagnostic comparison."
+        rel = "unknown"; raw_available = False; reason = "no raw z values available for diagnostic comparison; raw_internal_units and meters are not formally converted."
     elif min(zs) > elev:
-        rel = "caster_above_measurement_plane"; reason = "raw Revit z values are above measurement_plane_elevation_m; official unit conversion is not implemented."
+        rel = "caster_above_measurement_plane_raw_candidate"; raw_available = True; reason = "raw_internal_units and meters are not formally converted; this above-plane relation is only a placeholder diagnostic."
     elif max(zs) < elev:
-        rel = "caster_below_measurement_plane"; reason = "raw Revit z values are below measurement_plane_elevation_m; official unit conversion is not implemented."
+        rel = "caster_below_measurement_plane_raw_candidate"; raw_available = True; reason = "raw_internal_units and meters are not formally converted; this below-plane relation is only a placeholder diagnostic."
     else:
-        rel = "caster_intersects_measurement_plane_range"; reason = "measurement elevation falls within raw z range; this is not a formal intersection test."
-    return {"available": True, "measurement_plane_elevation_m": elev, "relation_candidate": rel, "reason": reason, "units_warning": "raw_internal_units are compared to meters only as a diagnostic placeholder; official conversion is not implemented in this PR."}
+        rel = "caster_intersects_measurement_plane_raw_range_candidate"; raw_available = True; reason = "raw_internal_units and meters are not formally converted; raw range overlap is not a formal intersection test."
+    return {"available": True, "formal_intersection_available": False, "raw_comparison_available": raw_available, "measurement_plane_elevation_m": elev, "geometry_units": "revit_raw_internal_units", "measurement_plane_units": "meter", "unit_conversion_status": "not_implemented_in_this_pr", "raw_relation_candidate": rel, "reason": reason, "used_for_legal_judgement": False, "used_for_shadow_geometry": False}
 
-
-def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings_normalized):
+def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings_normalized, measurement_plane=None):
     items_in = _to_list(building_elements)
-    diag = {"policy": GEOMETRY_EXTRACTION_POLICY, "provided": bool(items_in), "count": len(items_in), "accepted_caster_count": (shadow_casters or {}).get("accepted_count", 0), "geometry_readable_caster_count": 0, "solid_count": 0, "positive_solid_count": 0, "face_count": 0, "edge_count": 0, "mesh_count": 0, "bottom_face_candidate_count": 0, "top_face_candidate_count": 0, "vertical_face_candidate_count": 0, "footprint_candidate_count": 0, "measurement_plane_relation_available": False, "measurement_plane_elevation_m": (((settings_normalized or {}).get("measurement_plane") or {}).get("elevation_m")), "units": {"geometry": "revit_raw_internal_units", "official_unit_conversion": "not_implemented_in_this_pr"}, "items": [], "readiness": {}, "warnings": [], "info": ["Geometry extraction diagnostics are read-only and create no Revit elements.", "Footprint candidates are diagnostic only; no footprint polygon, shadow polygon, projection, grid accumulation, or equal-time contour is generated."]}
+    diag = {"policy": GEOMETRY_EXTRACTION_POLICY, "provided": bool(items_in), "count": len(items_in), "accepted_caster_count": (shadow_casters or {}).get("accepted_count", 0), "geometry_readable_caster_count": 0, "solid_count": 0, "positive_solid_count": 0, "face_count": 0, "edge_count": 0, "mesh_count": 0, "bottom_face_candidate_count": 0, "top_face_candidate_count": 0, "vertical_face_candidate_count": 0, "footprint_candidate_count": 0, "measurement_plane_relation_available": False, "measurement_plane_elevation_m": ((measurement_plane or {}).get("elevation_m")), "units": {"geometry": "revit_raw_internal_units", "official_unit_conversion": "not_implemented_in_this_pr"}, "items": [], "readiness": {}, "warnings": [], "info": ["Geometry extraction diagnostics are read-only and create no Revit elements.", "Footprint candidates are diagnostic only; no footprint polygon, shadow polygon, projection, grid accumulation, or equal-time contour is generated."]}
     caster_items = (shadow_casters or {}).get("items") or []
     for index, item in enumerate(items_in):
         unwrapped = _try_unwrap(item)
@@ -813,7 +958,7 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
         if accepted and bottom == 0:
             item_warnings.append("No bottom face candidate was found; future footprint extraction may be blocked for this caster.")
         bbox = _safe_get_bounding_box(unwrapped)
-        relation = _measurement_plane_relation(bbox, faces[:20], settings_normalized)
+        relation = _measurement_plane_relation(bbox, faces[:20], measurement_plane)
         if relation.get("available"):
             diag["measurement_plane_relation_available"] = True
         entry={"index": index, "element_id": _element_id(unwrapped), "name": _element_name(unwrapped), "category_name": _category_name(unwrapped), "accepted_shadow_caster": accepted, "geometry_attempted": accepted, "geometry_available": len(objs)>0, "geometry_object_count": len(objs), "solid_count": len(solids), "positive_solid_count": pos, "face_count": len(faces), "edge_count": len(edges), "mesh_count": mesh_count, "bottom_face_candidate_count": bottom, "top_face_candidate_count": top, "vertical_face_candidate_count": vertical, "footprint_candidate_count": bottom, "bounding_box_diagnostic": bbox, "measurement_plane_relation": relation, "solids": solids[:20], "faces_summary": faces[:20], "edges_summary_sample": edges[:20], "warnings": item_warnings}
@@ -828,7 +973,10 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
     if diag["footprint_candidate_count"] <= 0: fp_blockers.append("No bottom face / footprint candidate was found.")
     if not fp_ready: proj_blockers.extend(fp_blockers)
     if not settings_ready: proj_blockers.append("Settings are not ready for future equal-time shadow calculation.")
-    diag["readiness"]={"geometry_diagnostics_ready": True, "ready_for_future_footprint_extraction": fp_ready, "ready_for_future_shadow_projection": fp_ready and settings_ready, "blockers_for_future_footprint_extraction": fp_blockers, "blockers_for_future_shadow_projection": proj_blockers}
+    mp_ready = ((measurement_plane or {}).get("readiness") or {}).get("measurement_plane_constructed") is True
+    if not mp_ready:
+        proj_blockers.append("Measurement plane is not constructed; future shadow projection context is blocked.")
+    diag["readiness"]={"geometry_diagnostics_ready": True, "ready_for_future_footprint_extraction": fp_ready, "ready_for_future_shadow_projection": fp_ready and settings_ready and mp_ready, "blockers_for_future_footprint_extraction": fp_blockers, "blockers_for_future_shadow_projection": proj_blockers}
     return diag
 
 
@@ -1431,7 +1579,7 @@ def _normalize_settings(settings, level=None):
     }
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None):
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
@@ -1439,18 +1587,34 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
     boundary_ready = (site_boundary or {}).get("boundary_dependent_steps_available") is True
     geom_ready = ((shadow_caster_geometry or {}).get("readiness") or {}).get("geometry_diagnostics_ready") is True
     footprint_ready = ((shadow_caster_geometry or {}).get("readiness") or {}).get("ready_for_future_footprint_extraction") is True
-    future_projection_ready = ((shadow_caster_geometry or {}).get("readiness") or {}).get("ready_for_future_shadow_projection") is True
+    mp_readiness = (measurement_plane or {}).get("readiness") or {}
+    measurement_plane_ready = mp_readiness.get("measurement_plane_constructed") is True
+    future_projection_context_ready = mp_readiness.get("ready_for_future_shadow_projection_context") is True
+    legal_judgement_masks_ready = False
+    future_projection_ready = footprint_ready and measurement_plane_ready and settings_ready
     blockers_fp = list(((shadow_caster_geometry or {}).get("readiness") or {}).get("blockers_for_future_footprint_extraction") or [])
-    blockers_projection = list(((shadow_caster_geometry or {}).get("readiness") or {}).get("blockers_for_future_shadow_projection") or [])
+    blockers_mp = list(mp_readiness.get("blockers_for_measurement_plane") or [])
+    blockers_projection = []
+    if not footprint_ready:
+        blockers_projection.extend(blockers_fp)
+    if not measurement_plane_ready:
+        blockers_projection.extend(blockers_mp)
+    if not settings_ready:
+        blockers_projection.append("Settings are not ready for future equal-time shadow calculation.")
+    blockers_legal = list(mp_readiness.get("blockers_for_legal_judgement_masks") or [])
+    if not boundary_ready:
+        blockers_legal.append("site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.")
     if not shadow_ready:
         blockers_equal.append("No accepted shadow caster proxy elements are available.")
     if not settings_ready:
         missing = ((settings_normalized or {}).get("readiness") or {}).get("missing_for_equal_time_shadow") or []
         invalid = ((settings_normalized or {}).get("readiness") or {}).get("invalid_for_equal_time_shadow") or []
         blockers_equal.append("Settings are not ready for future equal-time shadow calculation; missing={0}, invalid={1}.".format(missing, invalid))
-    equal_ready = shadow_ready and settings_ready
+    if not measurement_plane_ready:
+        blockers_equal.extend(blockers_mp)
+    equal_ready = shadow_ready and settings_ready and measurement_plane_ready
     if not equal_ready:
-        blockers_boundary.append("Boundary-dependent steps require equal-time shadow calculation readiness first.")
+        blockers_boundary.append("Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.")
     if not boundary_ready:
         blockers_boundary.append("site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped.")
     return {
@@ -1458,7 +1622,11 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "shadow_caster_ready": shadow_ready,
         "shadow_caster_geometry_ready": geom_ready,
         "footprint_extraction_ready": footprint_ready,
+        "measurement_plane_ready": measurement_plane_ready,
+        "measurement_plane_constructed": measurement_plane_ready,
+        "future_projection_context_ready": future_projection_context_ready,
         "future_shadow_projection_ready": future_projection_ready,
+        "legal_judgement_masks_ready": legal_judgement_masks_ready,
         "settings_ready_for_equal_time_shadow": settings_ready,
         "site_boundary_required_for_equal_time_shadow": False,
         "site_boundary_ready_for_boundary_dependent_steps": boundary_ready,
@@ -1466,18 +1634,12 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "boundary_dependent_steps_ready": equal_ready and boundary_ready,
         "blockers_for_equal_time_shadow": blockers_equal,
         "blockers_for_footprint_extraction": blockers_fp,
+        "blockers_for_measurement_plane": blockers_mp,
+        "blockers_for_future_projection_context": list(mp_readiness.get("blockers_for_future_shadow_projection_context") or []),
         "blockers_for_future_shadow_projection": blockers_projection,
+        "blockers_for_legal_judgement_masks": blockers_legal,
         "blockers_for_boundary_dependent_steps": blockers_boundary,
-        "next_implementation_steps": [
-            "measurement plane construction",
-            "footprint extraction from user-defined shadow proxy geometry",
-            "sun vector calculation",
-            "time-slice shadow projection",
-            "logical union",
-            "shadow duration accumulation",
-            "equal-time contour generation",
-            "optional boundary-dependent measurement lines when site_boundary is available",
-        ],
+        "next_implementation_steps": ["footprint extraction from user-defined shadow proxy geometry", "optional site boundary loop extraction", "legal judgement mask preparation", "true solar time diagnostics", "sun vector calculation", "time-slice shadow projection", "logical union", "shadow duration accumulation", "equal-time contour generation", "legal judgement report"],
     }
 
 def _build_success():
@@ -1493,15 +1655,22 @@ def _build_success():
     shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
     site_boundary = _diagnose_site_boundary(raw_inputs.get("site_boundary"))
     settings_normalized = _normalize_settings(raw_inputs.get("settings"), raw_inputs.get("level"))
-    shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized)
-    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry)
+    law56_2_awareness = _build_law56_2_awareness_context(settings_normalized, site_boundary)
+    measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
+    shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized, measurement_plane)
+    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
     warnings.extend(settings_normalized.get("warnings", []))
+    warnings.extend(law56_2_awareness.get("warnings", []))
+    warnings.extend(measurement_plane.get("warnings", []))
     warnings.extend(shadow_caster_geometry.get("warnings", []))
     warnings.extend(pipeline_readiness.get("blockers_for_equal_time_shadow", []))
     warnings.extend(pipeline_readiness.get("blockers_for_footprint_extraction", []))
+    warnings.extend(pipeline_readiness.get("blockers_for_measurement_plane", []))
+    warnings.extend(pipeline_readiness.get("blockers_for_future_projection_context", []))
     warnings.extend(pipeline_readiness.get("blockers_for_future_shadow_projection", []))
+    warnings.extend(pipeline_readiness.get("blockers_for_legal_judgement_masks", []))
     if not pipeline_readiness.get("boundary_dependent_steps_ready"):
         warnings.extend(pipeline_readiness.get("blockers_for_boundary_dependent_steps", []))
 
@@ -1509,7 +1678,7 @@ def _build_success():
         "success": True,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow v1 input diagnostics only; shadow caster geometry extraction diagnostics were added for Solid/Face/Edge and footprint candidates, while footprint polygons, shadow calculation, sun position, shadow polygons, grid accumulation, equal-time contours, 5m/10m measurement lines, and Revit element creation are not implemented.",
+        "message": "Dynamo_Shadow v1 input diagnostics only; measurement plane construction diagnostics and Building Standard Law Article 56-2 awareness were added. The measurement plane is an internal diagnostic data object only; no Revit element creation, true solar time calculation, sun vector calculation, shadow projection, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented.",
         "legal_constants": LEGAL_CONSTANTS,
         "inputs": {
             "source": input_source,
@@ -1521,6 +1690,9 @@ def _build_success():
         "shadow_casters": shadow_casters,
         "shadow_caster_policy": SHADOW_CASTER_POLICY,
         "shadow_caster_geometry": shadow_caster_geometry,
+        "law56_2_awareness": law56_2_awareness,
+        "measurement_plane": measurement_plane,
+        "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
         "geometry_extraction_policy": GEOMETRY_EXTRACTION_POLICY,
         "site_boundary": site_boundary,
         "site_boundary_policy": SITE_BOUNDARY_POLICY,
@@ -1538,6 +1710,8 @@ def _build_failure(error_text):
     settings_normalized = None
     pipeline_readiness = None
     shadow_caster_geometry = None
+    law56_2_awareness = None
+    measurement_plane = None
     try:
         shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
     except Exception:
@@ -1551,8 +1725,16 @@ def _build_failure(error_text):
     except Exception:
         settings_normalized = None
     try:
-        shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters or {}, settings_normalized or {})
-        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry)
+        law56_2_awareness = _build_law56_2_awareness_context(settings_normalized or {}, site_boundary or {})
+    except Exception:
+        law56_2_awareness = None
+    try:
+        measurement_plane = _construct_measurement_plane(settings_normalized or {}, raw_inputs.get("level"))
+    except Exception:
+        measurement_plane = None
+    try:
+        shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters or {}, settings_normalized or {}, measurement_plane)
+        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane)
     except Exception:
         pipeline_readiness = None
 
@@ -1560,7 +1742,7 @@ def _build_failure(error_text):
         "success": False,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "script.py failed while building v1 shadow caster geometry extraction diagnostics.",
+        "message": "script.py failed while building v1 measurement plane construction diagnostics.",
         "legal_constants": LEGAL_CONSTANTS,
         "inputs": {
             "source": input_source,
@@ -1572,6 +1754,9 @@ def _build_failure(error_text):
         "shadow_casters": shadow_casters,
         "shadow_caster_policy": SHADOW_CASTER_POLICY,
         "shadow_caster_geometry": shadow_caster_geometry,
+        "law56_2_awareness": law56_2_awareness,
+        "measurement_plane": measurement_plane,
+        "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
         "geometry_extraction_policy": GEOMETRY_EXTRACTION_POLICY,
         "site_boundary": site_boundary,
         "site_boundary_policy": SITE_BOUNDARY_POLICY,

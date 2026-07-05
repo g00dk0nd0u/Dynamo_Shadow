@@ -151,3 +151,21 @@ v1以降の実装順序は、以下を基本とします。
 19. logical union of shadows per time slice
 20. shadow duration accumulation without double counting
 21. equal-time contour generation
+
+## Measurement plane input policy
+
+The shadow measurement plane is not a Revit Level. It is the Article 56-2 horizontal plane at a designated height above average ground level:
+
+```text
+measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m
+```
+
+- Put `average_ground_level_elevation_m` in `settings`; do not use Revit Level Elevation as average ground level.
+- Put `measurement_height_m` in `settings` as the ordinance / table-derived measurement height; do not let the script invent it.
+- Mass / Generic Model shadow caster geometry remains raw Revit coordinates / raw internal units.
+- The measurement plane is an abstract legal SI meters plane used for diagnostics, not a Revit element.
+- Formal unit conversion between Revit raw geometry and legal SI meters is deferred to a later PR.
+- site_boundary is not required to construct the measurement plane.
+- If site_boundary is missing, future legal judgement ranges such as beyond-5m range and own-site exclusion are not constructed.
+
+See `docs/measurement_plane_v1.md` for the detailed measurement plane diagnostics policy.

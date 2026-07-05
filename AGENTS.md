@@ -140,3 +140,17 @@ Before opening a PR, confirm:
 - [ ] `Shadow - Copy.json` was not created.
 - [ ] Generated files and logs were not committed.
 - [ ] README or docs were updated when the project structure changed.
+
+## Measurement plane / law56_2 awareness rules
+
+- Measurement plane must be treated as the Article 56-2 horizontal plane at designated height above average ground level.
+- Do not use Revit Level Elevation as average ground level.
+- Do not use Revit Level Elevation as measurement plane.
+- Measurement plane is internal diagnostic data only unless explicitly requested otherwise.
+- Do not create Revit elements for measurement plane diagnostics.
+- Measurement height must not be invented; it should come from settings / ordinance profile.
+- True solar time awareness must not be confused with JST clock time.
+- Do not implement true solar time, sun vectors, shadow projection, legal masks, 5m/10m lines, or legal judgement unless explicitly requested.
+- site_boundary is not required to construct the measurement plane.
+- site_boundary is required for future legal judgement masks such as beyond-5m range and own-site exclusion.
+- Same-site multiple buildings should be treated as one building in future duration accumulation; do not double-count overlapping shadows.

@@ -157,3 +157,37 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 - 調査メモ: `docs/research_shadow_diagram.md`
 - Revit入力モデル方針: `docs/revit_input_modeling_guide.md`
 - Settings schema: `docs/settings_schema_v1.md`
+
+## v1 measurement plane construction diagnostics additions
+
+v1 output candidates now include:
+
+- `law56_2_awareness`
+- `measurement_plane`
+- `measurement_plane_policy`
+
+The planned pipeline includes:
+
+- law56_2 awareness context diagnostics
+- measurement plane construction diagnostics
+- legal judgement mask preparation
+- true solar time diagnostics
+- legal judgement report
+
+The following remain out of scope for this PR:
+
+- true solar time calculation
+- sun vector calculation
+- shadow projection
+- shadow polygon generation
+- footprint polygon generation
+- 5m/10m measurement line generation
+- own site exclusion mask
+- target area mask
+- high-rise residential inducement district exclusion
+- urban renaissance special district exclusion
+- road / river / sea relaxation
+- elevation difference relaxation
+- legal OK/NG judgement
+- equal-time contour generation
+- Revit element creation

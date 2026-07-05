@@ -67,3 +67,12 @@ Revit geometry 座標は `revit_raw_internal_units` として扱い、meters へ
 - 5m / 10m measurement line generation
 - equal-time contour generation
 - Revit element creation
+
+## Measurement plane relation diagnostics
+
+- Geometry Z values reported by v1 diagnostics are Revit `raw_internal_units`.
+- The measurement plane elevation is reported in meters as an Article 56-2 legal SI diagnostic plane.
+- Formal Revit unit conversion is not implemented in this PR.
+- Any raw Z relation to `measurement_plane_elevation_m` is a placeholder diagnostic only.
+- Raw relation diagnostics are not formal intersections, not legal judgement, and not shadow geometry decisions.
+- Even when measurement plane construction succeeds, this PR does not perform footprint polygon generation, true solar time, sun vector calculation, shadow projection, duration accumulation, or equal-time contour generation.
