@@ -45,7 +45,7 @@ site_boundary がある場合の第一候補は Revit Property Line / Site Prope
 
 Model Lines の閉じたループは fallback として許容するが、第一候補ではない。Detail Lines はビュー依存のため非推奨または rejected/warning とする。CAD import lines や Toposolid / SiteSurface / Topography 外周は、敷地境界として自動採用しない。Revit上に敷地境界用の一時モデルは作成しない。
 
-v1 出力候補には `site_boundary` diagnostics、`site_boundary_policy`、`settings_normalized`、`settings_policy`、`shadow_caster_geometry`、`geometry_extraction_policy`、`pipeline_readiness` を追加する。今回PRでは入力診断と簡易 loop_diagnostics までとし、5m / 10m 測定線生成、日影計算、太陽位置計算、影ポリゴン生成、等時間線生成は非スコープとする。
+v1 出力候補には `site_boundary` diagnostics、`site_boundary_policy`、`settings_normalized`、`settings_policy`、`shadow_caster_geometry`、`geometry_extraction_policy`、`footprint_extraction`、`footprint_extraction_policy`、`pipeline_readiness` を追加する。今回PRでは footprint edge loop diagnostics と footprint extraction readiness diagnostics までとし、formal footprint polygon generation、5m / 10m 測定線生成、日影計算、太陽位置計算、影ポリゴン生成、等時間線生成は非スコープとする。
 
 ## 固定値候補
 
@@ -93,6 +93,8 @@ shadow_casters
 shadow_caster_policy
 shadow_caster_geometry
 geometry_extraction_policy
+footprint_extraction
+footprint_extraction_policy
 site_boundary
 site_boundary_policy
 settings_normalized
@@ -116,25 +118,27 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 4. shadow caster geometry extraction diagnostics
 5. solid / face / edge summary
 6. footprint candidate diagnostics
-7. optional site boundary source validation
-8. property line / site property diagnostics when provided
-9. model lines fallback closed-loop diagnostics when provided
-10. settings coercion and normalization
-11. law56_2 awareness context diagnostics
-12. measurement plane readiness check
-13. measurement plane construction diagnostics
-14. pipeline readiness diagnostics
-15. footprint extraction from user-defined shadow proxy geometry
-16. optional site boundary loop extraction
-17. legal judgement mask preparation
-18. optional 5m / 10m measurement line generation when site_boundary is available
-19. true solar time diagnostics
-20. sun vector calculation
-21. time-slice shadow projection per caster
-22. logical union of shadows per time slice
-23. shadow duration accumulation without double counting
-24. equal-time contour generation
-25. legal judgement report
+7. footprint edge loop diagnostics
+8. footprint extraction readiness diagnostics
+9. optional site boundary source validation
+10. property line / site property diagnostics when provided
+11. model lines fallback closed-loop diagnostics when provided
+12. settings coercion and normalization
+13. law56_2 awareness context diagnostics
+14. measurement plane readiness check
+15. measurement plane construction diagnostics
+16. pipeline readiness diagnostics
+17. formal footprint polygon generation
+18. optional site boundary loop extraction
+19. legal judgement mask preparation
+20. optional 5m / 10m measurement line generation when site_boundary is available
+21. true solar time diagnostics
+22. sun vector calculation
+23. time-slice shadow projection per caster
+24. logical union of shadows per time slice
+25. shadow duration accumulation without double counting
+26. equal-time contour generation
+27. legal judgement report
 
 ## 非スコープ
 
