@@ -128,15 +128,14 @@
       "Description": "Select model elements from the document."
     },
     {
-      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
+      "ConcreteType": "Dynamo.Nodes.DSModelElementsSelection, DSRevitNodesUI",
       "NodeType": "ExtensionNode",
-      "InstanceId": [],
       "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
       "Inputs": [],
       "Outputs": [
         {
           "Id": "4d2553e9c6724d719829a6ed82ea6fcc",
-          "Name": "Element",
+          "Name": "Elements",
           "Description": "The selected elements.",
           "UsingDefaultValue": false,
           "Level": 2,
@@ -145,7 +144,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select a model element from the document."
+      "Description": "Select model elements from the document."
     },
     {
       "ConcreteType": "DSRevitNodesUI.Levels, DSRevitNodesUI",
@@ -277,7 +276,7 @@
       },
       {
         "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
-        "Name": "Select Site Boundary",
+        "Name": "Select Site Boundary Elements",
         "IsSetAsInput": false,
         "IsSetAsOutput": false,
         "Excluded": false,

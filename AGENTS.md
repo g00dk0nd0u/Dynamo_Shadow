@@ -88,6 +88,22 @@ The project is still in an early development stage. The current files must not b
 - Formal permit-level shadow checks are outside this repository scope and should be done with dedicated tools such as ADS.
 - Do not implement shadow calculation, sun position, shadow polygons, measurement-grid accumulation, or equal-time contours unless explicitly requested.
 
+## Site boundary input rules
+
+- `site_boundary` is optional. Missing `site_boundary` must not be treated as a fatal error.
+- Equal-time shadow output must remain available without `site_boundary`; missing `site_boundary` should only skip boundary-dependent steps such as Property Line / Site Boundary based offset, 5m / 10m measurement line generation, and boundary-based regulation checks.
+- Do not split the processing flow by a new `analysis_mode`; use one pipeline with optional gates only for site-boundary-dependent steps.
+- When `site_boundary` is provided, the primary input should be Revit Property Line / Site Property.
+- Prefer Revit API `BuiltInCategory` checks for site boundary detection. Accepted initial site boundary categories are `BuiltInCategory.OST_SiteProperty` and `BuiltInCategory.OST_SitePropertyLineSegment`.
+- `BuiltInCategory.OST_SitePointBoundary` and other site-related categories should be diagnosed separately and should not be treated as a complete closed boundary by themselves.
+- Model Lines closed loop is fallback only, not the primary site boundary input.
+- Detail Lines are view-specific and should not be used as primary `site_boundary` input.
+- Do not auto-use CAD import lines as `site_boundary`.
+- Do not auto-use Toposolid / SiteSurface / Topography edges as `site_boundary`.
+- Do not create temporary Revit elements or temporary site boundary models.
+- Do not generate 5m / 10m measurement lines unless explicitly requested.
+- Do not implement shadow calculation, sun position, shadow polygons, measurement-grid accumulation, or equal-time contours unless explicitly requested.
+
 ## Pull request checklist
 
 Before opening a PR, confirm:
