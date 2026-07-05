@@ -19,7 +19,9 @@
       ],
       "blockers_for_future_shadow_projection": [
         "No accepted shadow caster proxy elements are available.",
-        "No closed footprint loop candidate was verified by raw endpoint comparison."
+        "No closed footprint loop candidate was verified by raw endpoint comparison.",
+        "Measurement plane is not constructed; future shadow projection context is blocked.",
+        "Settings are not ready for future equal-time shadow calculation."
       ],
       "footprint_diagnostics_ready": true,
       "ready_for_future_footprint_polygon_generation": false,
@@ -82,25 +84,35 @@
     "source": "INPUTS"
   },
   "measurement_plane_summary": {
-    "available": true,
+    "available": false,
     "provided": true,
     "readiness": {
-      "blockers_for_future_shadow_projection_context": [],
+      "blockers_for_future_shadow_projection_context": [
+        "average_ground_level_elevation_m missing",
+        "measurement_height_m missing",
+        "measurement plane unavailable",
+        "settings not ready for equal-time shadow calculation"
+      ],
       "blockers_for_legal_judgement_masks": [
         "legal judgement masks not implemented",
         "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR"
       ],
-      "blockers_for_measurement_plane": [],
-      "measurement_plane_constructed": true,
-      "ready_for_future_footprint_projection_context": true,
-      "ready_for_future_shadow_projection_context": true,
+      "blockers_for_measurement_plane": [
+        "average_ground_level_elevation_m missing",
+        "measurement_height_m missing",
+        "measurement plane unavailable"
+      ],
+      "measurement_plane_constructed": false,
+      "ready_for_future_footprint_projection_context": false,
+      "ready_for_future_shadow_projection_context": false,
       "ready_for_legal_judgement_masks": false
     },
     "warnings": [
+      "Measurement plane could not be constructed; this is non-fatal for input diagnostics.",
       "Geometry raw_internal_units and measurement plane meters are not formally converted in this PR."
     ]
   },
-  "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint polygon generation, Revit element creation, true solar time calculation, sun vector calculation, shadow projection, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented.",
+  "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint po...",
   "not_implemented_summary": {
     "footprint_extraction": [
       "formal footprint polygon generation",
@@ -134,7 +146,11 @@
       "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
     ],
     "blockers_for_equal_time_shadow": [
-      "No accepted shadow caster proxy elements are available."
+      "No accepted shadow caster proxy elements are available.",
+      "Settings are not ready for future equal-time shadow calculation; missing=['average_ground_level_elevation_m', 'measurement_height_m', 'latitude', 'longitude'...",
+      "average_ground_level_elevation_m missing",
+      "measurement_height_m missing",
+      "measurement plane unavailable"
     ],
     "blockers_for_footprint_extraction": [
       "No accepted shadow caster proxy elements are available.",
@@ -144,32 +160,45 @@
       "No accepted shadow caster proxy elements are available.",
       "No closed footprint loop candidate was verified by raw endpoint comparison."
     ],
-    "blockers_for_future_projection_context": [],
+    "blockers_for_future_projection_context": [
+      "average_ground_level_elevation_m missing",
+      "measurement_height_m missing",
+      "measurement plane unavailable",
+      "settings not ready for equal-time shadow calculation"
+    ],
     "blockers_for_future_shadow_projection": [
       "No accepted shadow caster proxy elements are available.",
-      "No closed footprint loop candidate was verified by raw endpoint comparison."
+      "No closed footprint loop candidate was verified by raw endpoint comparison.",
+      "average_ground_level_elevation_m missing",
+      "measurement_height_m missing",
+      "measurement plane unavailable",
+      "Settings are not ready for future equal-time shadow calculation."
     ],
     "blockers_for_legal_judgement_masks": [
       "legal judgement masks not implemented",
       "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
       "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked."
     ],
-    "blockers_for_measurement_plane": [],
+    "blockers_for_measurement_plane": [
+      "average_ground_level_elevation_m missing",
+      "measurement_height_m missing",
+      "measurement plane unavailable"
+    ],
     "boundary_dependent_steps_ready": false,
     "equal_time_shadow_calculation_ready": false,
     "footprint_diagnostics_ready": true,
     "footprint_extraction_ready": false,
     "footprint_loop_candidates_ready": false,
     "future_footprint_polygon_generation_ready": false,
-    "future_projection_context_ready": true,
+    "future_projection_context_ready": false,
     "future_shadow_projection_ready": false,
     "info": [
-      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generation and legal masks remain unimplemented."
+      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generat..."
     ],
     "input_diagnostics_ready": true,
     "legal_judgement_masks_ready": false,
-    "measurement_plane_constructed": true,
-    "measurement_plane_ready": true,
+    "measurement_plane_constructed": false,
+    "measurement_plane_ready": false,
     "next_implementation_steps": [
       "formal footprint polygon generation",
       "optional site boundary loop extraction",
@@ -182,7 +211,7 @@
       "equal-time contour generation",
       "legal judgement report"
     ],
-    "settings_ready_for_equal_time_shadow": true,
+    "settings_ready_for_equal_time_shadow": false,
     "shadow_caster_geometry_ready": true,
     "shadow_caster_ready": false,
     "site_boundary_ready_for_boundary_dependent_steps": false,
@@ -194,32 +223,46 @@
       "profile",
       "debug_log_dir",
       "debug_log_filename",
+      "grid_resolution_m",
+      "analysis_margin_m",
       "closure_tolerance_m"
     ],
     "invalid_keys": [],
-    "missing_required_keys": [],
+    "missing_required_keys": [
+      "average_ground_level_elevation_m",
+      "measurement_height_m",
+      "latitude",
+      "longitude",
+      "true_north_deg"
+    ],
     "normalized": {
       "analysis_margin_m": 20.0,
-      "average_ground_level_elevation_m": 0.0,
+      "average_ground_level_elevation_m": null,
       "closure_tolerance_m": 0.01,
       "debug_log_dir": "debug_logs",
       "debug_log_enabled": true,
       "debug_log_filename": "latest_debug.json",
       "grid_resolution_m": 1.0,
-      "latitude": 35.6812,
-      "longitude": 139.7671,
-      "measurement_height_m": 4.0,
-      "measurement_plane_elevation_m": 4.0,
+      "latitude": null,
+      "longitude": null,
+      "measurement_height_m": null,
+      "measurement_plane_elevation_m": null,
       "profile": "standard_8_16",
-      "true_north_deg": 0.0
+      "true_north_deg": null
     },
     "provided": true,
     "readiness": {
       "invalid_for_equal_time_shadow": [],
-      "missing_for_equal_time_shadow": [],
-      "ready_for_equal_time_shadow_calculation": true,
+      "missing_for_equal_time_shadow": [
+        "average_ground_level_elevation_m",
+        "measurement_height_m",
+        "latitude",
+        "longitude",
+        "true_north_deg"
+      ],
+      "ready_for_equal_time_shadow_calculation": false,
       "ready_for_input_diagnostics": true,
-      "settings_ready_for_boundary_dependent_steps": true
+      "settings_ready_for_boundary_dependent_steps": false
     },
     "schema_version": "v1",
     "warnings": []
@@ -242,7 +285,9 @@
         "No accepted shadow caster proxy elements are available.",
         "No bottom face candidate was found.",
         "No edge loop candidate was found from bottom face candidates.",
-        "No closed footprint loop candidate was verified."
+        "No closed footprint loop candidate was verified.",
+        "Settings are not ready for future equal-time shadow calculation.",
+        "Measurement plane is not constructed; future shadow projection context is blocked."
       ],
       "geometry_diagnostics_ready": true,
       "ready_for_future_footprint_extraction": false,
@@ -275,17 +320,25 @@
     "level input is empty.",
     "building_elements is empty; select one or more user-defined Mass or Generic Model shadow proxy elements.",
     "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
+    "Measurement plane could not be constructed; this is non-fatal for input diagnostics.",
     "Geometry raw_internal_units and measurement plane meters are not formally converted in this PR.",
     "No accepted shadow caster proxy elements are available.",
+    "Settings are not ready for future equal-time shadow calculation; missing=['average_ground_level_elevation_m', 'measurement_height_m', 'latitude', 'longitude'...",
+    "average_ground_level_elevation_m missing",
+    "measurement_height_m missing",
+    "measurement plane unavailable",
     "No accepted shadow caster proxy elements are available.",
     "No closed footprint loop candidate was verified by raw endpoint comparison.",
-    "No accepted shadow caster proxy elements are available.",
-    "No closed footprint loop candidate was verified by raw endpoint comparison.",
-    "legal judgement masks not implemented",
-    "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
-    "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.",
-    "Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.",
-    "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
+    "average_ground_level_elevation_m missing",
+    "measurement_height_m missing",
+    "measurement plane unavailable",
+    "average_ground_level_elevation_m missing",
+    "measurement_height_m missing",
+    "measurement plane unavailable",
+    "settings not ready for equal-time shadow calculation",
+    {
+      "truncated_count": 11
+    }
   ],
-  "warnings_count": 15
+  "warnings_count": 31
 }

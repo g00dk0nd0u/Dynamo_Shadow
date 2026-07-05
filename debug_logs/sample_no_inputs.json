@@ -112,7 +112,7 @@
       "Geometry raw_internal_units and measurement plane meters are not formally converted in this PR."
     ]
   },
-  "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint polygon generation, Revit element creation, true solar time calculation, sun vector calculation, shadow projection, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented.",
+  "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint po...",
   "not_implemented_summary": {
     "footprint_extraction": [
       "formal footprint polygon generation",
@@ -147,7 +147,7 @@
     ],
     "blockers_for_equal_time_shadow": [
       "No accepted shadow caster proxy elements are available.",
-      "Settings are not ready for future equal-time shadow calculation; missing=['average_ground_level_elevation_m', 'measurement_height_m', 'latitude', 'longitude', 'true_north_deg'], invalid=[].",
+      "Settings are not ready for future equal-time shadow calculation; missing=['average_ground_level_elevation_m', 'measurement_height_m', 'latitude', 'longitude'...",
       "average_ground_level_elevation_m missing",
       "measurement_height_m missing",
       "measurement plane unavailable"
@@ -193,7 +193,7 @@
     "future_projection_context_ready": false,
     "future_shadow_projection_ready": false,
     "info": [
-      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generation and legal masks remain unimplemented."
+      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generat..."
     ],
     "input_diagnostics_ready": true,
     "legal_judgement_masks_ready": false,
@@ -323,7 +323,7 @@
     "Measurement plane could not be constructed; this is non-fatal for input diagnostics.",
     "Geometry raw_internal_units and measurement plane meters are not formally converted in this PR.",
     "No accepted shadow caster proxy elements are available.",
-    "Settings are not ready for future equal-time shadow calculation; missing=['average_ground_level_elevation_m', 'measurement_height_m', 'latitude', 'longitude', 'true_north_deg'], invalid=[].",
+    "Settings are not ready for future equal-time shadow calculation; missing=['average_ground_level_elevation_m', 'measurement_height_m', 'latitude', 'longitude'...",
     "average_ground_level_elevation_m missing",
     "measurement_height_m missing",
     "measurement plane unavailable",

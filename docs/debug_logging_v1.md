@@ -51,3 +51,11 @@ Small sanitized review samples under `debug_logs/` may be committed, for example
 - `debug_logs/sample_basic_settings.json`
 
 Do not commit raw Revit object dumps, client/project names, personal paths, huge geometry payloads, or timestamp-growth logs.
+
+## Privacy and local path redaction
+
+Committed debug logs must be sanitized more strictly than runtime-only diagnostics. Absolute/local paths must never be written to committed logs or to `OUT.debug_log.path`; `OUT.debug_log.path` and `OUT.debug_log.relative_path` are relative display paths only.
+
+String-level redaction is mandatory, not only dictionary-key filtering. Warnings, error summaries, traceback-like strings, object summaries, and fallback messages must pass through privacy redaction before they can appear in a debug log.
+
+Forbidden content includes local user paths, usernames, email addresses, client/project names, OneDrive paths, common user folders, UNC/network paths, raw Revit objects, and Dynamo/Revit object repr strings. Privacy scan failures in committed `debug_logs/*.json` artifacts are merge blockers.

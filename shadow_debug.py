@@ -6,24 +6,55 @@
 
 import json
 import os
+import re
 
 from shadow_policies import DEBUG_LOG_POLICY, TOOL_NAME, STAGE_NAME
 from shadow_utils import _safe_text, _type_name
 
 _DEBUG_SCHEMA_VERSION = "v1"
 _DEFAULT_STATUS_WARNINGS = []
+_REDACTED_PATH = "<redacted_path>"
+_REDACTED_EMAIL = "<redacted_email>"
+_REDACTED_PRIVATE_TEXT = "<redacted_private_text>"
+_SUSPICIOUS_KEYS = set([
+    "name", "family_name", "type_name", "path", "full_path", "filepath", "file_path",
+    "source_path", "model_path", "document_path", "central_model_path", "username",
+    "user", "email", "client", "project", "project_name", "model_name", "raw",
+    "raw_object", "revit_object", "geometry", "solid", "face", "edge", "object", "repr",
+])
+
+
+def _redact_private_text(text):
+    """Redact local paths, network paths, emails, and common private markers."""
+    redacted = _safe_text(text)
+    redacted = re.sub(r"[A-Za-z]:[\\/](?:Users[\\/])?[^\s\"'<>|]+", _REDACTED_PATH, redacted)
+    redacted = re.sub(r"/(?:Users|home)/[^\s\"'<>|]+", _REDACTED_PATH, redacted)
+    redacted = re.sub(r"\\\\[^\\\s]+\\[^\s\"'<>|]+", _REDACTED_PATH, redacted)
+    redacted = re.sub(r"(?<!:)//(?!localhost(?:/|$))[^/\s]+/[^\s\"'<>|]+", _REDACTED_PATH, redacted)
+    redacted = re.sub(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}", _REDACTED_EMAIL, redacted)
+    redacted = re.sub(r"OneDrive(?:\s*-\s*[^/\\\n\r\t]+)?", _REDACTED_PRIVATE_TEXT, redacted, flags=re.IGNORECASE)
+    redacted = re.sub(r"\b(?:Desktop|Documents|Downloads)\b", _REDACTED_PRIVATE_TEXT, redacted, flags=re.IGNORECASE)
+    redacted = re.sub(r"(?:[^\s\"'<>|]*[\\/]){4,}[^\s\"'<>|]*", _REDACTED_PATH, redacted)
+    return redacted
+
+
+def _sanitize_text_for_debug(text):
+    redacted = _redact_private_text(text)
+    if len(redacted) > 500:
+        return redacted[:500] + "...<truncated>"
+    return redacted
 
 
 def _build_debug_log_status(enabled, attempted, path=None, written=False, error=None, warnings=None):
-    relative_path = path if path else None
+    relative_path = _sanitize_text_for_debug(path) if path else None
     return {
         "enabled": bool(enabled),
         "attempted": bool(attempted),
         "written": bool(written),
         "path": relative_path,
         "relative_path": relative_path,
-        "warnings": list(warnings or _DEFAULT_STATUS_WARNINGS),
-        "error": _safe_text(error) if error else None,
+        "warnings": [_sanitize_text_for_debug(w) for w in list(warnings or _DEFAULT_STATUS_WARNINGS)],
+        "error": _sanitize_text_for_debug(error) if error else None,
     }
 
 
@@ -34,10 +65,7 @@ def _sanitize_for_debug(value, depth=0):
     if value is None or isinstance(value, (bool, int, float)):
         return value
     if isinstance(value, str):
-        text = value.replace("\\", "/")
-        if len(text) > 500:
-            return text[:500] + "...<truncated>"
-        return text
+        return _sanitize_text_for_debug(value)
     if isinstance(value, (list, tuple)):
         limited = [_sanitize_for_debug(v, depth + 1) for v in list(value)[:20]]
         if len(value) > 20:
@@ -48,15 +76,11 @@ def _sanitize_for_debug(value, depth=0):
         for key in sorted(value.keys(), key=lambda k: _safe_text(k)):
             key_text = _safe_text(key)
             lowered = key_text.lower()
-            if lowered in ("name", "family_name", "type_name"):
+            if lowered in _SUSPICIOUS_KEYS:
                 continue
-            if lowered in ("path", "full_path", "filepath", "file_path"):
-                continue
-            if lowered in ("raw", "raw_object", "revit_object", "geometry", "solid", "face", "edge"):
-                continue
-            result[key_text] = _sanitize_for_debug(value.get(key), depth + 1)
+            result[_sanitize_text_for_debug(key_text)] = _sanitize_for_debug(value.get(key), depth + 1)
         return result
-    return {"type": _type_name(value), "repr_omitted": True}
+    return {"type": _sanitize_text_for_debug(_type_name(value)), "repr_omitted": True}
 
 
 def _summary_counts(section):
@@ -117,8 +141,8 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
     summary = _summarize_out_for_debug(out_payload or {})
     payload = {
         "debug_schema_version": _DEBUG_SCHEMA_VERSION,
-        "tool": (out_payload or {}).get("tool", TOOL_NAME),
-        "stage": (out_payload or {}).get("stage", STAGE_NAME),
+        "tool": _sanitize_for_debug((out_payload or {}).get("tool", TOOL_NAME)),
+        "stage": _sanitize_for_debug((out_payload or {}).get("stage", STAGE_NAME)),
         "success": summary["success"],
         "message": summary["message"],
         "input_summary": summary["input_summary"],
@@ -141,6 +165,16 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
     return payload
 
 
+def _get_debug_base_dir():
+    try:
+        module_file = globals().get("__file__")
+        if module_file:
+            return os.path.dirname(os.path.abspath(module_file)), None
+    except Exception as exc:
+        return os.getcwd(), "debug log base directory fallback used; module path unavailable: {0}".format(_sanitize_text_for_debug(exc))
+    return os.getcwd(), "debug log base directory fallback used; module path unavailable."
+
+
 def _safe_debug_log_dir(settings_normalized=None):
     normalized = ((settings_normalized or {}).get("normalized") or {})
     return normalized.get("debug_log_dir") or DEBUG_LOG_POLICY["default_directory"]
@@ -150,7 +184,14 @@ def _safe_debug_log_path(settings_normalized=None):
     normalized = ((settings_normalized or {}).get("normalized") or {})
     directory = normalized.get("debug_log_dir") or DEBUG_LOG_POLICY["default_directory"]
     filename = normalized.get("debug_log_filename") or DEBUG_LOG_POLICY["default_filename"]
-    return os.path.join(directory, filename).replace("\\", "/")
+    relative_path = os.path.join(directory, filename).replace("\\", "/")
+    base_dir, warning = _get_debug_base_dir()
+    absolute_path = os.path.abspath(os.path.join(base_dir, relative_path))
+    return {
+        "absolute_path": absolute_path,
+        "relative_path": relative_path,
+        "warning": warning,
+    }
 
 
 def _write_debug_log_if_enabled(out_payload, settings_normalized=None):
@@ -159,18 +200,20 @@ def _write_debug_log_if_enabled(out_payload, settings_normalized=None):
     if not enabled:
         return _build_debug_log_status(False, False)
 
-    path = _safe_debug_log_path(settings_normalized)
+    path_info = _safe_debug_log_path(settings_normalized)
     warnings = []
+    if path_info.get("warning"):
+        warnings.append(path_info.get("warning"))
     try:
-        directory = _safe_debug_log_dir(settings_normalized)
+        directory = os.path.dirname(path_info["absolute_path"])
         if directory and not os.path.isdir(directory):
             os.makedirs(directory)
         payload = _build_debug_log_payload(out_payload)
-        with open(path, "w") as handle:
+        with open(path_info["absolute_path"], "w") as handle:
             json.dump(payload, handle, indent=2, sort_keys=True)
             handle.write("\n")
-        return _build_debug_log_status(True, True, path=path, written=True, warnings=warnings)
+        return _build_debug_log_status(True, True, path=path_info["relative_path"], written=True, warnings=warnings)
     except Exception as exc:
-        warning = "debug log write failed; diagnostics continue: {0}".format(_safe_text(exc))
+        warning = "debug log write failed; diagnostics continue: {0}".format(_sanitize_text_for_debug(exc))
         warnings.append(warning)
-        return _build_debug_log_status(True, True, path=path, written=False, error=warning, warnings=warnings)
+        return _build_debug_log_status(True, True, path=path_info["relative_path"], written=False, error=warning, warnings=warnings)

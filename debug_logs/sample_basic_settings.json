@@ -100,7 +100,7 @@
       "Geometry raw_internal_units and measurement plane meters are not formally converted in this PR."
     ]
   },
-  "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint polygon generation, Revit element creation, true solar time calculation, sun vector calculation, shadow projection, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented.",
+  "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint po...",
   "not_implemented_summary": {
     "footprint_extraction": [
       "formal footprint polygon generation",
@@ -164,7 +164,7 @@
     "future_projection_context_ready": true,
     "future_shadow_projection_ready": false,
     "info": [
-      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generation and legal masks remain unimplemented."
+      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generat..."
     ],
     "input_diagnostics_ready": true,
     "legal_judgement_masks_ready": false,
