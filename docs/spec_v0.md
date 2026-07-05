@@ -84,17 +84,22 @@ v1 入力診断で確認したい出力は以下とする。
 
 ```text
 success
+tool
+stage
 message
 legal_constants
 inputs
 shadow_casters
 shadow_caster_policy
+shadow_caster_geometry
+geometry_extraction_policy
 site_boundary
 site_boundary_policy
 settings_normalized
 settings_policy
-shadow_caster_geometry
-geometry_extraction_policy
+law56_2_awareness
+measurement_plane
+measurement_plane_policy
 pipeline_readiness
 planned_pipeline
 warnings
@@ -115,17 +120,21 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 8. property line / site property diagnostics when provided
 9. model lines fallback closed-loop diagnostics when provided
 10. settings coercion and normalization
-11. measurement plane readiness check
-12. pipeline readiness diagnostics
-13. measurement plane construction
-14. footprint extraction from user-defined shadow proxy geometry
-15. optional site boundary loop extraction
-16. optional 5m / 10m measurement line generation when site_boundary is available
-17. sun vector calculation
-18. time-slice shadow projection per caster
-19. logical union of shadows per time slice
-20. shadow duration accumulation without double counting
-21. equal-time contour generation
+11. law56_2 awareness context diagnostics
+12. measurement plane readiness check
+13. measurement plane construction diagnostics
+14. pipeline readiness diagnostics
+15. footprint extraction from user-defined shadow proxy geometry
+16. optional site boundary loop extraction
+17. legal judgement mask preparation
+18. optional 5m / 10m measurement line generation when site_boundary is available
+19. true solar time diagnostics
+20. sun vector calculation
+21. time-slice shadow projection per caster
+22. logical union of shadows per time slice
+23. shadow duration accumulation without double counting
+24. equal-time contour generation
+25. legal judgement report
 
 ## 非スコープ
 
@@ -134,7 +143,6 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 - 実建物全カテゴリの自動収集
 - Walls / Floors / Roofs の一括自動対象化または外径自動推定
 - footprint polygon generation
-- measurement plane construction
 - BoundingBox を使った日影外形、影ポリゴン、日影判定
 - Revit上での一体化済み一時モデル作成
 - 平均地盤面の自動算定
@@ -157,37 +165,3 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 - 調査メモ: `docs/research_shadow_diagram.md`
 - Revit入力モデル方針: `docs/revit_input_modeling_guide.md`
 - Settings schema: `docs/settings_schema_v1.md`
-
-## v1 measurement plane construction diagnostics additions
-
-v1 output candidates now include:
-
-- `law56_2_awareness`
-- `measurement_plane`
-- `measurement_plane_policy`
-
-The planned pipeline includes:
-
-- law56_2 awareness context diagnostics
-- measurement plane construction diagnostics
-- legal judgement mask preparation
-- true solar time diagnostics
-- legal judgement report
-
-The following remain out of scope for this PR:
-
-- true solar time calculation
-- sun vector calculation
-- shadow projection
-- shadow polygon generation
-- footprint polygon generation
-- 5m/10m measurement line generation
-- own site exclusion mask
-- target area mask
-- high-rise residential inducement district exclusion
-- urban renaissance special district exclusion
-- road / river / sea relaxation
-- elevation difference relaxation
-- legal OK/NG judgement
-- equal-time contour generation
-- Revit element creation

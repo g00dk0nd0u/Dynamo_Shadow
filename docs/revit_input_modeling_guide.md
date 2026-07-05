@@ -140,17 +140,21 @@ v1以降の実装順序は、以下を基本とします。
 8. property line / site property diagnostics when provided
 9. model lines fallback closed-loop diagnostics when provided
 10. settings coercion and normalization
-11. measurement plane readiness check
-12. pipeline readiness diagnostics
-13. measurement plane construction
-14. footprint extraction from user-defined shadow proxy geometry
-15. optional site boundary loop extraction
-16. optional 5m / 10m measurement line generation when site_boundary is available
-17. sun vector calculation
-18. time-slice shadow projection per caster
-19. logical union of shadows per time slice
-20. shadow duration accumulation without double counting
-21. equal-time contour generation
+11. law56_2 awareness context diagnostics
+12. measurement plane readiness check
+13. measurement plane construction diagnostics
+14. pipeline readiness diagnostics
+15. footprint extraction from user-defined shadow proxy geometry
+16. optional site boundary loop extraction
+17. legal judgement mask preparation
+18. optional 5m / 10m measurement line generation when site_boundary is available
+19. true solar time diagnostics
+20. sun vector calculation
+21. time-slice shadow projection per caster
+22. logical union of shadows per time slice
+23. shadow duration accumulation without double counting
+24. equal-time contour generation
+25. legal judgement report
 
 ## Measurement plane input policy
 
