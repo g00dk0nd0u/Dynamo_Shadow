@@ -179,3 +179,22 @@ Before opening a PR, confirm:
 - Do not touch `Shadow.dyn`, the Python Node bootstrap, or `dynamo_loader.py` for module-only refactors.
 - Avoid circular imports; `shadow_revit_api.py` must remain the lowest optional Revit API import layer.
 - Keep Revit API imports optional so normal Python `py_compile` and smoke tests run without Revit.
+
+## Development debug log rules
+
+- Development debug logs may be committed when they are small, sanitized, and review-oriented.
+- Keep committed debug logs under `debug_logs/`.
+- Prefer fixed filenames such as `latest_debug.json` and `sample_*.json`.
+- Do not create unlimited timestamped run logs.
+- Do not log raw Revit objects, client/project names, personal paths, or huge geometry payloads.
+- Debug logging must be disabled by default.
+- Debug log write failure must not make diagnostics fail.
+- Do not change `Shadow.dyn` or `dynamo_loader.py` for debug logging unless explicitly requested.
+
+## Debug log privacy blocker rules
+
+- Debug logs are allowed to be committed only when sanitized.
+- Never commit logs containing local paths, usernames, email addresses, client/project names, OneDrive paths, or raw Revit object repr.
+- String-level redaction is required, not only key filtering.
+- If the debug log privacy scan fails, do not merge.
+- Debug log write failure remains non-fatal, but privacy failure in committed artifacts is a merge blocker.

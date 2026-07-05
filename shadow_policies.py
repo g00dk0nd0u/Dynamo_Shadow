@@ -106,9 +106,28 @@ SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW = [
 
 SETTINGS_DIAGNOSTIC_DEFAULTS = {
     "profile": "standard_8_16",
+    "debug_log_enabled": False,
+    "debug_log_dir": "debug_logs",
+    "debug_log_filename": "latest_debug.json",
     "grid_resolution_m": 1.0,
     "analysis_margin_m": 20.0,
     "closure_tolerance_m": 0.01,
+}
+
+DEBUG_LOG_POLICY = {
+    "purpose": "development_review_debug_log",
+    "enabled_by_default": False,
+    "enabled_by_settings_key": "settings.debug_log_enabled",
+    "default_directory": "debug_logs",
+    "default_filename": "latest_debug.json",
+    "committed_review_artifacts_allowed": True,
+    "fixed_filename_overwrite": True,
+    "timestamped_log_files_allowed": False,
+    "raw_revit_object_dump_allowed": False,
+    "personal_paths_allowed": False,
+    "fixed_absolute_paths_allowed": False,
+    "sanitized": True,
+    "non_fatal_on_write_failure": True,
 }
 
 SETTINGS_POLICY = {
@@ -125,6 +144,7 @@ SETTINGS_POLICY = {
     "diagnostic_defaults": SETTINGS_DIAGNOSTIC_DEFAULTS,
     "no_legal_assumption_defaults": SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW,
     "formal_permit_check": "external_tool_such_as_ADS",
+    "debug_log_policy": DEBUG_LOG_POLICY,
 }
 
 SITE_BOUNDARY_POLICY = {

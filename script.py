@@ -47,6 +47,7 @@ try:
         GEOMETRY_EXTRACTION_POLICY,
         FOOTPRINT_EXTRACTION_POLICY,
         MEASUREMENT_PLANE_POLICY,
+        DEBUG_LOG_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
     from shadow_settings import _normalize_settings
@@ -54,6 +55,7 @@ try:
     from shadow_geometry import _diagnose_shadow_caster_geometry
     from shadow_footprint import _build_footprint_extraction_summary
     from shadow_readiness import _build_pipeline_readiness
+    from shadow_debug import _write_debug_log_if_enabled, _build_debug_log_status
 except Exception:
     _IMPORT_ERROR_TEXT = traceback.format_exc()
 else:
@@ -80,6 +82,30 @@ def _minimal_import_failure(error_text):
         "message": "script.py failed while importing diagnostic modules.",
         "warnings": [],
         "error": error_text,
+        "debug_log": {
+            "enabled": False,
+            "attempted": False,
+            "written": False,
+            "path": None,
+            "relative_path": None,
+            "warnings": [],
+            "error": None,
+        },
+        "debug_log_policy": {
+            "purpose": "development_review_debug_log",
+            "enabled_by_default": False,
+            "enabled_by_settings_key": "settings.debug_log_enabled",
+            "default_directory": "debug_logs",
+            "default_filename": "latest_debug.json",
+            "committed_review_artifacts_allowed": True,
+            "fixed_filename_overwrite": True,
+            "timestamped_log_files_allowed": False,
+            "raw_revit_object_dump_allowed": False,
+            "personal_paths_allowed": False,
+            "fixed_absolute_paths_allowed": False,
+            "sanitized": True,
+            "non_fatal_on_write_failure": True,
+        },
     }
 
 
@@ -118,7 +144,7 @@ def _build_success():
     if not pipeline_readiness.get("boundary_dependent_steps_ready"):
         warnings.extend(pipeline_readiness.get("blockers_for_boundary_dependent_steps", []))
 
-    return {
+    out_payload = {
         "success": True,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
@@ -147,7 +173,14 @@ def _build_success():
         "pipeline_readiness": pipeline_readiness,
         "planned_pipeline": PLANNED_PIPELINE,
         "warnings": warnings,
+        "debug_log": _build_debug_log_status(False, False),
+        "debug_log_policy": DEBUG_LOG_POLICY,
     }
+    debug_log_status = _write_debug_log_if_enabled(out_payload, settings_normalized)
+    out_payload["debug_log"] = debug_log_status
+    if debug_log_status.get("warnings"):
+        out_payload["warnings"].extend(debug_log_status.get("warnings"))
+    return out_payload
 
 
 def _build_failure(error_text):
@@ -188,7 +221,7 @@ def _build_failure(error_text):
     except Exception:
         pipeline_readiness = None
 
-    return {
+    out_payload = {
         "success": False,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
@@ -218,7 +251,14 @@ def _build_failure(error_text):
         "planned_pipeline": PLANNED_PIPELINE,
         "warnings": [],
         "error": error_text,
+        "debug_log": _build_debug_log_status(False, False),
+        "debug_log_policy": DEBUG_LOG_POLICY,
     }
+    debug_log_status = _write_debug_log_if_enabled(out_payload, settings_normalized)
+    out_payload["debug_log"] = debug_log_status
+    if debug_log_status.get("warnings"):
+        out_payload["warnings"].extend(debug_log_status.get("warnings"))
+    return out_payload
 
 
 if _IMPORT_ERROR_TEXT is not None:
