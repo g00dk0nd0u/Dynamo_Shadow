@@ -45,7 +45,7 @@ site_boundary がある場合の第一候補は Revit Property Line / Site Prope
 
 Model Lines の閉じたループは fallback として許容するが、第一候補ではない。Detail Lines はビュー依存のため非推奨または rejected/warning とする。CAD import lines や Toposolid / SiteSurface / Topography 外周は、敷地境界として自動採用しない。Revit上に敷地境界用の一時モデルは作成しない。
 
-v1 出力候補には `site_boundary` diagnostics と `site_boundary_policy` を追加する。今回PRでは入力診断と簡易 loop_diagnostics までとし、5m / 10m 測定線生成、日影計算、太陽位置計算、影ポリゴン生成、等時間線生成は非スコープとする。
+v1 出力候補には `site_boundary` diagnostics、`site_boundary_policy`、`settings_normalized`、`settings_policy`、`pipeline_readiness` を追加する。今回PRでは入力診断と簡易 loop_diagnostics までとし、5m / 10m 測定線生成、日影計算、太陽位置計算、影ポリゴン生成、等時間線生成は非スコープとする。
 
 ## 固定値候補
 
@@ -91,6 +91,9 @@ shadow_casters
 shadow_caster_policy
 site_boundary
 site_boundary_policy
+settings_normalized
+settings_policy
+pipeline_readiness
 planned_pipeline
 warnings
 error
@@ -106,14 +109,17 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 4. optional site boundary source validation
 5. property line / site property diagnostics when provided
 6. model lines fallback closed-loop diagnostics when provided
-7. settings normalization
-8. footprint extraction from user-defined shadow proxy geometry
-9. optional site boundary loop extraction
-10. optional 5m / 10m measurement line generation when site_boundary is available
-11. time-slice shadow projection per caster
-12. logical union of shadows per time slice
-13. shadow duration accumulation without double counting
-14. equal-time contour generation
+7. settings coercion and normalization
+8. measurement plane readiness check
+9. pipeline readiness diagnostics
+10. footprint extraction from user-defined shadow proxy geometry
+11. optional site boundary loop extraction
+12. optional 5m / 10m measurement line generation when site_boundary is available
+13. sun vector calculation
+14. time-slice shadow projection per caster
+15. logical union of shadows per time slice
+16. shadow duration accumulation without double counting
+17. equal-time contour generation
 
 ## 非スコープ
 
@@ -137,3 +143,4 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 
 - 調査メモ: `docs/research_shadow_diagram.md`
 - Revit入力モデル方針: `docs/revit_input_modeling_guide.md`
+- Settings schema: `docs/settings_schema_v1.md`

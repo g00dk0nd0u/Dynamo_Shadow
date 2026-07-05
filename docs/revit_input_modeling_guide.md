@@ -17,29 +17,26 @@
 
 重要: `level` は法規上の高さ基準ではありません。Level Elevation を平均地盤面として扱わず、平均地盤面は `settings.average_ground_level_elevation_m` で扱います。
 
-## 3. Height reference policy
+## 3. Settings and height reference policy
 
-日影計算の高さ基準は、Revit Level ではなく平均地盤面とします。
+`settings = IN[3]` は optional input です。settings が未接続でも input diagnostics は fatal error にせず、`success` を維持します。
+
+ただし、将来の等時間日影計算 readiness には settings が必要です。特に以下は、settings で明示入力してください。
+
+- `average_ground_level_elevation_m`: 平均地盤面高さ。
+- `measurement_height_m`: 平均地盤面からの測定面高さ。
+- `latitude` / `longitude`: 将来の太陽方向計算に必要な緯度経度。
+- `true_north_deg`: 将来の太陽方向計算に必要な真北角度。
+
+Revit Level は作業参照であり、法規上の高さ基準ではありません。Level Elevation を平均地盤面として使わず、測定面としても使いません。
 
 ```text
-measurement_plane_elevation = average_ground_level_elevation_m + measurement_height_m
+measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m
 ```
 
-初期 `settings` 案は以下です。
+`grid_resolution_m`、`analysis_margin_m`、`closure_tolerance_m` は計算用パラメータであり、安全な diagnostic default を持てます。一方、`average_ground_level_elevation_m` や `measurement_height_m` には法規・案件条件上の意味があるため、Dynamo_Shadow が勝手な default を与えません。
 
-```python
-settings = {
-    "profile": "standard_8_16",
-    "average_ground_level_elevation_m": 0.0,
-    "measurement_height_m": 4.0,
-    "latitude": 35.68,
-    "longitude": 139.76,
-    "true_north_deg": 0.0,
-    "grid_resolution_m": 1.0,
-}
-```
-
-v1では平均地盤面の自動算定は行わず、ユーザーが settings として入力します。
+settings schema の詳細は `docs/settings_schema_v1.md` を参照してください。
 
 ## 4. Shadow caster / 影を落とすプロキシ要素
 
@@ -127,11 +124,14 @@ v1以降の実装順序は、以下を基本とします。
 4. optional site boundary source validation
 5. property line / site property diagnostics when provided
 6. model lines fallback closed-loop diagnostics when provided
-7. settings normalization
-8. footprint extraction from user-defined shadow proxy geometry
-9. optional site boundary loop extraction
-10. optional 5m / 10m measurement line generation when site_boundary is available
-11. time-slice shadow projection per caster
-12. logical union of shadows per time slice
-13. shadow duration accumulation without double counting
-14. equal-time contour generation
+7. settings coercion and normalization
+8. measurement plane readiness check
+9. pipeline readiness diagnostics
+10. footprint extraction from user-defined shadow proxy geometry
+11. optional site boundary loop extraction
+12. optional 5m / 10m measurement line generation when site_boundary is available
+13. sun vector calculation
+14. time-slice shadow projection per caster
+15. logical union of shadows per time slice
+16. shadow duration accumulation without double counting
+17. equal-time contour generation

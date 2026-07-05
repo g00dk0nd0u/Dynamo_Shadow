@@ -6,6 +6,8 @@
 # summarizes Dynamo inputs and validates user-defined shadow caster proxies so
 # the next implementation steps can be checked safely from Dynamo/Revit.
 
+import json
+import math
 import traceback
 
 try:
@@ -16,7 +18,7 @@ except Exception:
     BuiltInCategory = None
 
 TOOL_NAME = "Dynamo_Shadow"
-STAGE_NAME = "v1_optional_site_boundary_input_diagnostics"
+STAGE_NAME = "v1_settings_normalization_readiness_diagnostics"
 
 LEGAL_CONSTANTS = {
     "date_basis": "winter_solstice",
@@ -39,10 +41,13 @@ PLANNED_PIPELINE = [
     "optional site boundary source validation",
     "property line / site property diagnostics when provided",
     "model lines fallback closed-loop diagnostics when provided",
-    "settings normalization",
+    "settings coercion and normalization",
+    "measurement plane readiness check",
+    "pipeline readiness diagnostics",
     "footprint extraction from user-defined shadow proxy geometry",
     "optional site boundary loop extraction",
     "optional 5m / 10m measurement line generation when site_boundary is available",
+    "sun vector calculation",
     "time-slice shadow projection per caster",
     "logical union of shadows per time slice",
     "shadow duration accumulation without double counting",
@@ -95,6 +100,39 @@ SITE_BOUNDARY_TOPO_CATEGORY_NAMES = set([
     "OST_Topography",
     "OST_TopographySurface",
 ])
+
+SETTINGS_SCHEMA_VERSION = "v1"
+
+SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW = [
+    "average_ground_level_elevation_m",
+    "measurement_height_m",
+    "latitude",
+    "longitude",
+    "true_north_deg",
+]
+
+SETTINGS_DIAGNOSTIC_DEFAULTS = {
+    "profile": "standard_8_16",
+    "grid_resolution_m": 1.0,
+    "analysis_margin_m": 20.0,
+    "closure_tolerance_m": 0.01,
+}
+
+SETTINGS_POLICY = {
+    "optional": True,
+    "missing_settings_is_fatal": False,
+    "units": {
+        "length": "meter",
+        "angle": "degree",
+        "latitude_longitude": "decimal_degree",
+    },
+    "level_used_as_average_ground_level": False,
+    "level_used_as_measurement_plane": False,
+    "required_for_equal_time_shadow": SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW,
+    "diagnostic_defaults": SETTINGS_DIAGNOSTIC_DEFAULTS,
+    "no_legal_assumption_defaults": SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW,
+    "formal_permit_check": "external_tool_such_as_ADS",
+}
 
 SITE_BOUNDARY_POLICY = {
     "optional": True,
@@ -902,42 +940,257 @@ def _diagnose_site_boundary(site_boundary):
     return diagnostics
 
 
-def _settings_warnings(settings):
-    warnings = []
-    if settings is None:
-        warnings.append("settings input is empty; diagnostics continue, but average_ground_level_elevation_m and measurement_height_m should be provided before calculation work.")
-        return warnings
-    if not isinstance(settings, dict):
-        warnings.append("settings input is not a dictionary; it is summarized but not interpreted in v1 diagnostics.")
-        return warnings
-    if "average_ground_level_elevation_m" not in settings:
-        warnings.append("settings.average_ground_level_elevation_m is missing; do not use Level Elevation as a substitute for average ground level.")
-    if "measurement_height_m" not in settings:
-        warnings.append("settings.measurement_height_m is missing; measurement plane height cannot be normalized yet.")
-    return warnings
+def _object_items_from_keys_values(value):
+    keys = _safe_attr(value, "Keys")
+    values = _safe_attr(value, "Values")
+    if keys is None or values is None:
+        return None
+    try:
+        return zip(list(keys), list(values))
+    except Exception:
+        return None
 
+
+def _coerce_settings_to_dict(settings):
+    warnings = []
+    errors = []
+    if settings is None:
+        return {}, "none", warnings, errors
+    try:
+        if isinstance(settings, dict):
+            return dict(settings), "python_dict", warnings, errors
+        if _is_string(settings):
+            text = settings.strip()
+            if not text:
+                return {}, "empty_string", ["settings JSON string is empty; treated as missing optional settings."], errors
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, dict):
+                    return parsed, "json_string", warnings, errors
+                warnings.append("settings JSON string did not decode to an object; treated as empty settings.")
+                return {}, "json_string_non_object", warnings, errors
+            except Exception as exc:
+                warnings.append("settings JSON string could not be parsed; treated as empty settings: {0}".format(_safe_text(exc)))
+                return {}, "json_string_parse_failed", warnings, errors
+        pairs = _object_items_from_keys_values(settings)
+        if pairs is not None:
+            try:
+                return dict(pairs), "keys_values_object", warnings, errors
+            except Exception as exc:
+                warnings.append("settings Keys/Values object could not be converted to dict; treated as empty settings: {0}".format(_safe_text(exc)))
+                return {}, "keys_values_object_failed", warnings, errors
+        try:
+            if hasattr(settings, "items"):
+                return dict(settings.items()), "items_object", warnings, errors
+        except Exception as exc:
+            warnings.append("settings items() object could not be converted to dict; trying sequence fallback: {0}".format(_safe_text(exc)))
+        if _is_sequence(settings):
+            try:
+                return dict(settings), "pairs_sequence", warnings, errors
+            except Exception as exc:
+                warnings.append("settings sequence could not be converted from key-value pairs; treated as empty settings: {0}".format(_safe_text(exc)))
+                return {}, "pairs_sequence_failed", warnings, errors
+        warnings.append("settings input type {0} is not supported; treated as empty optional settings.".format(_type_name(settings)))
+        return {}, "unsupported", warnings, errors
+    except Exception as exc:
+        warnings.append("settings coercion failed safely; treated as empty settings: {0}".format(_safe_text(exc)))
+        return {}, "coercion_exception", warnings, errors
+
+
+def _parse_float(value, key):
+    if value is None:
+        return None, None
+    if _is_string(value) and not value.strip():
+        return None, None
+    try:
+        parsed = float(value)
+    except Exception:
+        return None, "settings.{0} must be numeric; got {1}.".format(key, _safe_text(value))
+    if math.isnan(parsed) or math.isinf(parsed):
+        return None, "settings.{0} cannot be NaN or infinity.".format(key)
+    return parsed, None
+
+
+def _parse_int(value, key):
+    parsed, warning = _parse_float(value, key)
+    if parsed is None:
+        return None, warning
+    if int(parsed) != parsed:
+        return None, "settings.{0} must be an integer; got {1}.".format(key, _safe_text(value))
+    return int(parsed), None
+
+
+def _parse_text(value, key):
+    if value is None:
+        return None, None
+    try:
+        text = str(value).strip()
+    except Exception:
+        return None, "settings.{0} could not be converted to text.".format(key)
+    if not text:
+        return None, None
+    return text, None
+
+
+def _range_warning(key, value):
+    if value is None:
+        return None
+    ranges = {
+        "latitude": (-90.0, 90.0, True, True),
+        "longitude": (-180.0, 180.0, True, True),
+        "true_north_deg": (-360.0, 360.0, True, True),
+        "measurement_height_m": (0.0, None, False, True),
+        "grid_resolution_m": (0.0, None, False, True),
+        "analysis_margin_m": (0.0, None, True, True),
+        "closure_tolerance_m": (0.0, None, False, True),
+    }
+    if key not in ranges:
+        return None
+    low, high, low_inc, high_inc = ranges[key]
+    if low is not None and (value < low or (value == low and not low_inc)):
+        return "settings.{0} is outside the accepted range.".format(key)
+    if high is not None and (value > high or (value == high and not high_inc)):
+        return "settings.{0} is outside the accepted range.".format(key)
+    return None
+
+
+def _normalize_settings(settings, level=None):
+    settings_dict, input_format, warnings, errors = _coerce_settings_to_dict(settings)
+    normalized = {}
+    defaults_applied = []
+    invalid_keys = []
+    info = []
+    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m"])
+    ignored_keys = sorted([_safe_text(k) for k in settings_dict.keys() if k not in known])
+    if ignored_keys:
+        info.append("Unknown settings keys are ignored by v1 diagnostics: {0}".format(", ".join(ignored_keys)))
+
+    profile, warn = _parse_text(settings_dict.get("profile"), "profile")
+    if warn:
+        warnings.append(warn); invalid_keys.append("profile")
+    if profile is None:
+        profile = SETTINGS_DIAGNOSTIC_DEFAULTS["profile"]; defaults_applied.append("profile")
+    normalized["profile"] = profile
+
+    for key in ["average_ground_level_elevation_m", "measurement_height_m", "latitude", "longitude", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m"]:
+        value, warn = _parse_float(settings_dict.get(key), key)
+        range_warn = _range_warning(key, value)
+        if warn or range_warn:
+            warnings.append(warn or range_warn)
+            invalid_keys.append(key)
+            value = None
+        if value is None and key in SETTINGS_DIAGNOSTIC_DEFAULTS:
+            value = SETTINGS_DIAGNOSTIC_DEFAULTS[key]
+            defaults_applied.append(key)
+        normalized[key] = value
+
+    agl = normalized.get("average_ground_level_elevation_m")
+    mh = normalized.get("measurement_height_m")
+    if agl is not None and mh is not None:
+        mpe = agl + mh
+        measurement_plane = {"available": True, "elevation_m": mpe, "formula": "average_ground_level_elevation_m + measurement_height_m"}
+    else:
+        mpe = None
+        measurement_plane = {"available": False, "elevation_m": None, "reason": "missing average_ground_level_elevation_m or measurement_height_m"}
+    normalized["measurement_plane_elevation_m"] = mpe
+
+    missing_required = [k for k in SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW if normalized.get(k) is None]
+    invalid_for_equal = [k for k in invalid_keys if k in SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW]
+    if settings is None:
+        info.append("settings is optional for input diagnostics; missing settings is not fatal.")
+    info.append("Revit Level Elevation is not used as average ground level or measurement plane.")
+    return {
+        "provided": settings is not None,
+        "schema_version": SETTINGS_SCHEMA_VERSION,
+        "input_format": input_format,
+        "raw_type": _type_name(settings),
+        "normalized": normalized,
+        "measurement_plane": measurement_plane,
+        "readiness": {
+            "ready_for_input_diagnostics": True,
+            "ready_for_equal_time_shadow_calculation": len(missing_required) == 0 and len(invalid_for_equal) == 0,
+            "settings_ready_for_boundary_dependent_steps": len(missing_required) == 0 and len(invalid_for_equal) == 0,
+            "missing_for_equal_time_shadow": missing_required,
+            "invalid_for_equal_time_shadow": invalid_for_equal,
+        },
+        "defaults_applied": defaults_applied,
+        "missing_required_keys": missing_required,
+        "invalid_keys": sorted(set(invalid_keys)),
+        "ignored_keys": ignored_keys,
+        "warnings": warnings,
+        "errors": errors,
+        "info": info,
+        "level_reference_present": level is not None,
+        "level_used_as_average_ground_level": False,
+        "level_used_as_measurement_plane": False,
+    }
+
+
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized):
+    blockers_equal = []
+    blockers_boundary = []
+    shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
+    settings_ready = ((settings_normalized or {}).get("readiness") or {}).get("ready_for_equal_time_shadow_calculation") is True
+    boundary_ready = (site_boundary or {}).get("boundary_dependent_steps_available") is True
+    if not shadow_ready:
+        blockers_equal.append("No accepted shadow caster proxy elements are available.")
+    if not settings_ready:
+        missing = ((settings_normalized or {}).get("readiness") or {}).get("missing_for_equal_time_shadow") or []
+        invalid = ((settings_normalized or {}).get("readiness") or {}).get("invalid_for_equal_time_shadow") or []
+        blockers_equal.append("Settings are not ready for future equal-time shadow calculation; missing={0}, invalid={1}.".format(missing, invalid))
+    equal_ready = shadow_ready and settings_ready
+    if not equal_ready:
+        blockers_boundary.append("Boundary-dependent steps require equal-time shadow calculation readiness first.")
+    if not boundary_ready:
+        blockers_boundary.append("site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped.")
+    return {
+        "input_diagnostics_ready": True,
+        "shadow_caster_ready": shadow_ready,
+        "settings_ready_for_equal_time_shadow": settings_ready,
+        "site_boundary_required_for_equal_time_shadow": False,
+        "site_boundary_ready_for_boundary_dependent_steps": boundary_ready,
+        "equal_time_shadow_calculation_ready": equal_ready,
+        "boundary_dependent_steps_ready": equal_ready and boundary_ready,
+        "blockers_for_equal_time_shadow": blockers_equal,
+        "blockers_for_boundary_dependent_steps": blockers_boundary,
+        "next_implementation_steps": [
+            "shadow caster geometry extraction",
+            "measurement plane construction",
+            "sun vector calculation",
+            "time-slice shadow projection",
+            "logical union",
+            "shadow duration accumulation",
+            "equal-time contour generation",
+            "optional boundary-dependent measurement lines when site_boundary is available",
+        ],
+    }
 
 def _build_success():
     raw_inputs, input_source = _read_inputs()
     warnings = []
 
     for key in INPUT_KEYS:
-        if key == "site_boundary":
+        if key in ("site_boundary", "settings"):
             continue
         if raw_inputs.get(key) is None:
             warnings.append("{0} input is empty.".format(key))
 
     shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
     site_boundary = _diagnose_site_boundary(raw_inputs.get("site_boundary"))
+    settings_normalized = _normalize_settings(raw_inputs.get("settings"), raw_inputs.get("level"))
+    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
-    warnings.extend(_settings_warnings(raw_inputs.get("settings")))
+    warnings.extend(settings_normalized.get("warnings", []))
+    warnings.extend(pipeline_readiness.get("blockers_for_equal_time_shadow", []))
+    if not pipeline_readiness.get("boundary_dependent_steps_ready"):
+        warnings.extend(pipeline_readiness.get("blockers_for_boundary_dependent_steps", []))
 
     return {
         "success": True,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow v1 input diagnostics only; site_boundary is optional, and shadow calculation, sun position, shadow polygons, grid accumulation, 5m/10m measurement lines, and equal-time contours are not implemented yet.",
+        "message": "Dynamo_Shadow v1 input diagnostics only; settings are normalized for readiness diagnostics, site_boundary remains optional, and shadow calculation, sun position, shadow polygons, grid accumulation, 5m/10m measurement lines, and equal-time contours are not implemented yet.",
         "legal_constants": LEGAL_CONSTANTS,
         "inputs": {
             "source": input_source,
@@ -950,15 +1203,19 @@ def _build_success():
         "shadow_caster_policy": SHADOW_CASTER_POLICY,
         "site_boundary": site_boundary,
         "site_boundary_policy": SITE_BOUNDARY_POLICY,
+        "settings_normalized": settings_normalized,
+        "settings_policy": SETTINGS_POLICY,
+        "pipeline_readiness": pipeline_readiness,
         "planned_pipeline": PLANNED_PIPELINE,
         "warnings": warnings,
     }
-
 
 def _build_failure(error_text):
     raw_inputs, input_source = _read_inputs()
     shadow_casters = None
     site_boundary = None
+    settings_normalized = None
+    pipeline_readiness = None
     try:
         shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
     except Exception:
@@ -967,12 +1224,20 @@ def _build_failure(error_text):
         site_boundary = _diagnose_site_boundary(raw_inputs.get("site_boundary"))
     except Exception:
         site_boundary = None
+    try:
+        settings_normalized = _normalize_settings(raw_inputs.get("settings"), raw_inputs.get("level"))
+    except Exception:
+        settings_normalized = None
+    try:
+        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {})
+    except Exception:
+        pipeline_readiness = None
 
     return {
         "success": False,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "script.py failed while building v1 shadow caster input diagnostics.",
+        "message": "script.py failed while building v1 settings normalization and pipeline readiness diagnostics.",
         "legal_constants": LEGAL_CONSTANTS,
         "inputs": {
             "source": input_source,
@@ -982,7 +1247,12 @@ def _build_failure(error_text):
             "settings": _summarize_input(raw_inputs.get("settings")),
         },
         "shadow_casters": shadow_casters,
+        "shadow_caster_policy": SHADOW_CASTER_POLICY,
         "site_boundary": site_boundary,
+        "site_boundary_policy": SITE_BOUNDARY_POLICY,
+        "settings_normalized": settings_normalized,
+        "settings_policy": SETTINGS_POLICY,
+        "pipeline_readiness": pipeline_readiness,
         "planned_pipeline": PLANNED_PIPELINE,
         "warnings": [],
         "error": error_text,
