@@ -71,6 +71,20 @@ The project is still in an early development stage. The current files must not b
   - equal-time contour generation
   - diagnostics and validation
 
+
+## Shadow caster input rules
+
+- `building_elements` must support multiple selected shadow caster elements.
+- Shadow caster inputs must be user-defined Mass or Generic Model proxies.
+- Read each caster separately and diagnose each selected element separately.
+- Do not auto-extract building outlines from existing Walls / Floors / Roofs / equipment / small model elements.
+- Do not use BoundingBox as shadow geometry or shadow judgement geometry.
+- Do not create temporary unified Revit models.
+- Future shadow calculation should use logical union per time slice.
+- Do not double-count overlapping shadows.
+- Formal permit-level shadow checks are outside this repository scope and should be done with dedicated tools such as ADS.
+- Do not implement shadow calculation, sun position, shadow polygons, measurement-grid accumulation, or equal-time contours unless explicitly requested.
+
 ## Pull request checklist
 
 Before opening a PR, confirm:
