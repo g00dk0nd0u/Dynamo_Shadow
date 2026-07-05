@@ -52,7 +52,10 @@ Mass は概略設計段階のボリュームスタディとして自然です。
 推奨方針は以下です。
 
 - Mass または Generic Model で、日影検討用の外径プロキシを明示的に作る。
-- ファミリ名、タイプ名、共有パラメータ `ShadowRole` などで日影計算対象だと分かるようにする。
+- カテゴリ判定は Revit API の `BuiltInCategory` を優先し、初期 accepted カテゴリは `BuiltInCategory.OST_Mass` と `BuiltInCategory.OST_GenericModel` とする。
+- 表示名（Mass / Generic Models / マス / 一般モデルなど）は fallback としてのみ扱う。
+- ファミリ名、タイプ名、共有パラメータ `ShadowRole` などで日影計算対象だと分かるようにする。ただし `ShadowRole` は補助診断であり、unsupported category を accepted にしない。
+- `OST_MassForm`、`OST_MassFloor`、`OST_Massing`、その他 `OST_Mass...` 系は Mass 関連カテゴリとして診断し、初期 accepted カテゴリとして黙って受け入れない。
 - 既存 Revit モデルの Walls / Floors / Roofs / 設備 / 小物などから外径を自動推定しない。
 - BoundingBox を日影外形、影ポリゴン生成、日影判定に使わない。
 - Revit上に一体化済みの一時モデルを作らない。

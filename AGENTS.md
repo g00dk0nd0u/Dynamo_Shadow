@@ -76,6 +76,9 @@ The project is still in an early development stage. The current files must not b
 
 - `building_elements` must support multiple selected shadow caster elements.
 - Shadow caster inputs must be user-defined Mass or Generic Model proxies.
+- Shadow caster category detection should prefer Revit API `BuiltInCategory`; accepted initial categories are `BuiltInCategory.OST_Mass` and `BuiltInCategory.OST_GenericModel`.
+- Localized category names are fallback only, and `ShadowRole` is advisory; it must not override unsupported categories such as Walls / Floors / Roofs.
+- Mass-related categories such as `OST_MassForm`, `OST_MassFloor`, `OST_Massing`, or other `OST_Mass...` variants should be diagnosed separately rather than silently accepted.
 - Read each caster separately and diagnose each selected element separately.
 - Do not auto-extract building outlines from existing Walls / Floors / Roofs / equipment / small model elements.
 - Do not use BoundingBox as shadow geometry or shadow judgement geometry.

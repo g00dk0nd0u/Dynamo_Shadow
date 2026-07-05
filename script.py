@@ -8,6 +8,13 @@
 
 import traceback
 
+try:
+    import clr
+    clr.AddReference("RevitAPI")
+    from Autodesk.Revit.DB import BuiltInCategory
+except Exception:
+    BuiltInCategory = None
+
 TOOL_NAME = "Dynamo_Shadow"
 STAGE_NAME = "v1_shadow_caster_input_diagnostics"
 
@@ -50,6 +57,13 @@ SUPPORTED_CATEGORY_NAMES = set([
     "masses",
     "generic model",
     "generic models",
+    "一般モデル",
+    "マス",
+])
+
+ACCEPTED_BUILT_IN_CATEGORY_NAMES = set([
+    "OST_GenericModel",
+    "OST_Mass",
 ])
 
 SHADOW_CASTER_POLICY = {
@@ -62,7 +76,10 @@ SHADOW_CASTER_POLICY = {
     "bounding_box_for_shadow_geometry": False,
     "bounding_box_for_shadow_judgement": False,
     "existing_model_auto_extraction": False,
-    "allowed_initial_categories": ["Mass", "Generic Models"],
+    "allowed_initial_categories": ["BuiltInCategory.OST_Mass", "BuiltInCategory.OST_GenericModel"],
+    "category_detection_priority": "built_in_category_then_localized_category_name",
+    "localized_category_names_are_fallback_only": True,
+    "shadow_role_overrides_category": False,
     "future_time_slice_union_policy": "logical_union",
     "double_count_overlapping_shadows": False,
 }
@@ -186,22 +203,61 @@ def _safe_call(value, method_name, *args):
         return None, _safe_text(exc)
 
 
-def _element_id(value):
-    element_id = _safe_attr(value, "Id")
-    if element_id is None:
+def _revit_id_to_int(value):
+    if value is None:
         return None
     for attr in ("IntegerValue", "Value"):
-        raw = _safe_attr(element_id, attr)
+        raw = _safe_attr(value, attr)
         if raw is not None:
             try:
                 return int(raw)
             except Exception:
-                return _safe_text(raw)
+                pass
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def _built_in_category_value(value):
+    raw = _safe_attr(value, "value__")
+    if raw is not None:
+        try:
+            return int(raw)
+        except Exception:
+            pass
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def _element_id(value):
+    element_id = _safe_attr(value, "Id")
+    if element_id is None:
+        return None
+    integer_id = _revit_id_to_int(element_id)
+    if integer_id is not None:
+        return integer_id
     return _safe_text(element_id)
 
 
+def _category(value):
+    return _safe_attr(value, "Category")
+
+
+def _category_id_from_category(category):
+    if category is None:
+        return None
+    category_id = _safe_attr(category, "Id")
+    integer_id = _revit_id_to_int(category_id)
+    if integer_id is not None:
+        return integer_id
+    return _safe_text(category_id) if category_id is not None else None
+
+
 def _category_name(value):
-    category = _safe_attr(value, "Category")
+    category = _category(value)
     name = _safe_attr(category, "Name") if category is not None else None
     return _safe_text(name) if name else None
 
@@ -252,11 +308,66 @@ def _lookup_parameter_text(value, parameter_name):
     return _safe_text(parameter)
 
 
-def _is_supported_shadow_category(category_name):
+def _built_in_category_name_for_id(category_id):
+    if BuiltInCategory is None or category_id is None:
+        return None
+    try:
+        category_id_int = int(category_id)
+    except Exception:
+        return None
+    for name in dir(BuiltInCategory):
+        if not name.startswith("OST_"):
+            continue
+        try:
+            candidate = getattr(BuiltInCategory, name)
+        except Exception:
+            continue
+        if _built_in_category_value(candidate) == category_id_int:
+            return name
+    return None
+
+
+def _localized_category_name_match(category_name):
     if not category_name:
         return False
     normalized = category_name.strip().lower()
     return normalized in SUPPORTED_CATEGORY_NAMES
+
+
+def _diagnose_shadow_category(element, category_name):
+    category = _category(element)
+    category_id = _category_id_from_category(category)
+    official_category = _built_in_category_name_for_id(category_id)
+    is_mass_related = bool(official_category and official_category.startswith("OST_Mass"))
+
+    if official_category is not None:
+        return {
+            "category_id": category_id,
+            "category_match_method": "built_in_category",
+            "matched_revit_category": official_category,
+            "official_revit_api_category": official_category,
+            "is_mass_related_category": is_mass_related,
+            "is_supported_category": official_category in ACCEPTED_BUILT_IN_CATEGORY_NAMES,
+        }
+
+    if _localized_category_name_match(category_name):
+        return {
+            "category_id": category_id,
+            "category_match_method": "localized_category_name",
+            "matched_revit_category": category_name,
+            "official_revit_api_category": None,
+            "is_mass_related_category": bool(category_name and category_name.strip().lower() in ("mass", "masses", "マス")),
+            "is_supported_category": True,
+        }
+
+    return {
+        "category_id": category_id,
+        "category_match_method": "none",
+        "matched_revit_category": category_name,
+        "official_revit_api_category": None,
+        "is_mass_related_category": False,
+        "is_supported_category": False,
+    }
 
 
 def _diagnose_geometry_access(element):
@@ -365,17 +476,20 @@ def _diagnose_shadow_casters(building_elements):
     for index, item in enumerate(items):
         unwrapped = _try_unwrap(item)
         category_name = _category_name(unwrapped)
+        category_match = _diagnose_shadow_category(unwrapped, category_name)
         shadow_role = _lookup_parameter_text(unwrapped, "ShadowRole") if unwrapped is not None else None
-        is_supported_category = _is_supported_shadow_category(category_name)
+        is_supported_category = category_match.get("is_supported_category", False)
         geometry_access = _diagnose_geometry_access(unwrapped)
         item_warnings = []
 
         if unwrapped is None:
             item_warnings.append("building_elements contains None at index {0}.".format(index))
-        if not category_name:
-            item_warnings.append("category_name could not be read; accepted is False until it can be identified as Mass or Generic Models.")
+        if not category_name and category_match.get("official_revit_api_category") is None:
+            item_warnings.append("category could not be read from BuiltInCategory or localized display name; accepted is False until it can be identified as OST_Mass or OST_GenericModel.")
+        elif category_match.get("is_mass_related_category") and not is_supported_category:
+            item_warnings.append("Mass-related BuiltInCategory was detected, but only OST_Mass and OST_GenericModel are accepted as initial shadow caster proxy categories in v1 diagnostics.")
         elif not is_supported_category:
-            item_warnings.append("category '{0}' is not accepted for shadow caster proxies; use user-defined Mass or Generic Model elements.".format(category_name))
+            item_warnings.append("category '{0}' is not accepted for shadow caster proxies; use user-defined Mass or Generic Model elements. ShadowRole is advisory and does not override category support.".format(category_match.get("matched_revit_category")))
         if shadow_role is None:
             item_warnings.append("ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics.")
         if not geometry_access.get("available"):
@@ -392,6 +506,11 @@ def _diagnose_shadow_casters(building_elements):
             "is_none": unwrapped is None,
             "type": _type_name(unwrapped),
             "category_name": category_name,
+            "category_id": category_match.get("category_id"),
+            "category_match_method": category_match.get("category_match_method"),
+            "matched_revit_category": category_match.get("matched_revit_category"),
+            "official_revit_api_category": category_match.get("official_revit_api_category"),
+            "is_mass_related_category": category_match.get("is_mass_related_category"),
             "element_id": _element_id(unwrapped),
             "name": _element_name(unwrapped),
             "family_name": _family_name(unwrapped),
@@ -402,6 +521,8 @@ def _diagnose_shadow_casters(building_elements):
             "geometry_access": geometry_access,
             "diagnostics": {
                 "source_geometry": "user_defined_mass_or_generic_model_proxy",
+                "category_detection_priority": "built_in_category_then_localized_category_name",
+                "shadow_role_overrides_category": False,
                 "existing_model_auto_extraction": False,
                 "bounding_box": {
                     "diagnostic_only": True,

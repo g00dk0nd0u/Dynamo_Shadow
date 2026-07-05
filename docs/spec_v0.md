@@ -25,6 +25,10 @@ Dynamo / Revit 上で概略設計段階の日影検討を進める前に、v0/v1
 
 - Mass は概略設計段階のボリュームスタディとして自然な入力である。
 - Generic Model は実務上の作りやすさ、ファミリ管理、選択性の面で同等に許容する。
+- カテゴリ判定は Revit API の `BuiltInCategory` を優先し、初期 accepted カテゴリは `BuiltInCategory.OST_Mass` と `BuiltInCategory.OST_GenericModel` とする。
+- 表示名（Mass / Generic Models / マス / 一般モデルなど）は fallback としてのみ扱う。
+- `ShadowRole` は補助診断であり、unsupported category を accepted にする代替条件ではない。
+- `OST_MassForm`、`OST_MassFloor`、`OST_Massing`、その他 `OST_Mass...` 系は Mass 関連カテゴリとして診断し、初期 accepted カテゴリとして黙って受け入れない。
 - どちらも、ユーザーが日影検討用外径として明示作成・選択したプロキシ要素のみを対象にする。
 - 既存 Revit モデルの Walls / Floors / Roofs / 設備 / 小物などから外径を自動推定しない。
 - BoundingBox を日影外形、影ポリゴン生成、日影判定に使わない。
