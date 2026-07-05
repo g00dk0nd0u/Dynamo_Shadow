@@ -140,14 +140,36 @@ v1以降の実装順序は、以下を基本とします。
 8. property line / site property diagnostics when provided
 9. model lines fallback closed-loop diagnostics when provided
 10. settings coercion and normalization
-11. measurement plane readiness check
-12. pipeline readiness diagnostics
-13. measurement plane construction
-14. footprint extraction from user-defined shadow proxy geometry
-15. optional site boundary loop extraction
-16. optional 5m / 10m measurement line generation when site_boundary is available
-17. sun vector calculation
-18. time-slice shadow projection per caster
-19. logical union of shadows per time slice
-20. shadow duration accumulation without double counting
-21. equal-time contour generation
+11. law56_2 awareness context diagnostics
+12. measurement plane readiness check
+13. measurement plane construction diagnostics
+14. pipeline readiness diagnostics
+15. footprint extraction from user-defined shadow proxy geometry
+16. optional site boundary loop extraction
+17. legal judgement mask preparation
+18. optional 5m / 10m measurement line generation when site_boundary is available
+19. true solar time diagnostics
+20. sun vector calculation
+21. time-slice shadow projection per caster
+22. logical union of shadows per time slice
+23. shadow duration accumulation without double counting
+24. equal-time contour generation
+25. legal judgement report
+
+## Measurement plane input policy
+
+The shadow measurement plane is not a Revit Level. It is the Article 56-2 horizontal plane at a designated height above average ground level:
+
+```text
+measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m
+```
+
+- Put `average_ground_level_elevation_m` in `settings`; do not use Revit Level Elevation as average ground level.
+- Put `measurement_height_m` in `settings` as the ordinance / table-derived measurement height; do not let the script invent it.
+- Mass / Generic Model shadow caster geometry remains raw Revit coordinates / raw internal units.
+- The measurement plane is an abstract legal SI meters plane used for diagnostics, not a Revit element.
+- Formal unit conversion between Revit raw geometry and legal SI meters is deferred to a later PR.
+- site_boundary is not required to construct the measurement plane.
+- If site_boundary is missing, future legal judgement ranges such as beyond-5m range and own-site exclusion are not constructed.
+
+See `docs/measurement_plane_v1.md` for the detailed measurement plane diagnostics policy.

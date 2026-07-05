@@ -82,3 +82,12 @@ JSON parse や dict 化に失敗しても fatal error にはせず、空 setting
     true_north_deg: 0.0
     grid_resolution_m: 1.0
     analysis_margin_m: 20.0
+
+## Measurement plane and Article 56-2 awareness
+
+- `measurement_height_m` is treated as the Article 56-2 / ordinance table measurement-plane height and must be explicitly supplied through settings; the script does not invent a legal default.
+- When both `average_ground_level_elevation_m` and `measurement_height_m` are valid, measurement plane construction diagnostics can build `measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m`.
+- Revit Level Elevation is not used as average ground level and is not used as the measurement plane.
+- `settings.profile` may be used for time-window awareness. `standard_8_16` is diagnostic awareness for the 08:00-16:00 profile, and `hokkaido_9_15` / `hokkaido` is diagnostic awareness for the 09:00-15:00 profile.
+- These profile values do not implement true solar time calculation, JST clock-time conversion, sun vectors, shadow projection, or legal judgement.
+- Future legal judgement will require inputs such as `ordinance_profile`, target-area status, applicable building threshold, allowed shadow duration profile, site boundary, own-site boundary, exclusion masks, relaxation profiles, true-solar-time profile, and same-site building grouping.
