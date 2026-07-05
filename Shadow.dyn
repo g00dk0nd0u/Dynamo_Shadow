@@ -42,6 +42,24 @@
           "Level": 2,
           "UseLevels": false,
           "KeepListStructure": false
+        },
+        {
+          "Id": "978af3626b954931af2e2b8834f9387c",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "c19c98d8210547ec89e90d81d8d30371",
+          "Name": "IN[3]",
+          "Description": "Input #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
         }
       ],
       "Outputs": [
@@ -90,7 +108,7 @@
       "Description": "Visualizes a node's output"
     },
     {
-      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
+      "ConcreteType": "Dynamo.Nodes.DSModelElementsSelection, DSRevitNodesUI",
       "NodeType": "ExtensionNode",
       "InstanceId": [],
       "Id": "f94a5a6bd58644329c8ff5e90c652e5c",
@@ -98,7 +116,7 @@
       "Outputs": [
         {
           "Id": "bbc46354868c449aac38cee94c98414e",
-          "Name": "Element",
+          "Name": "Elements",
           "Description": "The selected elements.",
           "UsingDefaultValue": false,
           "Level": 2,
@@ -107,7 +125,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select a model element from the document."
+      "Description": "Select model elements from the document."
     },
     {
       "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
@@ -168,6 +186,12 @@
       "Start": "4d2553e9c6724d719829a6ed82ea6fcc",
       "End": "f294d316e89c44628a3cd3b949916012",
       "Id": "533ea9b61e2e46fbb7d0d95649596147",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "86389f2ae1e449a484ef9de9700eea9d",
+      "End": "978af3626b954931af2e2b8834f9387c",
+      "Id": "a7ac232ececd40ff8aa8d31edca87258",
       "IsHidden": "False"
     }
   ],
@@ -243,7 +267,7 @@
       },
       {
         "Id": "f94a5a6bd58644329c8ff5e90c652e5c",
-        "Name": "Select Building Model",
+        "Name": "Select Shadow Caster Elements",
         "IsSetAsInput": false,
         "IsSetAsOutput": false,
         "Excluded": false,
