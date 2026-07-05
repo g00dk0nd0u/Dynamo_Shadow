@@ -16,7 +16,7 @@ except Exception:
     BuiltInCategory = None
 
 TOOL_NAME = "Dynamo_Shadow"
-STAGE_NAME = "v1_shadow_caster_input_diagnostics"
+STAGE_NAME = "v1_optional_site_boundary_input_diagnostics"
 
 LEGAL_CONSTANTS = {
     "date_basis": "winter_solstice",
@@ -36,9 +36,13 @@ PLANNED_PIPELINE = [
     "input diagnostics",
     "shadow caster proxy validation",
     "shadow caster geometry access check",
-    "site boundary curve diagnostics",
+    "optional site boundary source validation",
+    "property line / site property diagnostics when provided",
+    "model lines fallback closed-loop diagnostics when provided",
     "settings normalization",
-    "footprint extraction from user-defined proxy geometry",
+    "footprint extraction from user-defined shadow proxy geometry",
+    "optional site boundary loop extraction",
+    "optional 5m / 10m measurement line generation when site_boundary is available",
     "time-slice shadow projection per caster",
     "logical union of shadows per time slice",
     "shadow duration accumulation without double counting",
@@ -65,6 +69,76 @@ ACCEPTED_BUILT_IN_CATEGORY_NAMES = set([
     "OST_GenericModel",
     "OST_Mass",
 ])
+
+SITE_BOUNDARY_PRIMARY_CATEGORY_NAMES = set([
+    "OST_SiteProperty",
+    "OST_SitePropertyLineSegment",
+])
+
+SITE_BOUNDARY_RELATED_CATEGORY_NAMES = set([
+    "OST_SitePointBoundary",
+    "OST_SitePropertyTags",
+    "OST_Site",
+    "OST_Property",
+])
+
+SITE_BOUNDARY_FALLBACK_LINE_CATEGORY_NAMES = set([
+    "OST_Lines",
+    "OST_SketchLines",
+    "OST_Curves",
+    "OST_GenericLines",
+])
+
+SITE_BOUNDARY_TOPO_CATEGORY_NAMES = set([
+    "OST_Toposolid",
+    "OST_SiteSurface",
+    "OST_Topography",
+    "OST_TopographySurface",
+])
+
+SITE_BOUNDARY_POLICY = {
+    "optional": True,
+    "required_for_equal_time_shadow": False,
+    "required_for_boundary_dependent_steps": True,
+    "missing_site_boundary_is_fatal": False,
+    "equal_time_shadow_available_without_site_boundary": True,
+    "missing_site_boundary_behavior": "skip_boundary_dependent_steps_only",
+    "boundary_dependent_steps": [
+        "property_line_or_site_boundary_based_offset",
+        "5m_10m_measurement_line_generation",
+        "boundary_based_regulation_reference_check",
+    ],
+    "non_boundary_dependent_steps_continue": [
+        "shadow_caster_geometry_reading",
+        "time_slice_shadow_projection",
+        "logical_union_of_shadows_per_time_slice",
+        "shadow_duration_accumulation",
+        "equal_time_shadow_output",
+    ],
+    "primary_source": "revit_property_line_or_site_property",
+    "primary_built_in_categories": [
+        "BuiltInCategory.OST_SiteProperty",
+        "BuiltInCategory.OST_SitePropertyLineSegment",
+    ],
+    "related_site_categories_diagnostic_only": [
+        "BuiltInCategory.OST_SitePointBoundary",
+        "BuiltInCategory.OST_Site",
+        "BuiltInCategory.OST_Property",
+    ],
+    "fallback_source": "model_lines_closed_loop",
+    "fallback_line_categories": [
+        "BuiltInCategory.OST_Lines",
+        "BuiltInCategory.OST_SketchLines",
+        "BuiltInCategory.OST_Curves",
+        "BuiltInCategory.OST_GenericLines",
+    ],
+    "detail_lines_allowed": False,
+    "cad_import_auto_boundary": False,
+    "toposolid_auto_boundary": False,
+    "temporary_revit_boundary_model": False,
+    "measurement_lines_generated": False,
+    "formal_permit_check": "external_tool_such_as_ADS",
+}
 
 SHADOW_CASTER_POLICY = {
     "purpose": "conceptual_design_shadow_study",
@@ -541,6 +615,293 @@ def _diagnose_shadow_casters(building_elements):
     return diagnostics
 
 
+def _safe_built_in_category_names(names):
+    available = []
+    missing = []
+    if BuiltInCategory is None:
+        return available, list(names)
+    for name in names:
+        try:
+            if hasattr(BuiltInCategory, name):
+                getattr(BuiltInCategory, name)
+                available.append(name)
+            else:
+                missing.append(name)
+        except Exception:
+            missing.append(name)
+    return available, missing
+
+
+def _looks_like(text, needles):
+    text = (text or "").lower()
+    return any(needle.lower() in text for needle in needles)
+
+
+def _is_valid_owner_view_id(element):
+    owner_view_id = _safe_attr(element, "OwnerViewId")
+    value = _revit_id_to_int(owner_view_id)
+    return value is not None and value != -1
+
+
+def _get_curve_endpoints(curve):
+    points = []
+    for index in (0, 1):
+        point, error = _safe_call(curve, "GetEndPoint", index)
+        if error or point is None:
+            return None
+        coords = []
+        for attr in ("X", "Y", "Z"):
+            raw = _safe_attr(point, attr)
+            try:
+                coords.append(float(raw))
+            except Exception:
+                return None
+        points.append(tuple(coords))
+    return tuple(points)
+
+
+def _diagnose_curve_access(element):
+    result = {
+        "attempted": False,
+        "available": False,
+        "curve_count": None,
+        "endpoint_count": None,
+        "can_read_location_curve": False,
+        "can_read_geometry_curve": False,
+        "endpoints": [],
+        "error": None,
+    }
+    if element is None:
+        result["error"] = "element is None"
+        return result
+
+    errors = []
+    curves = []
+    result["attempted"] = True
+    try:
+        location = _safe_attr(element, "Location")
+        curve = _safe_attr(location, "Curve") if location is not None else None
+        if curve is not None:
+            result["can_read_location_curve"] = True
+            curves.append(curve)
+    except Exception as exc:
+        errors.append(_safe_text(exc))
+
+    geometry_method = getattr(element, "get_Geometry", None)
+    if callable(geometry_method):
+        try:
+            geometry = geometry_method(None)
+            if geometry is not None:
+                for item in geometry:
+                    item_type = _type_name(item).lower()
+                    if "curve" in item_type or "line" in item_type or "arc" in item_type:
+                        result["can_read_geometry_curve"] = True
+                        curves.append(item)
+        except Exception:
+            errors.append(traceback.format_exc())
+
+    endpoints = []
+    for curve in curves:
+        pair = _get_curve_endpoints(curve)
+        if pair:
+            endpoints.extend(pair)
+    result["curve_count"] = len(curves)
+    result["endpoint_count"] = len(endpoints)
+    result["endpoints"] = endpoints
+    result["available"] = len(curves) > 0
+    if errors:
+        result["error"] = "; ".join([e for e in errors if e])
+    elif not result["available"]:
+        result["error"] = "Curve access is not available; no offset, 5m/10m line, or shadow calculation is attempted."
+    return result
+
+
+def _diagnose_site_category(element, category_name):
+    category = _category(element)
+    category_id = _category_id_from_category(category)
+    official_category = _built_in_category_name_for_id(category_id)
+    if official_category is not None:
+        return {
+            "category_id": category_id,
+            "category_match_method": "built_in_category",
+            "matched_revit_category": official_category,
+            "official_revit_api_category": official_category,
+        }
+    return {
+        "category_id": category_id,
+        "category_match_method": "localized_category_name_or_type_fallback" if category_name else "none",
+        "matched_revit_category": category_name,
+        "official_revit_api_category": None,
+    }
+
+
+def _diagnose_site_boundary_loop(items):
+    endpoints = []
+    warnings = []
+    for item in items:
+        if not item.get("accepted"):
+            continue
+        curve_access = item.get("curve_access") or {}
+        endpoints.extend(curve_access.get("endpoints") or [])
+        if item.get("is_model_line_fallback_candidate") and not curve_access.get("endpoint_count"):
+            warnings.append("Model Lines fallback was accepted but endpoints could not be read; closed-loop confirmation is unavailable.")
+    candidate_curve_count = sum((item.get("curve_access") or {}).get("curve_count") or 0 for item in items if item.get("accepted"))
+    if candidate_curve_count == 0:
+        return {
+            "attempted": False,
+            "candidate_curve_count": 0,
+            "closed_loop_check_available": False,
+            "appears_closed": None,
+            "closure_tolerance_m": 0.01,
+            "reason": "No accepted site_boundary curves are available; boundary-dependent steps will be skipped.",
+            "warnings": warnings,
+        }
+    if len(endpoints) < 2:
+        return {
+            "attempted": True,
+            "candidate_curve_count": candidate_curve_count,
+            "closed_loop_check_available": False,
+            "appears_closed": None,
+            "closure_tolerance_m": 0.01,
+            "reason": "Curve endpoints could not be read safely; no curve sorting or polygonization is attempted in this PR.",
+            "warnings": warnings,
+        }
+    tol = 0.01
+    buckets = {}
+    for pt in endpoints:
+        key = tuple(round(coord / tol) for coord in pt)
+        buckets[key] = buckets.get(key, 0) + 1
+    odd = [key for key, count in buckets.items() if count % 2]
+    return {
+        "attempted": True,
+        "candidate_curve_count": candidate_curve_count,
+        "closed_loop_check_available": True,
+        "appears_closed": len(odd) == 0,
+        "closure_tolerance_m": tol,
+        "reason": "Simplified endpoint pairing diagnostic only; no sorting, self-intersection check, polygonization, offset, or 5m/10m measurement line generation is performed.",
+        "warnings": warnings,
+    }
+
+
+def _diagnose_site_boundary(site_boundary):
+    items = _to_list(site_boundary)
+    diagnostics = {
+        "provided": len(items) > 0,
+        "required_for_equal_time_shadow": False,
+        "required_for_boundary_dependent_steps": True,
+        "count": len(items),
+        "accepted_count": 0,
+        "rejected_count": 0,
+        "boundary_role": "optional_user_defined_site_boundary",
+        "selection_mode": "multiple_supported",
+        "primary_input_policy": "revit_property_line_or_site_property",
+        "fallback_input_policy": "model_lines_closed_loop",
+        "boundary_dependent_steps_available": False,
+        "boundary_dependent_steps_skipped": True,
+        "equal_time_shadow_available_without_site_boundary": True,
+        "items": [],
+        "loop_diagnostics": {},
+        "warnings": [],
+        "info": [],
+    }
+    if not items:
+        diagnostics["loop_diagnostics"] = {
+            "attempted": False,
+            "candidate_curve_count": 0,
+            "closed_loop_check_available": False,
+            "appears_closed": None,
+            "closure_tolerance_m": 0.01,
+            "reason": "site_boundary is optional and not provided; boundary-dependent steps will be skipped",
+            "warnings": [],
+        }
+        diagnostics["info"].extend([
+            "site_boundary is optional.",
+            "equal-time shadow output can continue without site_boundary.",
+            "Boundary-dependent steps such as 5m/10m measurement line generation and boundary-based regulation checks will be skipped.",
+        ])
+        return diagnostics
+
+    if len(items) == 1:
+        diagnostics["warnings"].append("site_boundary received a single selected item; multiple Property Line segments or Model Lines may be required for a closed loop.")
+
+    for index, item in enumerate(items):
+        unwrapped = _try_unwrap(item)
+        category_name = _category_name(unwrapped)
+        category_match = _diagnose_site_category(unwrapped, category_name)
+        official = category_match.get("official_revit_api_category")
+        type_name = _type_name(unwrapped)
+        name = _element_name(unwrapped)
+        combined = " ".join([_safe_text(x) or "" for x in (type_name, name, category_name, official)])
+        curve_access = _diagnose_curve_access(unwrapped)
+        is_property = official == "OST_SiteProperty"
+        is_segment = official == "OST_SitePropertyLineSegment"
+        is_site_point = official == "OST_SitePointBoundary"
+        is_line_fallback = official in SITE_BOUNDARY_FALLBACK_LINE_CATEGORY_NAMES or _looks_like(combined, ["modelcurve", "modelline", "model line"])
+        is_detail = bool(_safe_attr(unwrapped, "ViewSpecific")) or _is_valid_owner_view_id(unwrapped) or _looks_like(combined, ["detailcurve", "detailline", "detail line"])
+        is_cad = _looks_like(combined, ["importinstance", "cadlink", "dwg", "dxf", "import"])
+        is_topo = official in SITE_BOUNDARY_TOPO_CATEGORY_NAMES or _looks_like(combined, ["toposolid", "sitesurface", "topography", "toposurface"])
+        is_related = official in SITE_BOUNDARY_RELATED_CATEGORY_NAMES
+        item_warnings = []
+        item_diagnostics = []
+        if unwrapped is None:
+            item_warnings.append("site_boundary contains None at index {0}; this item is ignored.".format(index))
+        if is_site_point:
+            item_warnings.append("OST_SitePointBoundary is related to Property Lines but a point alone is not a closed boundary loop and will not proceed to loop extraction.")
+        if is_detail:
+            item_warnings.append("Detail Line-like element is view-specific and is not accepted as a primary site_boundary input.")
+        if is_cad:
+            item_warnings.append("CAD import/link-like element is diagnostic only; CAD lines are not automatically adopted as site_boundary.")
+        if is_topo:
+            item_warnings.append("Toposolid/SiteSurface/Topography-like element is diagnostic only; terrain edges are not automatically adopted as site_boundary.")
+        if not curve_access.get("available"):
+            item_warnings.append("Curve/endpoint access is unavailable: {0}".format(curve_access.get("error")))
+        if is_line_fallback and not curve_access.get("endpoint_count"):
+            item_warnings.append("Model Lines fallback candidate cannot be confirmed as a closed loop because endpoints are unavailable.")
+        if not (is_property or is_segment or is_line_fallback):
+            item_warnings.append("site_boundary item is not recognized as Property Line / Site Property primary input or Model Lines fallback.")
+        if is_related:
+            item_diagnostics.append("site-related category is reported for diagnostics only unless usable boundary curves can be read safely.")
+
+        accepted = (unwrapped is not None) and (not is_detail) and (not is_cad) and (not is_topo) and (is_property or is_segment or (is_line_fallback and curve_access.get("available")))
+        if accepted:
+            diagnostics["accepted_count"] += 1
+        else:
+            diagnostics["rejected_count"] += 1
+        entry = {
+            "index": index,
+            "is_none": unwrapped is None,
+            "type": type_name,
+            "category_name": category_name,
+            "category_id": category_match.get("category_id"),
+            "category_match_method": category_match.get("category_match_method"),
+            "matched_revit_category": category_match.get("matched_revit_category"),
+            "official_revit_api_category": official,
+            "element_id": _element_id(unwrapped),
+            "name": name,
+            "is_property_line_candidate": is_property,
+            "is_property_line_segment_candidate": is_segment,
+            "is_site_point_boundary_related": is_site_point,
+            "is_model_line_fallback_candidate": is_line_fallback,
+            "is_detail_line_like": is_detail,
+            "is_cad_import_like": is_cad,
+            "is_toposolid_or_site_surface_like": is_topo,
+            "accepted": accepted,
+            "curve_access": curve_access,
+            "diagnostics": item_diagnostics,
+            "warnings": item_warnings,
+        }
+        diagnostics["items"].append(entry)
+        diagnostics["warnings"].extend(item_warnings)
+
+    diagnostics["loop_diagnostics"] = _diagnose_site_boundary_loop(diagnostics["items"])
+    diagnostics["warnings"].extend(diagnostics["loop_diagnostics"].get("warnings", []))
+    diagnostics["boundary_dependent_steps_available"] = diagnostics["accepted_count"] > 0 and diagnostics["loop_diagnostics"].get("closed_loop_check_available") is True
+    diagnostics["boundary_dependent_steps_skipped"] = not diagnostics["boundary_dependent_steps_available"]
+    if diagnostics["boundary_dependent_steps_skipped"]:
+        diagnostics["info"].append("site_boundary was provided, but boundary-dependent steps remain gated until a usable Property Line/Site Property or closed Model Lines loop can be read.")
+    return diagnostics
+
+
 def _settings_warnings(settings):
     warnings = []
     if settings is None:
@@ -561,18 +922,22 @@ def _build_success():
     warnings = []
 
     for key in INPUT_KEYS:
+        if key == "site_boundary":
+            continue
         if raw_inputs.get(key) is None:
             warnings.append("{0} input is empty.".format(key))
 
     shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
+    site_boundary = _diagnose_site_boundary(raw_inputs.get("site_boundary"))
     warnings.extend(shadow_casters.get("warnings", []))
+    warnings.extend(site_boundary.get("warnings", []))
     warnings.extend(_settings_warnings(raw_inputs.get("settings")))
 
     return {
         "success": True,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow v1 input diagnostics only; shadow calculation, sun position, shadow polygons, grid accumulation, and equal-time contours are not implemented yet.",
+        "message": "Dynamo_Shadow v1 input diagnostics only; site_boundary is optional, and shadow calculation, sun position, shadow polygons, grid accumulation, 5m/10m measurement lines, and equal-time contours are not implemented yet.",
         "legal_constants": LEGAL_CONSTANTS,
         "inputs": {
             "source": input_source,
@@ -583,6 +948,8 @@ def _build_success():
         },
         "shadow_casters": shadow_casters,
         "shadow_caster_policy": SHADOW_CASTER_POLICY,
+        "site_boundary": site_boundary,
+        "site_boundary_policy": SITE_BOUNDARY_POLICY,
         "planned_pipeline": PLANNED_PIPELINE,
         "warnings": warnings,
     }
@@ -590,6 +957,17 @@ def _build_success():
 
 def _build_failure(error_text):
     raw_inputs, input_source = _read_inputs()
+    shadow_casters = None
+    site_boundary = None
+    try:
+        shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
+    except Exception:
+        shadow_casters = None
+    try:
+        site_boundary = _diagnose_site_boundary(raw_inputs.get("site_boundary"))
+    except Exception:
+        site_boundary = None
+
     return {
         "success": False,
         "tool": TOOL_NAME,
@@ -603,6 +981,8 @@ def _build_failure(error_text):
             "level": _summarize_input(raw_inputs.get("level")),
             "settings": _summarize_input(raw_inputs.get("settings")),
         },
+        "shadow_casters": shadow_casters,
+        "site_boundary": site_boundary,
         "planned_pipeline": PLANNED_PIPELINE,
         "warnings": [],
         "error": error_text,

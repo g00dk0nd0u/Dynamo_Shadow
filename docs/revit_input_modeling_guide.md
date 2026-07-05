@@ -11,7 +11,7 @@
 `dynamo_loader.py` が `IN[]` を名前付き入力へ対応付ける前提で、Dynamo 入力契約は以下です。
 
 - `building_elements = IN[0]`: 複数選択された shadow caster proxy elements。
-- `site_boundary = IN[1]`: 敷地境界。
+- `site_boundary = IN[1]`: optional な敷地境界。未選択でも等時間日影出力フローは継続し、敷地境界依存ステップだけを skip する。
 - `level = IN[2] if exists else None`: optional な作業参照。
 - `settings = IN[3] if exists else None`: 平均地盤面、測定面高さ、緯度経度、真北角度、グリッド解像度など。
 
@@ -64,15 +64,31 @@ Mass は概略設計段階のボリュームスタディとして自然です。
 
 ## 5. Site boundary / 敷地境界
 
-v1初期検証では、Model Lines の閉じたループを使うことを第一候補とします。Dynamoではその Model Lines を `site_boundary` として選択します。
+`site_boundary = IN[1]` は optional input です。敷地境界に基づく 5m / 10m 測定線生成や境界ベースの法規判定には必要ですが、等時間日影図そのものの出力フローを開始するための必須入力ではありません。
 
-将来対応候補は以下です。
+site_boundary が未選択または空の場合でも、Dynamo_Shadow は fatal error にせず、等時間日影出力に向けた単一 pipeline を継続できる設計とします。この場合に skip するのは、敷地境界依存ステップだけです。
 
-- Property Lines
-- CADリンク境界
-- Floor境界
-- Area Boundary
-- Filled Region由来の境界
+skip される boundary-dependent steps は以下です。
+
+- Property Line / Site Boundary based offset
+- 5m / 10m 測定線生成
+- 境界ベースの法規参照・判定
+
+skip しない non-boundary-dependent steps は以下です。
+
+- shadow caster geometry reading
+- time-slice shadow projection
+- logical union
+- shadow duration accumulation
+- equal-time shadow output
+
+site_boundary がある場合の第一候補は Revit Property Line / Site Property です。Revit API 判定では `BuiltInCategory.OST_SiteProperty` と `BuiltInCategory.OST_SitePropertyLineSegment` を primary accepted category とします。`BuiltInCategory.OST_SitePointBoundary` は関連要素として診断しますが、点だけでは閉じた境界線として扱わず、単独では loop extraction に進めません。
+
+Model Lines の閉じたループは fallback として許容します。Dynamo graph の site_boundary 入力は複数選択対応とし、Property Line 全体、Property Line segments、または fallback の Model Lines 複数本を選択できるようにします。ただし Model Lines は第一候補ではありません。
+
+Detail Lines はビュー依存のため site_boundary 入力として非推奨です。CAD import lines は自動で site_boundary として採用しません。Toposolid / SiteSurface / Topography の外周も敷地境界そのものとして自動採用しません。必要な場合は、ユーザーが Revit Property Line / Site Property、または fallback の閉じた Model Lines loop として明示的に用意してください。
+
+この段階では入力診断のみを行います。境界オフセット、5m / 10m 測定線生成、日影計算、太陽位置計算、影ポリゴン生成、等時間線生成は将来工程です。
 
 ## 6. Level input
 
@@ -108,10 +124,14 @@ v1以降の実装順序は、以下を基本とします。
 1. input diagnostics
 2. shadow caster proxy validation
 3. shadow caster geometry access check
-4. site boundary curve diagnostics
-5. settings normalization
-6. footprint extraction from user-defined proxy geometry
-7. time-slice shadow projection per caster
-8. logical union of shadows per time slice
-9. shadow duration accumulation without double counting
-10. equal-time contour generation
+4. optional site boundary source validation
+5. property line / site property diagnostics when provided
+6. model lines fallback closed-loop diagnostics when provided
+7. settings normalization
+8. footprint extraction from user-defined shadow proxy geometry
+9. optional site boundary loop extraction
+10. optional 5m / 10m measurement line generation when site_boundary is available
+11. time-slice shadow projection per caster
+12. logical union of shadows per time slice
+13. shadow duration accumulation without double counting
+14. equal-time contour generation

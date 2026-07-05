@@ -11,7 +11,7 @@ Dynamo / Revit 上で概略設計段階の日影検討を進める前に、v0/v1
 将来の実装では、次の入力を Dynamo 入力または設定プロファイルとして扱う想定とする。
 
 - `building_elements`: 単一要素ではなく複数選択を前提とする shadow caster proxy elements。ユーザーが明示的に作成・選択した Mass / Generic Model を対象とする。
-- `site_boundary`: 敷地境界。
+- `site_boundary`: optional な敷地境界。未入力でも等時間日影図の出力フローは継続可能で、敷地境界依存ステップだけを skip する。
 - `level`: optional な参照入力。法規上の高さ基準ではなく、平均地盤面でもない。
 - `settings.average_ground_level_elevation_m`: 法規上の高さ基準として扱う平均地盤面高さ。
 - `settings.measurement_height_m`: 平均地盤面からの測定面高さ。
@@ -35,6 +35,17 @@ Dynamo / Revit 上で概略設計段階の日影検討を進める前に、v0/v1
 - Revit上に一体化済みの一時モデルを作らない。
 
 将来の計算では、各 caster ごとに影を投影し、同一時刻内の影は logical union として扱う。重なった影は二重加算しない。
+
+
+## Site boundary 方針
+
+`site_boundary` は optional input とする。site_boundary が無い場合でも fatal error にせず、等時間日影図の出力フローは継続可能とする。skip するのは Property Line / Site Boundary based offset、5m / 10m measurement line generation、boundary-based regulation reference check などの boundary-dependent steps だけであり、shadow caster geometry reading、time-slice shadow projection、logical union、shadow duration accumulation、equal-time shadow output は継続対象である。
+
+site_boundary がある場合の第一候補は Revit Property Line / Site Property とし、Revit API `BuiltInCategory` による判定を優先する。primary accepted category は `BuiltInCategory.OST_SiteProperty` と `BuiltInCategory.OST_SitePropertyLineSegment` とする。`BuiltInCategory.OST_SitePointBoundary` は関連診断扱いであり、単独では閉じた境界線として扱わない。
+
+Model Lines の閉じたループは fallback として許容するが、第一候補ではない。Detail Lines はビュー依存のため非推奨または rejected/warning とする。CAD import lines や Toposolid / SiteSurface / Topography 外周は、敷地境界として自動採用しない。Revit上に敷地境界用の一時モデルは作成しない。
+
+v1 出力候補には `site_boundary` diagnostics と `site_boundary_policy` を追加する。今回PRでは入力診断と簡易 loop_diagnostics までとし、5m / 10m 測定線生成、日影計算、太陽位置計算、影ポリゴン生成、等時間線生成は非スコープとする。
 
 ## 固定値候補
 
@@ -78,6 +89,8 @@ legal_constants
 inputs
 shadow_casters
 shadow_caster_policy
+site_boundary
+site_boundary_policy
 planned_pipeline
 warnings
 error
@@ -90,13 +103,17 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 1. input diagnostics
 2. shadow caster proxy validation
 3. shadow caster geometry access check
-4. site boundary curve diagnostics
-5. settings normalization
-6. footprint extraction from user-defined proxy geometry
-7. time-slice shadow projection per caster
-8. logical union of shadows per time slice
-9. shadow duration accumulation without double counting
-10. equal-time contour generation
+4. optional site boundary source validation
+5. property line / site property diagnostics when provided
+6. model lines fallback closed-loop diagnostics when provided
+7. settings normalization
+8. footprint extraction from user-defined shadow proxy geometry
+9. optional site boundary loop extraction
+10. optional 5m / 10m measurement line generation when site_boundary is available
+11. time-slice shadow projection per caster
+12. logical union of shadows per time slice
+13. shadow duration accumulation without double counting
+14. equal-time contour generation
 
 ## 非スコープ
 
@@ -107,8 +124,8 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 - BoundingBox を使った日影外形、影ポリゴン、日影判定
 - Revit上での一体化済み一時モデル作成
 - 平均地盤面の自動算定
-- Property Line 完全対応
-- CADリンク境界自動認識
+- Property Line / Site Property の完全な loop extraction と offset
+- CADリンク境界自動認識または CAD lines の site_boundary 自動採用
 - 5m / 10m 測定線生成
 - 日影計算ロジック
 - 厳密な太陽位置計算
