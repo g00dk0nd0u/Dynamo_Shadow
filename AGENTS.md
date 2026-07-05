@@ -88,6 +88,19 @@ The project is still in an early development stage. The current files must not b
 - Formal permit-level shadow checks are outside this repository scope and should be done with dedicated tools such as ADS.
 - Do not implement shadow calculation, sun position, shadow polygons, measurement-grid accumulation, or equal-time contours unless explicitly requested.
 
+## Geometry extraction rules
+
+- Geometry extraction must be read-only.
+- Do not create Revit elements during geometry diagnostics.
+- Read each selected shadow caster separately.
+- Do not merge selected casters into a temporary unified model.
+- Do not auto-extract Walls, Floors, Roofs, Equipment, or existing model elements.
+- Mass / Generic Model shadow caster proxy remains the accepted initial source.
+- BoundingBox may be used only for diagnostic summary or future analysis extent estimation.
+- BoundingBox must not be used for shadow geometry or shadow judgement.
+- Footprint candidates may be diagnosed, but footprint polygons must not be generated unless explicitly requested.
+- Do not implement sun position, shadow projection, shadow polygons, measurement grid accumulation, 5m/10m measurement lines, or equal-time contours unless explicitly requested.
+
 ## Settings input rules
 
 - `settings` is optional for input diagnostics.
