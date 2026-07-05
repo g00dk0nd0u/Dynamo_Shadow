@@ -126,36 +126,6 @@ v1では、以下をまだ行いません。
 - 等時間線生成
 - 建築確認申請品質の図面出力
 
-## 9. Implementation roadmap
-
-v1以降の実装順序は、以下を基本とします。
-
-1. input diagnostics
-2. shadow caster proxy validation
-3. shadow caster geometry access check
-4. shadow caster geometry extraction diagnostics
-5. solid / face / edge summary
-6. footprint candidate diagnostics
-7. optional site boundary source validation
-8. property line / site property diagnostics when provided
-9. model lines fallback closed-loop diagnostics when provided
-10. settings coercion and normalization
-11. law56_2 awareness context diagnostics
-12. measurement plane readiness check
-13. measurement plane construction diagnostics
-14. pipeline readiness diagnostics
-15. footprint extraction from user-defined shadow proxy geometry
-16. optional site boundary loop extraction
-17. legal judgement mask preparation
-18. optional 5m / 10m measurement line generation when site_boundary is available
-19. true solar time diagnostics
-20. sun vector calculation
-21. time-slice shadow projection per caster
-22. logical union of shadows per time slice
-23. shadow duration accumulation without double counting
-24. equal-time contour generation
-25. legal judgement report
-
 ## Measurement plane input policy
 
 The shadow measurement plane is not a Revit Level. It is the Article 56-2 horizontal plane at a designated height above average ground level:
@@ -182,7 +152,7 @@ Avoid overly complex, curved, or self-intersecting proxy shapes where possible. 
 
 `site_boundary` is not required for footprint diagnostics. It will be needed later for own-site exclusion, beyond-5m ranges, target-area masks, and legal judgement masks. See [`footprint_extraction_v1.md`](footprint_extraction_v1.md).
 
-## Roadmap order
+## 9. Implementation roadmap
 
 1. input diagnostics
 2. shadow caster proxy validation

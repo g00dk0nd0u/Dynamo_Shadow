@@ -920,6 +920,18 @@ def _dedupe_raw_points(points):
     return out
 
 
+def _is_line_curve_type_name(curve_type):
+    if not curve_type:
+        return False
+    try:
+        normalized = str(curve_type).strip().lower()
+    except Exception:
+        return False
+    normalized = normalized.replace(" ", "")
+    leaf = normalized.split(".")[-1]
+    return leaf == "line"
+
+
 def _summarize_curve_for_footprint(value):
     warnings = []
     curve = _edge_to_curve(value)
@@ -958,7 +970,7 @@ def _extract_edge_loop_candidates_from_face(face, face_summary=None):
             horiz=(max(zvals)-min(zvals)) <= 1e-6
         else:
             horiz=None
-        non_line=any((ct or "").lower() not in ("line", "db.line") and "line" not in (ct or "").lower() for ct in curve_types)
+        non_line=any(ct is not None and not _is_line_curve_type_name(ct) for ct in curve_types)
         loops_out.append({"loop_index":li,"edge_count":_safe_count(_safe_iter(loop)),"curve_count":curve_count,"endpoint_count":len(endpoints),"unique_endpoint_count":len(unique),"endpoints_raw_sample":endpoints[:12],"z_min_raw":min(zvals) if zvals else None,"z_max_raw":max(zvals) if zvals else None,"z_variation_raw":(max(zvals)-min(zvals)) if zvals else None,"closed_candidate":closed,"closure_method":method,"horizontal_candidate":horiz,"curve_types":sorted(set([c for c in curve_types if c])),"total_length_raw":total if total_known else None,"has_arc_or_non_line_curve":non_line,"formal_polygon_generated":False,"self_intersection_checked":False,"warnings":lw})
     if not loops:
         warnings.append("face EdgeLoops unavailable or empty; no footprint edge loop candidate was read.")
