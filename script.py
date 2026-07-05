@@ -47,6 +47,7 @@ PLANNED_PIPELINE = [
     "settings coercion and normalization",
     "measurement plane readiness check",
     "pipeline readiness diagnostics",
+    "measurement plane construction",
     "footprint extraction from user-defined shadow proxy geometry",
     "optional site boundary loop extraction",
     "optional 5m / 10m measurement line generation when site_boundary is available",

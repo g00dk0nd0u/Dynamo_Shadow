@@ -117,14 +117,15 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 10. settings coercion and normalization
 11. measurement plane readiness check
 12. pipeline readiness diagnostics
-13. footprint extraction from user-defined shadow proxy geometry
-14. optional site boundary loop extraction
-15. optional 5m / 10m measurement line generation when site_boundary is available
-16. sun vector calculation
-17. time-slice shadow projection per caster
-18. logical union of shadows per time slice
-19. shadow duration accumulation without double counting
-20. equal-time contour generation
+13. measurement plane construction
+14. footprint extraction from user-defined shadow proxy geometry
+15. optional site boundary loop extraction
+16. optional 5m / 10m measurement line generation when site_boundary is available
+17. sun vector calculation
+18. time-slice shadow projection per caster
+19. logical union of shadows per time slice
+20. shadow duration accumulation without double counting
+21. equal-time contour generation
 
 ## 非スコープ
 

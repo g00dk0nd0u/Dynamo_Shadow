@@ -133,17 +133,21 @@ v1以降の実装順序は、以下を基本とします。
 1. input diagnostics
 2. shadow caster proxy validation
 3. shadow caster geometry access check
-4. optional site boundary source validation
-5. property line / site property diagnostics when provided
-6. model lines fallback closed-loop diagnostics when provided
-7. settings coercion and normalization
-8. measurement plane readiness check
-9. pipeline readiness diagnostics
-10. footprint extraction from user-defined shadow proxy geometry
-11. optional site boundary loop extraction
-12. optional 5m / 10m measurement line generation when site_boundary is available
-13. sun vector calculation
-14. time-slice shadow projection per caster
-15. logical union of shadows per time slice
-16. shadow duration accumulation without double counting
-17. equal-time contour generation
+4. shadow caster geometry extraction diagnostics
+5. solid / face / edge summary
+6. footprint candidate diagnostics
+7. optional site boundary source validation
+8. property line / site property diagnostics when provided
+9. model lines fallback closed-loop diagnostics when provided
+10. settings coercion and normalization
+11. measurement plane readiness check
+12. pipeline readiness diagnostics
+13. measurement plane construction
+14. footprint extraction from user-defined shadow proxy geometry
+15. optional site boundary loop extraction
+16. optional 5m / 10m measurement line generation when site_boundary is available
+17. sun vector calculation
+18. time-slice shadow projection per caster
+19. logical union of shadows per time slice
+20. shadow duration accumulation without double counting
+21. equal-time contour generation
