@@ -88,6 +88,18 @@ The project is still in an early development stage. The current files must not b
 - Formal permit-level shadow checks are outside this repository scope and should be done with dedicated tools such as ADS.
 - Do not implement shadow calculation, sun position, shadow polygons, measurement-grid accumulation, or equal-time contours unless explicitly requested.
 
+## Settings input rules
+
+- `settings` is optional for input diagnostics.
+- Missing `settings` must not be treated as a fatal error.
+- Future equal-time shadow calculation requires explicit `average_ground_level_elevation_m`, `measurement_height_m`, `latitude`, `longitude`, and `true_north_deg`.
+- Do not use Revit Level Elevation as average ground level.
+- Do not use Revit Level Elevation as measurement plane.
+- Settings units should be meters and degrees unless explicitly changed in a future task.
+- Do not invent legal defaults for `measurement_height_m` or `average_ground_level_elevation_m`.
+- Diagnostic defaults are allowed only for non-legal computational parameters such as `grid_resolution_m`, `analysis_margin_m`, and `closure_tolerance_m`.
+- Do not implement sun position, shadow polygons, measurement grid accumulation, 5m/10m measurement lines, or equal-time contours unless explicitly requested.
+
 ## Site boundary input rules
 
 - `site_boundary` is optional. Missing `site_boundary` must not be treated as a fatal error.
