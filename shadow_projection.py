@@ -214,6 +214,7 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
         "revit_elements_created": False,
         "measurement_plane_elevation_m": _round(plane_z),
         "source_geometry_point_strategy": source_strategy,
+        "geometry_instance_source_strategy": (shadow_caster_geometry or {}).get("geometry_instance_source_strategy"),
         "source_geometry_point_count": len(points),
         "skipped_point_count_below_or_on_measurement_plane": skipped_point_count,
         "projectable_source_point_count": len(projectable_points),
