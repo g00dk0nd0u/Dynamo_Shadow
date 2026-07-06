@@ -1,48 +1,58 @@
 # Dynamo Shadow
 
-Dynamo / Revit 上で、建築基準法の日影規制に関する等時間日影図の検討を進めるための実験リポジトリです。
+Dynamo Shadow is a Dynamo/Revit diagnostic prototype for studying workflows related to Japanese Building Standard Law Article 56-2 shadow regulations.
 
-## 現在の位置づけ
+This repository is for early-stage research and review. The current implementation is diagnostic-only: it does not perform formal shadow projection, equal-time contour generation, permit-ready calculation, or legal OK/NG judgement.
 
-このリポジトリは初期整備段階です。現時点では、申請図として利用できる日影計算ロジックは実装していません。
+## Current diagnostics
 
-- 調査メモ: `docs/research_shadow_diagram.md`
-- v0 仕様メモ: `docs/spec_v0.md`
-- Revit側の入力モデル方針は `docs/revit_input_modeling_guide.md` を参照してください。
-- 開発者・Codex向けの常設ルールは `AGENTS.md` を参照してください。
-- 既存 Dynamo / Revit 関連ファイル: `Shadow.dyn`, `Shadow.html`, `script.py`
+The prototype currently focuses on input and readiness diagnostics, including:
 
-## 実行構成
+- Selected shadow caster validation for user-defined Mass or Generic Model proxies.
+- Optional site boundary input diagnostics, with Revit Property Line / Site Property as the intended primary source.
+- Settings normalization for future Article 56-2 workflow inputs.
+- Measurement-plane diagnostic checks using explicit settings, not Revit Level elevations.
+- Read-only geometry and footprint-candidate diagnostics for selected proxy elements.
+- Unit-conversion diagnostics that preserve Revit internal-unit values and add meter-based fields.
+- Optional sanitized development debug logs.
 
-`Shadow.dyn`:
-- Dynamo graph
-- Python Node is only a minimal bootstrap
+## Intended Revit inputs
 
-`dynamo_loader.py`:
-- resolves workspace paths
-- maps IN[] to named INPUTS
-- executes script.py
-- returns diagnostics
+- `building_elements`: one or more selected Mass or Generic Model proxy elements used as shadow caster diagnostics.
+- `site_boundary`: optional; intended to come from Revit Property Line / Site Property inputs when boundary-dependent diagnostics are needed.
+- `settings`: optional for diagnostics, but future Article 56-2 calculation work requires explicit values such as average ground level, measurement height, latitude, longitude, and true north.
 
-`script.py`:
-- main shadow calculation logic
+Existing Walls, Floors, Roofs, equipment, CAD imports, and topography-derived edges are not auto-used as shadow casters or site boundaries.
 
-## 開発方針
+## Project structure
 
-- Codex Cloud で安全に作業できるよう、生成物やバックアップを Git 管理から除外します。
-- 変更は小さく保ち、Dynamo / Revit の既存ファイルを不用意に変更しません。
-- 日影計算ロジックは、仕様と検証方針を固めてから段階的に実装します。
-- `.dyn` はJSONとして直接読めるため、コピー用 `.json` は管理しません。
+- `Shadow.dyn` is the Dynamo graph and contains the Python Node bootstrap.
+- `dynamo_loader.py` resolves workspace paths, maps Dynamo `IN[]` values to named `INPUTS`, runs `script.py`, and returns diagnostics.
+- `script.py` orchestrates imports, fallback behavior outside Dynamo, and top-level `OUT` construction.
+- `shadow_*.py` modules contain focused policies, utilities, input diagnostics, settings normalization, measurement-plane diagnostics, geometry diagnostics, footprint diagnostics, unit conversion, debug logging, and readiness checks.
+- `docs/` contains research notes, specifications, and implementation notes.
 
-## 生成ファイルの扱い
+## Debug logs
 
-以下のようなファイルは Git 管理対象外です。
+Debug logging is disabled by default. Committed debug logs, when used for review, must stay under `debug_logs/`, remain small, and be sanitized. Logs must not contain local paths, usernames, email addresses, client or project names, personal cloud paths, raw Revit object representations, or large geometry payloads.
 
-- `logs/`, `output/`, `backup/`, `backups/`
-- `*.log`, `*_log.txt`
-- Python キャッシュや仮想環境
-- OS / エディタ由来の一時ファイル
+## Units
 
-## 注意
+Revit geometry values are preserved as raw internal units, normally feet. Settings and Article 56-2 measurement-plane values are in meters and degrees unless a future specification changes them. Meter conversions are added with explicit `_m`, `_m2`, or `_m3` suffixes; raw fields are not silently replaced.
 
-このリポジトリの内容は検討・開発用です。建築確認申請や法適合判定に使う場合は、法令・自治体条例・審査機関の要件を必ず確認してください。
+## Documentation
+
+- Research notes: `docs/research_shadow_diagram.md`
+- v0 specification: `docs/spec_v0.md`
+- Revit input modeling guide: `docs/revit_input_modeling_guide.md`
+- Settings schema: `docs/settings_schema_v1.md`
+- Measurement plane notes: `docs/measurement_plane_v1.md`
+- Geometry extraction notes: `docs/geometry_extraction_v1.md`
+- Footprint extraction notes: `docs/footprint_extraction_v1.md`
+- Debug logging notes: `docs/debug_logging_v1.md`
+- Unit conversion notes: `docs/unit_conversion_v1.md`
+- Contributor and agent rules: `AGENTS.md`
+
+## Scope warning
+
+This repository must not be used as a complete building permit calculation tool. Formal code checks, permit submissions, and regulatory decisions require validated professional tools and confirmation against applicable laws, ordinances, and reviewing authority requirements.

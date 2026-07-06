@@ -32,8 +32,10 @@ The project is still in an early development stage. The current files must not b
 
 ### README.md
 
-- Human-facing project overview.
+- Team-facing entry point and human-facing project overview.
 - Keep it concise.
+- README.md must be maintained in English.
+- Japanese notes may exist in docs/issues, but README.md should remain English.
 
 ### docs/
 
