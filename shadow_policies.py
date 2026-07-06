@@ -140,6 +140,36 @@ UNIT_CONVERSION_POLICY = {
     ],
 }
 
+
+SUN_POSITION_POLICY = {
+    "purpose": "diagnostic_true_solar_time_sun_position_table",
+    "diagnostic_only": True,
+    "supported_time_basis": ["true_solar_time"],
+    "time_step_minutes": 30,
+    "requires_explicit_settings": ["site_latitude_deg", "solar_declination_deg"],
+    "formula": {
+        "hour_angle_deg": "15 * (true_solar_hour - 12)",
+        "solar_altitude": "asin(sin(latitude) * sin(declination) + cos(latitude) * cos(declination) * cos(hour_angle))",
+        "solar_azimuth": "atan2(sin(hour_angle), cos(hour_angle) * sin(latitude) - tan(declination) * cos(latitude)) + 180deg",
+        "zenith_deg": "90 - solar_altitude_deg",
+        "shadow_length_factor": "1 / tan(solar_altitude) when altitude is above horizon",
+    },
+    "azimuth_convention": "degrees clockwise from true north: 0=N, 90=E, 180=S, 270=W",
+    "shadow_direction_vector_convention": "unit horizontal vector away from the sun in true-north axes: x_east=sin(azimuth+180), y_north=cos(azimuth+180)",
+    "not_implemented_in_this_pr": [
+        "JST to true solar time conversion",
+        "equation-of-time correction",
+        "135E standard meridian calculation except as future time-conversion reference",
+        "sun vector projection into Revit model coordinates",
+        "shadow projection",
+        "equal-time contours",
+        "5m / 10m legal masks",
+        "site-boundary legal judgement",
+        "legal OK/NG judgement",
+        "Revit element creation",
+    ],
+}
+
 DEBUG_LOG_POLICY = {
     "purpose": "development_review_debug_log",
     "enabled_by_default": False,

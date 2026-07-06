@@ -49,6 +49,7 @@ try:
         MEASUREMENT_PLANE_POLICY,
         DEBUG_LOG_POLICY,
         UNIT_CONVERSION_POLICY,
+        SUN_POSITION_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
     from shadow_settings import _normalize_settings
@@ -58,6 +59,7 @@ try:
     from shadow_readiness import _build_pipeline_readiness
     from shadow_debug import _write_debug_log_if_enabled, _build_debug_log_status
     from shadow_units import _build_unit_conversion_diagnostics
+    from shadow_sun import _build_sun_position_diagnostics
 except Exception:
     _IMPORT_ERROR_TEXT = traceback.format_exc()
 else:
@@ -147,6 +149,7 @@ def _build_success():
     measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
     shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized, measurement_plane)
     footprint_extraction = _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized, site_boundary)
+    sun_time_slices, sun_position_diagnostics, sun_position_policy = _build_sun_position_diagnostics(settings_normalized)
     pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
@@ -155,6 +158,7 @@ def _build_success():
     warnings.extend(measurement_plane.get("warnings", []))
     warnings.extend(shadow_caster_geometry.get("warnings", []))
     warnings.extend(footprint_extraction.get("warnings", []))
+    warnings.extend(sun_position_diagnostics.get("warnings", []))
     warnings.extend(pipeline_readiness.get("blockers_for_equal_time_shadow", []))
     warnings.extend(pipeline_readiness.get("blockers_for_footprint_extraction", []))
     warnings.extend(pipeline_readiness.get("blockers_for_measurement_plane", []))
@@ -169,7 +173,7 @@ def _build_success():
         "success": True,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint polygon generation, Revit element creation, true solar time calculation, sun vector calculation, shadow projection, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented.",
+        "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint polygon generation, Revit element creation, JST conversion, equation-of-time correction, shadow projection, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented. A diagnostic-only true-solar-time sun position table is included when explicit site_latitude_deg and solar_declination_deg are provided.",
         "legal_constants": LEGAL_CONSTANTS,
         "unit_conversion_diagnostics": unit_conversion_diagnostics,
         "unit_conversion_policy": UNIT_CONVERSION_POLICY,
@@ -185,6 +189,9 @@ def _build_success():
         "shadow_caster_geometry": shadow_caster_geometry,
         "footprint_extraction": footprint_extraction,
         "footprint_extraction_policy": FOOTPRINT_EXTRACTION_POLICY,
+        "sun_time_slices": sun_time_slices,
+        "sun_position_diagnostics": sun_position_diagnostics,
+        "sun_position_policy": sun_position_policy,
         "law56_2_awareness": law56_2_awareness,
         "measurement_plane": measurement_plane,
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
@@ -217,6 +224,9 @@ def _build_failure(error_text):
     law56_2_awareness = None
     measurement_plane = None
     footprint_extraction = None
+    sun_time_slices = []
+    sun_position_diagnostics = None
+    sun_position_policy = SUN_POSITION_POLICY
     try:
         unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
     except Exception:
@@ -244,6 +254,7 @@ def _build_failure(error_text):
     try:
         shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters or {}, settings_normalized or {}, measurement_plane)
         footprint_extraction = _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized or {}, site_boundary or {})
+        sun_time_slices, sun_position_diagnostics, sun_position_policy = _build_sun_position_diagnostics(settings_normalized or {})
         pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane, footprint_extraction)
     except Exception:
         pipeline_readiness = None
@@ -268,6 +279,9 @@ def _build_failure(error_text):
         "shadow_caster_geometry": shadow_caster_geometry,
         "footprint_extraction": footprint_extraction,
         "footprint_extraction_policy": FOOTPRINT_EXTRACTION_POLICY,
+        "sun_time_slices": sun_time_slices,
+        "sun_position_diagnostics": sun_position_diagnostics,
+        "sun_position_policy": sun_position_policy,
         "law56_2_awareness": law56_2_awareness,
         "measurement_plane": measurement_plane,
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
