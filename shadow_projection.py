@@ -91,6 +91,14 @@ def _extent_from_points(points):
     }
 
 
+def _vertical_delta_to_measurement_plane(point, measurement_plane_elevation_m):
+    z = _safe_float(point.get("z_m"))
+    plane_z = _safe_float(measurement_plane_elevation_m)
+    if z is None or plane_z is None:
+        return None
+    return z - plane_z
+
+
 def _project_point(point, measurement_plane_elevation_m, direction, length_factor):
     z = _safe_float(point.get("z_m"))
     x = _safe_float(point.get("x_m"))
@@ -99,9 +107,11 @@ def _project_point(point, measurement_plane_elevation_m, direction, length_facto
     dy = _safe_float((direction or {}).get("y_north"))
     factor = _safe_float(length_factor)
     plane_z = _safe_float(measurement_plane_elevation_m)
-    if None in (z, x, y, dx, dy, factor, plane_z):
+    vertical_delta_m = _vertical_delta_to_measurement_plane(point, measurement_plane_elevation_m)
+    if None in (z, x, y, dx, dy, factor, plane_z, vertical_delta_m):
         return None
-    vertical_delta_m = z - plane_z
+    if vertical_delta_m <= 0.0:
+        return None
     horizontal_offset_m = vertical_delta_m * factor
     return {
         "source_caster_index": point.get("caster_index"),
@@ -128,6 +138,18 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
     if not slices:
         warnings.append("sun_time_slices is empty; diagnostic shadow projection point cloud is skipped non-fatally.")
 
+    projectable_points = []
+    skipped_point_count = 0
+    if plane_z is not None:
+        for point in points:
+            vertical_delta_m = _vertical_delta_to_measurement_plane(point, plane_z)
+            if vertical_delta_m is None:
+                continue
+            if vertical_delta_m <= 0.0:
+                skipped_point_count += 1
+            else:
+                projectable_points.append(point)
+
     slice_outputs = []
     if plane_z is not None and points and slices:
         for index, sun_slice in enumerate(slices):
@@ -138,7 +160,7 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
             if not direction or factor is None:
                 slice_warnings.append("shadow_direction_vector or shadow_length_factor is unavailable for this slice; projection skipped.")
             else:
-                for point in points:
+                for point in projectable_points:
                     pp = _project_point(point, plane_z, direction, factor)
                     if pp is not None:
                         projected.append(pp)
@@ -150,6 +172,8 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
                 "shadow_direction_vector": direction,
                 "shadow_length_factor": factor,
                 "source_point_count": len(points),
+                "skipped_point_count_below_or_on_measurement_plane": skipped_point_count,
+                "projectable_source_point_count": len(projectable_points),
                 "projected_point_count": len(projected),
                 "projected_points": projected,
                 "projected_extent_m": _extent_from_points(projected_points),
@@ -167,6 +191,8 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
         "revit_elements_created": False,
         "measurement_plane_elevation_m": _round(plane_z),
         "source_geometry_point_count": len(points),
+        "skipped_point_count_below_or_on_measurement_plane": skipped_point_count,
+        "projectable_source_point_count": len(projectable_points),
         "source_geometry_extent_m": _extent_from_points(points),
         "slice_count": len(slice_outputs),
         "slices": slice_outputs,
