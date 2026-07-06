@@ -23,6 +23,7 @@ PLANNED_PIPELINE = [
     "shadow caster geometry access check",
     "shadow caster geometry extraction diagnostics",
     "solid / face / edge summary",
+    "Revit internal unit conversion diagnostics",
     "footprint candidate diagnostics",
     "footprint edge loop diagnostics",
     "footprint extraction readiness diagnostics",

@@ -82,7 +82,7 @@ def _minimal_import_failure(error_text):
         "tool": "Dynamo_Shadow",
         "stage": "v1_footprint_extraction_diagnostics",
         "message": "script.py failed while importing diagnostic modules.",
-        "warnings": [],
+        "warnings": list(unit_conversion_diagnostics.get("warnings", [])),
         "error": error_text,
         "debug_log": {
             "enabled": False,
@@ -203,6 +203,10 @@ def _build_failure(error_text):
     measurement_plane = None
     footprint_extraction = None
     try:
+        unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
+    except Exception:
+        unit_conversion_diagnostics = {"available": False, "diagnostic_only": True, "warnings": ["unit conversion diagnostics could not be built during failure handling"]}
+    try:
         shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
     except Exception:
         shadow_casters = None
@@ -235,6 +239,8 @@ def _build_failure(error_text):
         "stage": STAGE_NAME,
         "message": "script.py failed while building v1 footprint extraction diagnostics.",
         "legal_constants": LEGAL_CONSTANTS,
+        "unit_conversion_diagnostics": unit_conversion_diagnostics,
+        "unit_conversion_policy": UNIT_CONVERSION_POLICY,
         "inputs": {
             "source": input_source,
             "building_elements": _summarize_input(raw_inputs.get("building_elements")),
@@ -257,7 +263,7 @@ def _build_failure(error_text):
         "settings_policy": SETTINGS_POLICY,
         "pipeline_readiness": pipeline_readiness,
         "planned_pipeline": PLANNED_PIPELINE,
-        "warnings": [],
+        "warnings": list(unit_conversion_diagnostics.get("warnings", [])),
         "error": error_text,
         "debug_log": _build_debug_log_status(False, False),
         "debug_log_policy": DEBUG_LOG_POLICY,

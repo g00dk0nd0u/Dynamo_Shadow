@@ -126,6 +126,7 @@
       "legal OK/NG judgement"
     ],
     "planned_pipeline_pending": [
+      "pipeline readiness diagnostics",
       "formal footprint polygon generation",
       "optional site boundary loop extraction",
       "legal judgement mask preparation",
@@ -314,6 +315,33 @@
   "stage": "v1_footprint_extraction_diagnostics",
   "success": true,
   "tool": "Dynamo_Shadow",
+  "unit_conversion_summary": {
+    "area": {
+      "fallback_factor": 0.09290304,
+      "internal_unit": "square_foot",
+      "legal_unit": "square_meter"
+    },
+    "available": true,
+    "backend": "fallback_factor",
+    "converted_fields_added": true,
+    "converted_fields_suffix": "_m / _m2 / _m3",
+    "diagnostic_only": true,
+    "length": {
+      "fallback_factor": 0.3048,
+      "internal_unit": "foot",
+      "legal_unit": "meter",
+      "reverse_fallback_factor": 3.280839895013123
+    },
+    "raw_fields_preserved": true,
+    "used_for_legal_judgement": false,
+    "used_for_shadow_projection": false,
+    "volume": {
+      "fallback_factor": 0.028316846592,
+      "internal_unit": "cubic_foot",
+      "legal_unit": "cubic_meter"
+    },
+    "warnings": []
+  },
   "warnings": [
     "building_elements input is empty.",
     "level input is empty.",

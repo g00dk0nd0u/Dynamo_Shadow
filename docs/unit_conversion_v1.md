@@ -14,3 +14,11 @@ This version adds diagnostics only:
 - `unit_conversion_diagnostics` reports the active conversion backend.
 
 These diagnostics do not mean the tool is ready for legal judgement. Formal footprint polygon generation, `CurveLoop` creation, shadow projection, equal-time contours, and legal judgement remain unimplemented.
+
+## Measurement-plane relation comparisons
+
+Raw/internal z diagnostics must compare Revit internal-unit z values against `measurement_plane.elevation_internal_candidate`. Raw feet must not be compared directly with `measurement_plane.elevation_m`.
+
+Meter diagnostics compare meter-converted z values against `measurement_plane.elevation_m`. Both relation candidates are diagnostic only and are not used for shadow geometry, projection, or legal judgement.
+
+Sanitized debug logs include a compact `unit_conversion_summary` so reviewers can confirm the conversion backend and fallback factors without logging raw Revit objects or full geometry payloads.

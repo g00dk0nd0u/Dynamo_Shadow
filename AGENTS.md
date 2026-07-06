@@ -209,3 +209,10 @@ Before opening a PR, confirm:
 - Do not implement formal footprint polygon generation, shadow projection, or legal judgement in a unit conversion PR.
 - Debug logs may include unit conversion summaries but must remain sanitized.
 - The debug log privacy scan must pass when debug logs are committed.
+
+## Unit-safe comparison rules
+
+- Do not directly compare Revit raw internal units with SI meter values.
+- When raw/internal comparison is needed, convert the measurement plane to `elevation_internal_candidate` and compare raw z values against that internal candidate.
+- Meter comparison must use converted meter fields and the meter-based measurement plane elevation.
+- Debug logs may include compact unit conversion summaries, but they must remain sanitized.

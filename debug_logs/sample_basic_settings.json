@@ -1,88 +1,9 @@
 {
-  "debug_log": {
-    "attempted": false,
-    "enabled": false,
-    "error": null,
-    "path": null,
-    "relative_path": null,
-    "warnings": [],
-    "written": false
-  },
-  "debug_log_policy": {
-    "committed_review_artifacts_allowed": true,
-    "default_directory": "debug_logs",
-    "default_filename": "latest_debug.json",
-    "enabled_by_default": false,
-    "enabled_by_settings_key": "settings.debug_log_enabled",
-    "fixed_absolute_paths_allowed": false,
-    "fixed_filename_overwrite": true,
-    "non_fatal_on_write_failure": true,
-    "personal_paths_allowed": false,
-    "purpose": "development_review_debug_log",
-    "raw_revit_object_dump_allowed": false,
-    "sanitized": true,
-    "timestamped_log_files_allowed": false
-  },
-  "footprint_extraction": {
-    "accepted_caster_count": 0,
-    "best_candidates": [],
-    "candidate_count": 0,
-    "casters_with_candidates": [],
-    "casters_without_candidates": [],
+  "debug_schema_version": "v1",
+  "error_summary": null,
+  "footprint_extraction_summary": {
     "closed_loop_candidate_count": 0,
     "count": 0,
-    "diagnostic_only": true,
-    "formal_footprint_polygon_generated": false,
-    "info": [
-      "Footprint candidates are Revit raw_internal_units diagnostics with meter-converted fields; no formal footprint polygon or CurveLoop is generated.",
-      "site_boundary is not required for footprint diagnostics, but is required later for legal judgement masks.",
-      "Same-site multiple buildings awareness is retained for future duration accumulation; no caster union is performed in this PR."
-    ],
-    "loop_candidate_count": 0,
-    "policy": {
-      "accepted_shadow_caster_sources": [
-        "user_selected_mass",
-        "user_selected_generic_model"
-      ],
-      "accepted_sources": [
-        "bottom_face_candidate",
-        "planar_face_edge_loops",
-        "edge_loop_candidates"
-      ],
-      "auto_extract_existing_building_model": false,
-      "auto_extract_walls_floors_roofs_equipment": false,
-      "bounding_box_used_for_footprint": false,
-      "bounding_box_used_for_legal_judgement": false,
-      "bounding_box_used_for_shadow_geometry": false,
-      "create_revit_elements": false,
-      "curve_loop_generated": false,
-      "diagnostic_only": true,
-      "formal_footprint_polygon_generated": false,
-      "formal_unit_conversion": "diagnostic_meter_fields_added",
-      "geometry_units": "revit_raw_internal_units",
-      "measurement_plane_units": "meter",
-      "merge_casters": false,
-      "not_implemented_in_this_pr": [
-        "formal footprint polygon generation",
-        "CurveLoop creation",
-        "polygon validity check",
-        "self-intersection check",
-        "boolean union across casters",
-        "site boundary clipping",
-        "own-site exclusion",
-        "beyond-5m legal range",
-        "shadow projection",
-        "legal OK/NG judgement"
-      ],
-      "offset_generated": false,
-      "per_caster_extraction": true,
-      "polygon_boolean_generated": false,
-      "purpose": "footprint_extraction_diagnostics_from_user_selected_shadow_caster_proxy",
-      "read_only": true,
-      "same_site_multiple_buildings_awareness": "buildings_on_same_site_are_treated_as_one_building_in_future_duration_accumulation",
-      "self_intersection_checked": false,
-      "temporary_unified_revit_model": false
-    },
     "provided": false,
     "readiness": {
       "blockers_for_future_footprint_polygon_generation": [
@@ -107,72 +28,8 @@
     },
     "warnings": []
   },
-  "footprint_extraction_policy": {
-    "accepted_shadow_caster_sources": [
-      "user_selected_mass",
-      "user_selected_generic_model"
-    ],
-    "accepted_sources": [
-      "bottom_face_candidate",
-      "planar_face_edge_loops",
-      "edge_loop_candidates"
-    ],
-    "auto_extract_existing_building_model": false,
-    "auto_extract_walls_floors_roofs_equipment": false,
-    "bounding_box_used_for_footprint": false,
-    "bounding_box_used_for_legal_judgement": false,
-    "bounding_box_used_for_shadow_geometry": false,
-    "create_revit_elements": false,
-    "curve_loop_generated": false,
-    "diagnostic_only": true,
-    "formal_footprint_polygon_generated": false,
-    "formal_unit_conversion": "diagnostic_meter_fields_added",
-    "geometry_units": "revit_raw_internal_units",
-    "measurement_plane_units": "meter",
-    "merge_casters": false,
-    "not_implemented_in_this_pr": [
-      "formal footprint polygon generation",
-      "CurveLoop creation",
-      "polygon validity check",
-      "self-intersection check",
-      "boolean union across casters",
-      "site boundary clipping",
-      "own-site exclusion",
-      "beyond-5m legal range",
-      "shadow projection",
-      "legal OK/NG judgement"
-    ],
-    "offset_generated": false,
-    "per_caster_extraction": true,
-    "polygon_boolean_generated": false,
-    "purpose": "footprint_extraction_diagnostics_from_user_selected_shadow_caster_proxy",
-    "read_only": true,
-    "same_site_multiple_buildings_awareness": "buildings_on_same_site_are_treated_as_one_building_in_future_duration_accumulation",
-    "self_intersection_checked": false,
-    "temporary_unified_revit_model": false
-  },
-  "geometry_extraction_policy": {
-    "accepted_shadow_caster_sources": [
-      "user_selected_mass",
-      "user_selected_generic_model"
-    ],
-    "auto_extract_existing_building_model": false,
-    "bounding_box_allowed_for": [
-      "diagnostic_summary",
-      "future_analysis_extent_estimation"
-    ],
-    "create_revit_elements": false,
-    "equal_time_contours_generated": false,
-    "footprint_polygon_generated": false,
-    "geometry_units": "revit_raw_internal_units",
-    "official_unit_conversion": "diagnostic_meter_fields_added",
-    "purpose": "shadow_caster_geometry_extraction_diagnostics",
-    "read_only": true,
-    "shadow_projection_generated": false,
-    "use_bounding_box_for_shadow_geometry": false,
-    "use_bounding_box_for_shadow_judgement": false
-  },
-  "inputs": {
+  "generated_for_review": true,
+  "input_summary": {
     "building_elements": {
       "count": 0,
       "is_list_like": false,
@@ -224,279 +81,8 @@
     },
     "source": "INPUTS"
   },
-  "law56_2_awareness": {
-    "active_time_window_profile": "standard_8_16",
-    "article": "Building Standard Law Article 56-2 shadow restriction awareness",
-    "boundary_distance_rule_awareness": "beyond_5m_from_site_boundary",
-    "date_basis": "winter_solstice",
-    "exclusion_awareness": [
-      "outside_target_area",
-      "high_rise_residential_inducement_district",
-      "urban_renaissance_special_district",
-      "own_site_area"
-    ],
-    "future_required_inputs": [
-      "ordinance_profile",
-      "target_area_status",
-      "applicable_building_threshold",
-      "measurement_height_m",
-      "allowed_shadow_duration_profile",
-      "site_boundary",
-      "own_site_boundary",
-      "target_area_mask",
-      "exclusion_area_masks",
-      "road_water_relaxation_profile",
-      "elevation_difference_relaxation_profile",
-      "true_solar_time_profile",
-      "same_site_building_group"
-    ],
-    "hokkaido_time_window": {
-      "end": "15:00",
-      "start": "09:00"
-    },
-    "implemented_now": [
-      "awareness diagnostics",
-      "time window profile selection for diagnostics",
-      "measurement plane policy context"
-    ],
-    "info": [
-      "Time windows are true-solar-time awareness only; no true solar time calculation, JST clock-time conversion, sun vector calculation, or legal judgement is performed."
-    ],
-    "measurement_plane_basis": "average_ground_level_plus_designated_measurement_height",
-    "multiple_buildings_policy_awareness": "buildings_on_same_site_are_treated_as_one_building",
-    "not_implemented_in_this_pr": [
-      "ordinance lookup",
-      "target area mask",
-      "own site exclusion",
-      "beyond 5m judgement range",
-      "5m/10m measurement lines",
-      "relaxation handling",
-      "legal OK/NG judgement",
-      "true solar time calculation",
-      "sun vector calculation",
-      "shadow projection",
-      "equal-time contour generation"
-    ],
-    "ordinance_dependent_values": [
-      "target_area",
-      "applicable_building_threshold",
-      "measurement_height_m",
-      "allowed_shadow_duration",
-      "selected_table_row"
-    ],
-    "policy": {
-      "boundary_distance_rule_awareness": "beyond_5m_from_site_boundary",
-      "date_basis": "winter_solstice",
-      "different_restriction_zones_awareness": "ordinance_and_enforcement_order_required",
-      "exclusion_awareness": [
-        "outside_target_area",
-        "high_rise_residential_inducement_district",
-        "urban_renaissance_special_district",
-        "own_site_area"
-      ],
-      "formal_permit_check": "external_tool_such_as_ADS",
-      "hokkaido_time_window": {
-        "end": "15:00",
-        "start": "09:00"
-      },
-      "implemented_as_legal_judgement": false,
-      "legal_judgement_generated": false,
-      "measurement_plane_basis": "average_ground_level_plus_designated_measurement_height",
-      "measurement_plane_formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
-      "multiple_buildings_policy_awareness": "buildings_on_same_site_are_treated_as_one_building",
-      "not_implemented_in_this_pr": [
-        "ordinance lookup",
-        "target area mask",
-        "own site exclusion",
-        "beyond 5m judgement range",
-        "5m/10m measurement lines",
-        "relaxation handling",
-        "legal OK/NG judgement",
-        "true solar time calculation",
-        "sun vector calculation",
-        "shadow projection",
-        "equal-time contour generation"
-      ],
-      "ordinance_dependent_values": [
-        "target_area",
-        "applicable_building_threshold",
-        "measurement_height_m",
-        "allowed_shadow_duration",
-        "selected_table_row"
-      ],
-      "outside_target_area_building_awareness": "building_over_10m_outside_target_area_casting_shadow_into_target_area_may_be_treated_as_in_target_area",
-      "purpose": "building_standard_law_article_56_2_shadow_restriction_awareness",
-      "relaxation_awareness": [
-        "road",
-        "river",
-        "sea",
-        "significant_elevation_difference",
-        "other_special_conditions_by_enforcement_order"
-      ],
-      "standard_time_window": {
-        "end": "16:00",
-        "start": "08:00"
-      },
-      "time_basis": "true_solar_time"
-    },
-    "relaxation_awareness": [
-      "road",
-      "river",
-      "sea",
-      "significant_elevation_difference",
-      "other_special_conditions_by_enforcement_order"
-    ],
-    "selected_time_window": {
-      "end": "16:00",
-      "start": "08:00"
-    },
-    "selected_time_window_source": "standard_8_16_default_diagnostic",
-    "standard_time_window": {
-      "end": "16:00",
-      "start": "08:00"
-    },
-    "time_basis": "true_solar_time",
-    "warnings": [
-      "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks."
-    ]
-  },
-  "legal_constants": {
-    "date_basis": "winter_solstice",
-    "measurement_line_far_m": 10.0,
-    "measurement_line_near_m": 5.0,
-    "regional_exception_examples": {
-      "hokkaido_end_time": "15:00",
-      "hokkaido_start_time": "09:00"
-    },
-    "standard_end_time": "16:00",
-    "standard_profile_note": "Standard Building Standard Law shadow period. Regional exceptions such as Hokkaido should be handled by future profiles.",
-    "standard_start_time": "08:00",
-    "time_step_minutes": 30
-  },
-  "measurement_plane": {
+  "measurement_plane_summary": {
     "available": true,
-    "average_ground_level_elevation_m": 1.0,
-    "basis": "settings.average_ground_level_elevation_m + settings.measurement_height_m",
-    "blockers": [
-      "legal judgement masks not implemented",
-      "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR"
-    ],
-    "construction_attempted": true,
-    "coordinate_system": "legal_si_meters",
-    "elevation_internal_candidate": 16.404199475065614,
-    "elevation_m": 5.0,
-    "formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
-    "horizontal": true,
-    "info": [
-      "Measurement plane is an internal diagnostic data object only; no Revit element, DirectShape, ModelCurve, or debug plane is created."
-    ],
-    "internal_conversion_available": true,
-    "law56_2_awareness": {
-      "boundary_distance_rule_awareness": "beyond_5m_from_site_boundary",
-      "date_basis": "winter_solstice",
-      "different_restriction_zones_awareness": "ordinance_and_enforcement_order_required",
-      "exclusion_awareness": [
-        "outside_target_area",
-        "high_rise_residential_inducement_district",
-        "urban_renaissance_special_district",
-        "own_site_area"
-      ],
-      "formal_permit_check": "external_tool_such_as_ADS",
-      "hokkaido_time_window": {
-        "end": "15:00",
-        "start": "09:00"
-      },
-      "implemented_as_legal_judgement": false,
-      "legal_judgement_generated": false,
-      "measurement_plane_basis": "average_ground_level_plus_designated_measurement_height",
-      "measurement_plane_formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
-      "multiple_buildings_policy_awareness": "buildings_on_same_site_are_treated_as_one_building",
-      "not_implemented_in_this_pr": [
-        "ordinance lookup",
-        "target area mask",
-        "own site exclusion",
-        "beyond 5m judgement range",
-        "5m/10m measurement lines",
-        "relaxation handling",
-        "legal OK/NG judgement",
-        "true solar time calculation",
-        "sun vector calculation",
-        "shadow projection",
-        "equal-time contour generation"
-      ],
-      "ordinance_dependent_values": [
-        "target_area",
-        "applicable_building_threshold",
-        "measurement_height_m",
-        "allowed_shadow_duration",
-        "selected_table_row"
-      ],
-      "outside_target_area_building_awareness": "building_over_10m_outside_target_area_casting_shadow_into_target_area_may_be_treated_as_in_target_area",
-      "purpose": "building_standard_law_article_56_2_shadow_restriction_awareness",
-      "relaxation_awareness": [
-        "road",
-        "river",
-        "sea",
-        "significant_elevation_difference",
-        "other_special_conditions_by_enforcement_order"
-      ],
-      "standard_time_window": {
-        "end": "16:00",
-        "start": "08:00"
-      },
-      "time_basis": "true_solar_time"
-    },
-    "legal_meaning": [
-      "Article 56-2 measurement horizontal plane at designated height above average ground level.",
-      "This is not a Revit Level.",
-      "This is not a Revit element.",
-      "This is not a legal judgement result."
-    ],
-    "level_reference_present": false,
-    "level_used_as_average_ground_level": false,
-    "level_used_as_measurement_plane": false,
-    "measurement_height_m": 4.0,
-    "normal_m": {
-      "units": "unitless",
-      "x": 0.0,
-      "y": 0.0,
-      "z": 1.0
-    },
-    "normal_raw": {
-      "note": "same abstract +Z direction; not derived from Revit geometry",
-      "units": "unitless",
-      "x": 0.0,
-      "y": 0.0,
-      "z": 1.0
-    },
-    "origin_m": {
-      "note": "abstract legal SI coordinate origin for diagnostics only; not a Revit point",
-      "units": "meter",
-      "x": 0.0,
-      "y": 0.0,
-      "z": 5.0
-    },
-    "plane_equation": "z = 5.0",
-    "plane_type": "horizontal_plane",
-    "policy": {
-      "average_ground_level_source": "settings.average_ground_level_elevation_m",
-      "coordinate_system": "legal_si_meters",
-      "create_revit_element": false,
-      "formal_intersection_with_revit_geometry": "not_implemented_in_this_pr",
-      "formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
-      "geometry_relation": "diagnostic_only",
-      "internal_data_only": true,
-      "legal_judgement_generated": false,
-      "measurement_height_source": "settings.measurement_height_m",
-      "normal": "+Z",
-      "plane_type": "horizontal_plane",
-      "purpose": "article_56_2_measurement_plane_construction_diagnostics",
-      "revit_internal_unit_conversion": "diagnostic_meter_fields_added",
-      "revit_level_used_as_average_ground_level": false,
-      "revit_level_used_as_measurement_plane": false,
-      "site_boundary_required_for_legal_judgement_masks": true,
-      "site_boundary_required_for_plane_construction": false
-    },
     "provided": true,
     "readiness": {
       "blockers_for_future_shadow_projection_context": [],
@@ -510,34 +96,37 @@
       "ready_for_future_shadow_projection_context": true,
       "ready_for_legal_judgement_masks": false
     },
-    "source_keys": {
-      "average_ground_level_elevation_m": "settings.average_ground_level_elevation_m",
-      "measurement_height_m": "settings.measurement_height_m"
-    },
-    "unit": "meter",
-    "units": "meter",
     "warnings": []
   },
-  "measurement_plane_policy": {
-    "average_ground_level_source": "settings.average_ground_level_elevation_m",
-    "coordinate_system": "legal_si_meters",
-    "create_revit_element": false,
-    "formal_intersection_with_revit_geometry": "not_implemented_in_this_pr",
-    "formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
-    "geometry_relation": "diagnostic_only",
-    "internal_data_only": true,
-    "legal_judgement_generated": false,
-    "measurement_height_source": "settings.measurement_height_m",
-    "normal": "+Z",
-    "plane_type": "horizontal_plane",
-    "purpose": "article_56_2_measurement_plane_construction_diagnostics",
-    "revit_internal_unit_conversion": "diagnostic_meter_fields_added",
-    "revit_level_used_as_average_ground_level": false,
-    "revit_level_used_as_measurement_plane": false,
-    "site_boundary_required_for_legal_judgement_masks": true,
-    "site_boundary_required_for_plane_construction": false
+  "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint po...",
+  "not_implemented_summary": {
+    "footprint_extraction": [
+      "formal footprint polygon generation",
+      "CurveLoop creation",
+      "polygon validity check",
+      "self-intersection check",
+      "boolean union across casters",
+      "site boundary clipping",
+      "own-site exclusion",
+      "beyond-5m legal range",
+      "shadow projection",
+      "legal OK/NG judgement"
+    ],
+    "planned_pipeline_pending": [
+      "pipeline readiness diagnostics",
+      "formal footprint polygon generation",
+      "optional site boundary loop extraction",
+      "legal judgement mask preparation",
+      "optional 5m / 10m measurement line generation when site_boundary is available",
+      "true solar time diagnostics",
+      "sun vector calculation",
+      "time-slice shadow projection per caster",
+      "logical union of shadows per time slice",
+      "shadow duration accumulation without double counting",
+      "equal-time contour generation",
+      "legal judgement report"
+    ]
   },
-  "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint polygon generation, Revit element creation, true solar time calculation, sun vector calculation, shadow projection, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented.",
   "pipeline_readiness": {
     "blockers_for_boundary_dependent_steps": [
       "Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.",
@@ -574,7 +163,7 @@
     "future_projection_context_ready": true,
     "future_shadow_projection_ready": false,
     "info": [
-      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generation and legal masks remain unimplemented."
+      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generat..."
     ],
     "input_diagnostics_ready": true,
     "legal_judgement_masks_ready": false,
@@ -598,36 +187,8 @@
     "site_boundary_ready_for_boundary_dependent_steps": false,
     "site_boundary_required_for_equal_time_shadow": false
   },
-  "planned_pipeline": [
-    "input diagnostics",
-    "shadow caster proxy validation",
-    "shadow caster geometry access check",
-    "shadow caster geometry extraction diagnostics",
-    "solid / face / edge summary",
-    "footprint candidate diagnostics",
-    "footprint edge loop diagnostics",
-    "footprint extraction readiness diagnostics",
-    "optional site boundary source validation",
-    "property line / site property diagnostics when provided",
-    "model lines fallback closed-loop diagnostics when provided",
-    "settings coercion and normalization",
-    "law56_2 awareness context diagnostics",
-    "measurement plane readiness check",
-    "measurement plane construction diagnostics",
-    "pipeline readiness diagnostics",
-    "formal footprint polygon generation",
-    "optional site boundary loop extraction",
-    "legal judgement mask preparation",
-    "optional 5m / 10m measurement line generation when site_boundary is available",
-    "true solar time diagnostics",
-    "sun vector calculation",
-    "time-slice shadow projection per caster",
-    "logical union of shadows per time slice",
-    "shadow duration accumulation without double counting",
-    "equal-time contour generation",
-    "legal judgement report"
-  ],
-  "settings_normalized": {
+  "sanitized": true,
+  "settings_summary": {
     "defaults_applied": [
       "profile",
       "debug_log_dir",
@@ -636,21 +197,7 @@
       "analysis_margin_m",
       "closure_tolerance_m"
     ],
-    "errors": [],
-    "ignored_keys": [],
-    "info": [
-      "Revit Level Elevation is not used as average ground level or measurement plane."
-    ],
-    "input_format": "python_dict",
     "invalid_keys": [],
-    "level_reference_present": false,
-    "level_used_as_average_ground_level": false,
-    "level_used_as_measurement_plane": false,
-    "measurement_plane": {
-      "available": true,
-      "elevation_m": 5.0,
-      "formula": "average_ground_level_elevation_m + measurement_height_m"
-    },
     "missing_required_keys": [],
     "normalized": {
       "analysis_margin_m": 20.0,
@@ -668,7 +215,6 @@
       "true_north_deg": 0.0
     },
     "provided": true,
-    "raw_type": "dict",
     "readiness": {
       "invalid_for_equal_time_shadow": [],
       "missing_for_equal_time_shadow": [],
@@ -679,99 +225,12 @@
     "schema_version": "v1",
     "warnings": []
   },
-  "settings_policy": {
-    "debug_log_policy": {
-      "committed_review_artifacts_allowed": true,
-      "default_directory": "debug_logs",
-      "default_filename": "latest_debug.json",
-      "enabled_by_default": false,
-      "enabled_by_settings_key": "settings.debug_log_enabled",
-      "fixed_absolute_paths_allowed": false,
-      "fixed_filename_overwrite": true,
-      "non_fatal_on_write_failure": true,
-      "personal_paths_allowed": false,
-      "purpose": "development_review_debug_log",
-      "raw_revit_object_dump_allowed": false,
-      "sanitized": true,
-      "timestamped_log_files_allowed": false
-    },
-    "diagnostic_defaults": {
-      "analysis_margin_m": 20.0,
-      "closure_tolerance_m": 0.01,
-      "debug_log_dir": "debug_logs",
-      "debug_log_enabled": false,
-      "debug_log_filename": "latest_debug.json",
-      "grid_resolution_m": 1.0,
-      "profile": "standard_8_16"
-    },
-    "formal_permit_check": "external_tool_such_as_ADS",
-    "level_used_as_average_ground_level": false,
-    "level_used_as_measurement_plane": false,
-    "missing_settings_is_fatal": false,
-    "no_legal_assumption_defaults": [
-      "average_ground_level_elevation_m",
-      "measurement_height_m",
-      "latitude",
-      "longitude",
-      "true_north_deg"
-    ],
-    "optional": true,
-    "required_for_equal_time_shadow": [
-      "average_ground_level_elevation_m",
-      "measurement_height_m",
-      "latitude",
-      "longitude",
-      "true_north_deg"
-    ],
-    "units": {
-      "angle": "degree",
-      "latitude_longitude": "decimal_degree",
-      "length": "meter"
-    }
-  },
-  "shadow_caster_geometry": {
-    "accepted_caster_count": 0,
-    "best_candidate_count": 0,
+  "shadow_caster_geometry_summary": {
     "bottom_face_candidate_count": 0,
-    "casters_with_closed_footprint_loop_candidate_count": 0,
-    "casters_with_footprint_candidate_count": 0,
-    "closed_footprint_loop_candidate_count": 0,
     "count": 0,
     "edge_count": 0,
     "face_count": 0,
-    "footprint_candidate_count": 0,
-    "footprint_loop_candidate_count": 0,
-    "geometry_readable_caster_count": 0,
-    "info": [
-      "Geometry extraction diagnostics are read-only and create no Revit elements.",
-      "Footprint candidates are diagnostic only; no footprint polygon, shadow polygon, projection, grid accumulation, or equal-time contour is generated."
-    ],
-    "items": [],
-    "measurement_plane_elevation_m": 5.0,
-    "measurement_plane_relation_available": false,
     "mesh_count": 0,
-    "policy": {
-      "accepted_shadow_caster_sources": [
-        "user_selected_mass",
-        "user_selected_generic_model"
-      ],
-      "auto_extract_existing_building_model": false,
-      "bounding_box_allowed_for": [
-        "diagnostic_summary",
-        "future_analysis_extent_estimation"
-      ],
-      "create_revit_elements": false,
-      "equal_time_contours_generated": false,
-      "footprint_polygon_generated": false,
-      "geometry_units": "revit_raw_internal_units",
-      "official_unit_conversion": "diagnostic_meter_fields_added",
-      "purpose": "shadow_caster_geometry_extraction_diagnostics",
-      "read_only": true,
-      "shadow_projection_generated": false,
-      "use_bounding_box_for_shadow_geometry": false,
-      "use_bounding_box_for_shadow_judgement": false
-    },
-    "positive_solid_count": 0,
     "provided": false,
     "readiness": {
       "blockers_for_future_footprint_extraction": [
@@ -792,123 +251,27 @@
       "ready_for_future_shadow_projection": false
     },
     "solid_count": 0,
-    "top_face_candidate_count": 0,
-    "units": {
-      "geometry": "revit_raw_internal_units",
-      "official_unit_conversion": "diagnostic_meter_fields_added"
-    },
-    "vertical_face_candidate_count": 0,
     "warnings": []
   },
-  "shadow_caster_policy": {
-    "allowed_initial_categories": [
-      "BuiltInCategory.OST_Mass",
-      "BuiltInCategory.OST_GenericModel"
-    ],
-    "bounding_box_for_shadow_geometry": false,
-    "bounding_box_for_shadow_judgement": false,
-    "category_detection_priority": "built_in_category_then_localized_category_name",
-    "double_count_overlapping_shadows": false,
-    "existing_model_auto_extraction": false,
-    "formal_permit_check": "external_tool_such_as_ADS",
-    "future_time_slice_union_policy": "logical_union",
-    "localized_category_names_are_fallback_only": true,
-    "multiple_shadow_casters_supported": true,
-    "per_caster_geometry_reading": true,
-    "purpose": "conceptual_design_shadow_study",
-    "shadow_role_overrides_category": false,
-    "source_geometry": "user_defined_mass_or_generic_model_proxy",
-    "temporary_unified_revit_model": false
-  },
-  "shadow_casters": {
+  "shadow_caster_summary": {
     "accepted_count": 0,
-    "caster_role": "user_defined_shadow_proxy",
     "count": 0,
-    "items": [],
     "rejected_count": 0,
-    "selection_mode": "multiple_supported",
     "warnings": [
       "building_elements is empty; select one or more user-defined Mass or Generic Model shadow proxy elements."
     ]
   },
-  "site_boundary": {
+  "site_boundary_summary": {
     "accepted_count": 0,
-    "boundary_dependent_steps_available": false,
-    "boundary_dependent_steps_skipped": true,
-    "boundary_role": "optional_user_defined_site_boundary",
     "count": 0,
-    "equal_time_shadow_available_without_site_boundary": true,
-    "fallback_input_policy": "model_lines_closed_loop",
-    "info": [
-      "site_boundary is optional.",
-      "equal-time shadow output can continue without site_boundary.",
-      "Boundary-dependent steps such as 5m/10m measurement line generation and boundary-based regulation checks will be skipped."
-    ],
-    "items": [],
-    "loop_diagnostics": {
-      "appears_closed": null,
-      "attempted": false,
-      "candidate_curve_count": 0,
-      "closed_loop_check_available": false,
-      "closure_tolerance_m": 0.01,
-      "reason": "site_boundary is optional and not provided; boundary-dependent steps will be skipped",
-      "warnings": []
-    },
-    "primary_input_policy": "revit_property_line_or_site_property",
     "provided": false,
     "rejected_count": 0,
-    "required_for_boundary_dependent_steps": true,
-    "required_for_equal_time_shadow": false,
-    "selection_mode": "multiple_supported",
     "warnings": []
-  },
-  "site_boundary_policy": {
-    "boundary_dependent_steps": [
-      "property_line_or_site_boundary_based_offset",
-      "5m_10m_measurement_line_generation",
-      "boundary_based_regulation_reference_check"
-    ],
-    "cad_import_auto_boundary": false,
-    "detail_lines_allowed": false,
-    "equal_time_shadow_available_without_site_boundary": true,
-    "fallback_line_categories": [
-      "BuiltInCategory.OST_Lines",
-      "BuiltInCategory.OST_SketchLines",
-      "BuiltInCategory.OST_Curves",
-      "BuiltInCategory.OST_GenericLines"
-    ],
-    "fallback_source": "model_lines_closed_loop",
-    "formal_permit_check": "external_tool_such_as_ADS",
-    "measurement_lines_generated": false,
-    "missing_site_boundary_behavior": "skip_boundary_dependent_steps_only",
-    "missing_site_boundary_is_fatal": false,
-    "non_boundary_dependent_steps_continue": [
-      "shadow_caster_geometry_reading",
-      "time_slice_shadow_projection",
-      "logical_union_of_shadows_per_time_slice",
-      "shadow_duration_accumulation",
-      "equal_time_shadow_output"
-    ],
-    "optional": true,
-    "primary_built_in_categories": [
-      "BuiltInCategory.OST_SiteProperty",
-      "BuiltInCategory.OST_SitePropertyLineSegment"
-    ],
-    "primary_source": "revit_property_line_or_site_property",
-    "related_site_categories_diagnostic_only": [
-      "BuiltInCategory.OST_SitePointBoundary",
-      "BuiltInCategory.OST_Site",
-      "BuiltInCategory.OST_Property"
-    ],
-    "required_for_boundary_dependent_steps": true,
-    "required_for_equal_time_shadow": false,
-    "temporary_revit_boundary_model": false,
-    "toposolid_auto_boundary": false
   },
   "stage": "v1_footprint_extraction_diagnostics",
   "success": true,
   "tool": "Dynamo_Shadow",
-  "unit_conversion_diagnostics": {
+  "unit_conversion_summary": {
     "area": {
       "fallback_factor": 0.09290304,
       "internal_unit": "square_foot",
@@ -935,29 +298,6 @@
     },
     "warnings": []
   },
-  "unit_conversion_policy": {
-    "converted_fields_suffix": "_m / _m2 / _m3",
-    "create_revit_elements": false,
-    "diagnostic_only": true,
-    "fallback_area_factor": "1 ft2 = 0.09290304 m2",
-    "fallback_length_factor": "1 ft = 0.3048 m",
-    "fallback_volume_factor": "1 ft3 = 0.028316846592 m3",
-    "formal_geometry_projection_enabled": false,
-    "legal_judgement_generated": false,
-    "legal_length_unit": "meter",
-    "not_implemented_in_this_pr": [
-      "formal footprint polygon",
-      "CurveLoop",
-      "shadow projection",
-      "equal-time contour",
-      "legal judgement"
-    ],
-    "preferred_api": "Revit DB UnitUtils",
-    "purpose": "revit_internal_units_to_legal_si_meters_diagnostics",
-    "raw_fields_preserved": true,
-    "reverse_length_factor": "1 m = 3.280839895013123 ft",
-    "revit_internal_length_unit": "foot"
-  },
   "warnings": [
     "building_elements input is empty.",
     "level input is empty.",
@@ -973,5 +313,6 @@
     "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.",
     "Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.",
     "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
-  ]
+  ],
+  "warnings_count": 14
 }

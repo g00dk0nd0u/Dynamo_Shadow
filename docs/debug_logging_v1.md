@@ -63,3 +63,7 @@ Forbidden content includes local user paths, usernames, email addresses, client/
 ## Unit conversion summary in debug logs
 
 Sanitized debug logs may include `unit_conversion_diagnostics` and policy summaries. Logs must not include personal paths, usernames, email addresses, client/project names, OneDrive paths, raw Revit object representations, or large geometry payloads. The privacy scan must pass whenever debug logs are committed.
+
+## Unit conversion summary
+
+Debug log payloads include a compact `unit_conversion_summary` with conversion backend, fallback factors, raw-field preservation status, converted-field status, and diagnostic-only usage flags. This summary must remain sanitized and must not include raw Revit objects, full geometry arrays, local paths, email addresses, OneDrive paths, or client/project names.
