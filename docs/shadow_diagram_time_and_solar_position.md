@@ -152,3 +152,57 @@ Suggested `time_basis` values for a later design discussion:
 - Do not treat Akashi / 135°E as a nationwide project latitude or default project location.
 - Do not infer ADS internal algorithms from marketing pages or short tutorial snippets.
 - Keep future diagnostics explicit about the difference between site location, civil time, standard-meridian time, and true solar time.
+
+## Diagnostic implementation v1: true-solar-time time slices
+
+This repository now includes a diagnostic-only sun position table for inputs that are already expressed as local `true_solar_time`.
+It does not convert Japan Standard Time or any other civil clock time into true solar time.
+It does not apply an equation-of-time correction.
+The 135°E Japan standard meridian is documented only as a future time-conversion reference and is not used in this diagnostic calculation.
+
+Required explicit settings for this v1 diagnostic are:
+
+```text
+site_latitude_deg
+solar_declination_deg
+```
+
+The standard diagnostic window uses 30-minute slices from 08:00 through 16:00 true solar time unless a future settings profile changes the window.
+For each slice, the hour angle is computed as:
+
+```text
+hour_angle_deg = 15 * (true_solar_hour - 12)
+```
+
+Solar altitude uses:
+
+```text
+sin(altitude) = sin(latitude) * sin(declination)
+              + cos(latitude) * cos(declination) * cos(hour_angle)
+```
+
+Solar azimuth is reported in degrees clockwise from true north:
+
+```text
+0 = north, 90 = east, 180 = south, 270 = west
+```
+
+The diagnostic azimuth formula is:
+
+```text
+azimuth_deg = atan2(
+    sin(hour_angle),
+    cos(hour_angle) * sin(latitude) - tan(declination) * cos(latitude)
+) + 180 degrees
+```
+
+`shadow_length_factor` is `1 / tan(solar_altitude)` when the sun is above the horizon.
+`shadow_direction_vector` is a unit horizontal vector pointing away from the sun in true-north axes:
+
+```text
+x_east = sin(solar_azimuth_deg + 180 degrees)
+y_north = cos(solar_azimuth_deg + 180 degrees)
+z_up = 0
+```
+
+This diagnostic does not create Revit elements, project shadow polygons, generate 5m / 10m legal masks, generate equal-time contours, or make legal OK/NG judgements.

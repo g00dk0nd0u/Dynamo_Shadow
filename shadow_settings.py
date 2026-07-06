@@ -140,7 +140,10 @@ def _range_warning(key, value):
         return None
     ranges = {
         "latitude": (-90.0, 90.0, True, True),
+        "site_latitude_deg": (-90.0, 90.0, True, True),
         "longitude": (-180.0, 180.0, True, True),
+        "site_longitude_deg": (-180.0, 180.0, True, True),
+        "solar_declination_deg": (-90.0, 90.0, True, True),
         "true_north_deg": (-360.0, 360.0, True, True),
         "measurement_height_m": (0.0, None, False, True),
         "grid_resolution_m": (0.0, None, False, True),
@@ -162,7 +165,7 @@ def _normalize_settings(settings, level=None):
     defaults_applied = []
     invalid_keys = []
     info = []
-    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename"])
+    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "time_basis", "true_solar_start_time", "true_solar_end_time", "sun_time_step_minutes", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename"])
     ignored_keys = sorted([_safe_text(k) for k in settings_dict.keys() if k not in known])
     if ignored_keys:
         info.append("Unknown settings keys are ignored by v1 diagnostics: {0}".format(", ".join(ignored_keys)))
@@ -195,7 +198,7 @@ def _normalize_settings(settings, level=None):
         defaults_applied.append("debug_log_filename")
     normalized["debug_log_filename"] = debug_log_filename
 
-    for key in ["average_ground_level_elevation_m", "measurement_height_m", "latitude", "longitude", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m"]:
+    for key in ["average_ground_level_elevation_m", "measurement_height_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m"]:
         value, warn = _parse_float(settings_dict.get(key), key)
         range_warn = _range_warning(key, value)
         if warn or range_warn:
@@ -206,6 +209,31 @@ def _normalize_settings(settings, level=None):
             value = SETTINGS_DIAGNOSTIC_DEFAULTS[key]
             defaults_applied.append(key)
         normalized[key] = value
+
+    if normalized.get("site_latitude_deg") is None and normalized.get("latitude") is not None:
+        normalized["site_latitude_deg"] = normalized.get("latitude")
+        info.append("settings.latitude is accepted as a compatibility alias for settings.site_latitude_deg.")
+    if normalized.get("site_longitude_deg") is None and normalized.get("longitude") is not None:
+        normalized["site_longitude_deg"] = normalized.get("longitude")
+        info.append("settings.longitude is accepted as a compatibility alias for settings.site_longitude_deg; longitude is not used by true_solar_time diagnostics.")
+
+    time_basis, warn = _parse_text(settings_dict.get("time_basis"), "time_basis")
+    if warn:
+        warnings.append(warn); invalid_keys.append("time_basis")
+    if time_basis is None:
+        time_basis = "true_solar_time"; defaults_applied.append("time_basis")
+    normalized["time_basis"] = time_basis
+
+    for key in ["true_solar_start_time", "true_solar_end_time"]:
+        text, warn = _parse_text(settings_dict.get(key), key)
+        if warn:
+            warnings.append(warn); invalid_keys.append(key)
+        normalized[key] = text
+
+    sun_step, warn = _parse_int(settings_dict.get("sun_time_step_minutes"), "sun_time_step_minutes")
+    if warn:
+        warnings.append(warn); invalid_keys.append("sun_time_step_minutes")
+    normalized["sun_time_step_minutes"] = sun_step
 
     agl = normalized.get("average_ground_level_elevation_m")
     mh = normalized.get("measurement_height_m")
