@@ -43,3 +43,7 @@ Article 56-2 awareness is retained: buildings on the same site should be treated
 ## Out of scope
 
 This stage does not implement true solar time, sun position / sun vectors, shadow projection, 5m / 10m line generation, legal judgement, shadow duration accumulation, or equal-time contour generation.
+
+## Unit conversion diagnostics
+
+Footprint candidate diagnostics preserve raw endpoint, length, and z fields from Revit internal units and add meter-based review fields such as `endpoints_m_sample`, `total_length_m`, `z_min_m`, and `z_max_m`. These fields are diagnostic only; formal footprint polygons, CurveLoops, booleans, clipping, 5m/10m judgement, and legal judgement remain unimplemented.

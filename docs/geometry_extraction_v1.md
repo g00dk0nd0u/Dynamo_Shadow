@@ -84,3 +84,7 @@ The geometry diagnostics now continue from bottom face candidates to edge loop c
 Edge loop closure is checked only by raw endpoint comparison when endpoints are readable. Arc, spline, ellipse, or other non-Line curves are reported by type and endpoint availability; formal discretization is not implemented. These footprint candidates are not yet used for shadow projection or legal judgement.
 
 See [`footprint_extraction_v1.md`](footprint_extraction_v1.md) for the detailed policy.
+
+## Unit conversion diagnostics
+
+Geometry summaries preserve Revit raw internal-unit fields and add meter-based fields for review: solid volumes and areas include `_m3` / `_m2`, bounding boxes include `bounding_box_m`, faces include `area_m2` and `origin_m`, and edge samples include `length_m` and endpoint meter fields. Bounding boxes remain diagnostic only and are not used as shadow geometry or legal judgement geometry.

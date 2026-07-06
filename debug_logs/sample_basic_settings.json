@@ -96,9 +96,7 @@
       "ready_for_future_shadow_projection_context": true,
       "ready_for_legal_judgement_masks": false
     },
-    "warnings": [
-      "Geometry raw_internal_units and measurement plane meters are not formally converted in this PR."
-    ]
+    "warnings": []
   },
   "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint po...",
   "not_implemented_summary": {
@@ -115,6 +113,7 @@
       "legal OK/NG judgement"
     ],
     "planned_pipeline_pending": [
+      "pipeline readiness diagnostics",
       "formal footprint polygon generation",
       "optional site boundary loop extraction",
       "legal judgement mask preparation",
@@ -194,22 +193,24 @@
       "profile",
       "debug_log_dir",
       "debug_log_filename",
+      "grid_resolution_m",
+      "analysis_margin_m",
       "closure_tolerance_m"
     ],
     "invalid_keys": [],
     "missing_required_keys": [],
     "normalized": {
       "analysis_margin_m": 20.0,
-      "average_ground_level_elevation_m": 0.0,
+      "average_ground_level_elevation_m": 1.0,
       "closure_tolerance_m": 0.01,
       "debug_log_dir": "debug_logs",
-      "debug_log_enabled": true,
+      "debug_log_enabled": false,
       "debug_log_filename": "latest_debug.json",
       "grid_resolution_m": 1.0,
-      "latitude": 35.6812,
-      "longitude": 139.7671,
+      "latitude": 35.0,
+      "longitude": 139.0,
       "measurement_height_m": 4.0,
-      "measurement_plane_elevation_m": 4.0,
+      "measurement_plane_elevation_m": 5.0,
       "profile": "standard_8_16",
       "true_north_deg": 0.0
     },
@@ -270,12 +271,38 @@
   "stage": "v1_footprint_extraction_diagnostics",
   "success": true,
   "tool": "Dynamo_Shadow",
+  "unit_conversion_summary": {
+    "area": {
+      "fallback_factor": 0.09290304,
+      "internal_unit": "square_foot",
+      "legal_unit": "square_meter"
+    },
+    "available": true,
+    "backend": "fallback_factor",
+    "converted_fields_added": true,
+    "converted_fields_suffix": "_m / _m2 / _m3",
+    "diagnostic_only": true,
+    "length": {
+      "fallback_factor": 0.3048,
+      "internal_unit": "foot",
+      "legal_unit": "meter",
+      "reverse_fallback_factor": 3.280839895013123
+    },
+    "raw_fields_preserved": true,
+    "used_for_legal_judgement": false,
+    "used_for_shadow_projection": false,
+    "volume": {
+      "fallback_factor": 0.028316846592,
+      "internal_unit": "cubic_foot",
+      "legal_unit": "cubic_meter"
+    },
+    "warnings": []
+  },
   "warnings": [
     "building_elements input is empty.",
     "level input is empty.",
     "building_elements is empty; select one or more user-defined Mass or Generic Model shadow proxy elements.",
     "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
-    "Geometry raw_internal_units and measurement plane meters are not formally converted in this PR.",
     "No accepted shadow caster proxy elements are available.",
     "No accepted shadow caster proxy elements are available.",
     "No closed footprint loop candidate was verified by raw endpoint comparison.",
@@ -287,5 +314,5 @@
     "Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.",
     "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
   ],
-  "warnings_count": 15
+  "warnings_count": 14
 }

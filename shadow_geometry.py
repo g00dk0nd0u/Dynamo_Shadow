@@ -4,6 +4,7 @@ from shadow_policies import GEOMETRY_EXTRACTION_POLICY
 from shadow_utils import *
 from shadow_measurement_plane import _measurement_plane_relation
 from shadow_footprint import _extract_footprint_candidates_from_faces
+from shadow_units import _solid_summary_raw_to_meters, _face_summary_raw_to_meters, _edge_summary_raw_to_meters, _bbox_raw_to_meters
 
 
 def _safe_get_bounding_box(element):
@@ -21,7 +22,11 @@ def _safe_get_bounding_box(element):
         error = _safe_text(exc)
     if bbox is None:
         return {"available": False, "diagnostic_only": True, "used_for_shadow_geometry": False, "used_for_shadow_judgement": False, "reason": error or "BoundingBox unavailable"}
-    return {"available": True, "diagnostic_only": True, "used_for_shadow_geometry": False, "used_for_shadow_judgement": False, "min_raw": _xyz_to_raw_dict(_safe_attr(bbox, "Min")), "max_raw": _xyz_to_raw_dict(_safe_attr(bbox, "Max")), "units": "revit_raw_internal_units"}
+    result = {"available": True, "diagnostic_only": True, "used_for_shadow_geometry": False, "used_for_shadow_judgement": False, "min_raw": _xyz_to_raw_dict(_safe_attr(bbox, "Min")), "max_raw": _xyz_to_raw_dict(_safe_attr(bbox, "Max")), "units": "revit_raw_internal_units"}
+    result["bounding_box_m"], warnings = _bbox_raw_to_meters(result)
+    if warnings:
+        result["unit_conversion_warnings"] = warnings
+    return result
 
 def _safe_get_geometry(element):
     if element is None:
@@ -124,7 +129,7 @@ def _summarize_edge_or_curve(value):
 
 def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings_normalized, measurement_plane=None):
     items_in = _to_list(building_elements)
-    diag = {"policy": GEOMETRY_EXTRACTION_POLICY, "provided": bool(items_in), "count": len(items_in), "accepted_caster_count": (shadow_casters or {}).get("accepted_count", 0), "geometry_readable_caster_count": 0, "solid_count": 0, "positive_solid_count": 0, "face_count": 0, "edge_count": 0, "mesh_count": 0, "bottom_face_candidate_count": 0, "top_face_candidate_count": 0, "vertical_face_candidate_count": 0, "footprint_candidate_count": 0, "footprint_loop_candidate_count": 0, "closed_footprint_loop_candidate_count": 0, "best_candidate_count": 0, "casters_with_footprint_candidate_count": 0, "casters_with_closed_footprint_loop_candidate_count": 0, "measurement_plane_relation_available": False, "measurement_plane_elevation_m": ((measurement_plane or {}).get("elevation_m")), "units": {"geometry": "revit_raw_internal_units", "official_unit_conversion": "not_implemented_in_this_pr"}, "items": [], "readiness": {}, "warnings": [], "info": ["Geometry extraction diagnostics are read-only and create no Revit elements.", "Footprint candidates are diagnostic only; no footprint polygon, shadow polygon, projection, grid accumulation, or equal-time contour is generated."]}
+    diag = {"policy": GEOMETRY_EXTRACTION_POLICY, "provided": bool(items_in), "count": len(items_in), "accepted_caster_count": (shadow_casters or {}).get("accepted_count", 0), "geometry_readable_caster_count": 0, "solid_count": 0, "positive_solid_count": 0, "face_count": 0, "edge_count": 0, "mesh_count": 0, "bottom_face_candidate_count": 0, "top_face_candidate_count": 0, "vertical_face_candidate_count": 0, "footprint_candidate_count": 0, "footprint_loop_candidate_count": 0, "closed_footprint_loop_candidate_count": 0, "best_candidate_count": 0, "casters_with_footprint_candidate_count": 0, "casters_with_closed_footprint_loop_candidate_count": 0, "measurement_plane_relation_available": False, "measurement_plane_elevation_m": ((measurement_plane or {}).get("elevation_m")), "units": {"geometry": "revit_raw_internal_units", "official_unit_conversion": "diagnostic_meter_fields_added"}, "items": [], "readiness": {}, "warnings": [], "info": ["Geometry extraction diagnostics are read-only and create no Revit elements.", "Footprint candidates are diagnostic only; no footprint polygon, shadow polygon, projection, grid accumulation, or equal-time contour is generated."]}
     caster_items = (shadow_casters or {}).get("items") or []
     for index, item in enumerate(items_in):
         unwrapped = _try_unwrap(item)
@@ -138,15 +143,15 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
         for obj in objs:
             val = obj.get("object")
             if _is_solid_like(val):
-                ss = _summarize_solid(val); solids.append(ss)
+                ss, _uw = _solid_summary_raw_to_meters(_summarize_solid(val)); solids.append(ss)
                 for f in _safe_iter(_safe_attr(val, "Faces")):
-                    faces.append(_summarize_face(f)); face_objects.append(f)
+                    fs, _uw = _face_summary_raw_to_meters(_summarize_face(f)); faces.append(fs); face_objects.append(f)
                 for e in _safe_iter(_safe_attr(val, "Edges")):
-                    edges.append(_summarize_edge_or_curve(e))
+                    es, _uw = _edge_summary_raw_to_meters(_summarize_edge_or_curve(e)); edges.append(es)
             elif _is_face_like(val):
-                faces.append(_summarize_face(val)); face_objects.append(val)
+                fs, _uw = _face_summary_raw_to_meters(_summarize_face(val)); faces.append(fs); face_objects.append(val)
             elif _is_edge_like(val) or _is_curve_like(val):
-                edges.append(_summarize_edge_or_curve(val))
+                es, _uw = _edge_summary_raw_to_meters(_summarize_edge_or_curve(val)); edges.append(es)
             elif _is_mesh_like(val):
                 mesh_count += 1
         bottom=sum(1 for f in faces if f.get("height_role_candidate")=="bottom_face_candidate")

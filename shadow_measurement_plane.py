@@ -1,5 +1,6 @@
 # Law 56-2 awareness and measurement-plane diagnostics.
 from shadow_policies import LAW56_2_AWARENESS_POLICY, LAW56_2_FUTURE_REQUIRED_INPUTS, MEASUREMENT_PLANE_POLICY
+from shadow_units import _meters_to_internal_length, _internal_length_to_meters
 
 
 def _build_law56_2_awareness_context(settings_normalized, site_boundary=None):
@@ -61,7 +62,7 @@ def _construct_measurement_plane(settings_normalized, level=None):
         warnings.append("Measurement plane could not be constructed; this is non-fatal for input diagnostics.")
     if level is not None:
         warnings.append("Level reference is present but is not used as average ground level or measurement plane.")
-    warnings.append("Geometry raw_internal_units and measurement plane meters are not formally converted in this PR.")
+
     return {
         "policy": MEASUREMENT_PLANE_POLICY,
         "law56_2_awareness": LAW56_2_AWARENESS_POLICY,
@@ -75,7 +76,11 @@ def _construct_measurement_plane(settings_normalized, level=None):
         "normal_raw": {"x": 0.0, "y": 0.0, "z": 1.0, "units": "unitless", "note": "same abstract +Z direction; not derived from Revit geometry"},
         "normal_m": {"x": 0.0, "y": 0.0, "z": 1.0, "units": "unitless"},
         "origin_m": {"x": 0.0, "y": 0.0, "z": elevation, "units": "meter", "note": "abstract legal SI coordinate origin for diagnostics only; not a Revit point"} if available else None,
+        "basis": "settings.average_ground_level_elevation_m + settings.measurement_height_m",
+        "unit": "meter",
         "elevation_m": elevation,
+        "elevation_internal_candidate": _meters_to_internal_length(elevation)[0] if elevation is not None else None,
+        "internal_conversion_available": True,
         "plane_equation": "z = {0}".format(elevation) if available else None,
         "average_ground_level_elevation_m": agl,
         "measurement_height_m": mh,
@@ -92,24 +97,76 @@ def _construct_measurement_plane(settings_normalized, level=None):
     }
 
 def _measurement_plane_relation(bbox, face_summaries, measurement_plane):
-    elev = (measurement_plane or {}).get("elevation_m")
+    elev_m = (measurement_plane or {}).get("elevation_m")
+    elev_internal = (measurement_plane or {}).get("elevation_internal_candidate")
+    base = {
+        "used_for_legal_judgement": False,
+        "used_for_shadow_geometry": False,
+        "formal_intersection_test_performed": False,
+        "formal_intersection_available": False,
+        "geometry_units": "revit_raw_internal_units",
+        "measurement_plane_units": "meter",
+        "measurement_plane_elevation_m": elev_m,
+        "measurement_plane_elevation_internal_candidate": elev_internal,
+    }
     if (measurement_plane or {}).get("available") is not True:
-        return {"available": False, "formal_intersection_available": False, "raw_comparison_available": False, "measurement_plane_elevation_m": None, "geometry_units": "revit_raw_internal_units", "measurement_plane_units": "meter", "unit_conversion_status": "not_implemented_in_this_pr", "raw_relation_candidate": "unknown", "reason": "measurement plane is unavailable; geometry diagnostics continue.", "used_for_legal_judgement": False, "used_for_shadow_geometry": False}
+        base.update({
+            "available": False,
+            "raw_comparison_available": False,
+            "internal_comparison_available": False,
+            "meter_comparison_available": False,
+            "unit_conversion_status": "measurement_plane_unavailable",
+            "raw_relation_candidate": "not_available",
+            "meter_relation_candidate": "not_available",
+            "reason": "measurement plane is unavailable; geometry diagnostics continue.",
+        })
+        return base
+
     zs = []
     for key in ("min_raw", "max_raw"):
         z = ((bbox or {}).get(key) or {}).get("z")
         if z is not None:
             zs.append(z)
-    for f in face_summaries:
+    for f in face_summaries or []:
         z = ((f.get("origin_raw") or {}).get("z"))
         if z is not None:
             zs.append(z)
+
+    zms = []
+    for z in zs:
+        zm, _ = _internal_length_to_meters(z)
+        if zm is not None:
+            zms.append(zm)
+
+    def relation(values, plane, suffix):
+        if not values or plane is None:
+            return "not_available"
+        if min(values) > plane:
+            return "caster_above_measurement_plane_{0}_candidate".format(suffix)
+        if max(values) < plane:
+            return "caster_below_measurement_plane_{0}_candidate".format(suffix)
+        return "caster_intersects_measurement_plane_{0}_range_candidate".format(suffix)
+
+    internal_available = bool(zs) and elev_internal is not None
+    meter_available = bool(zms) and elev_m is not None
     if not zs:
-        rel = "unknown"; raw_available = False; reason = "no raw z values available for diagnostic comparison; raw_internal_units and meters are not formally converted."
-    elif min(zs) > elev:
-        rel = "caster_above_measurement_plane_raw_candidate"; raw_available = True; reason = "raw_internal_units and meters are not formally converted; this above-plane relation is only a placeholder diagnostic."
-    elif max(zs) < elev:
-        rel = "caster_below_measurement_plane_raw_candidate"; raw_available = True; reason = "raw_internal_units and meters are not formally converted; this below-plane relation is only a placeholder diagnostic."
+        reason = "no raw/internal z values available for diagnostic comparison."
+        status = "no_geometry_z_values"
+    elif not internal_available:
+        reason = "raw/internal relation is not unit-safe because measurement plane internal candidate elevation is unavailable; meter relation uses converted z values when available."
+        status = "raw_internal_comparison_not_unit_safe"
     else:
-        rel = "caster_intersects_measurement_plane_raw_range_candidate"; raw_available = True; reason = "raw_internal_units and meters are not formally converted; raw range overlap is not a formal intersection test."
-    return {"available": True, "formal_intersection_available": False, "raw_comparison_available": raw_available, "measurement_plane_elevation_m": elev, "geometry_units": "revit_raw_internal_units", "measurement_plane_units": "meter", "unit_conversion_status": "not_implemented_in_this_pr", "raw_relation_candidate": rel, "reason": reason, "used_for_legal_judgement": False, "used_for_shadow_geometry": False}
+        reason = "raw/internal relation uses measurement_plane.elevation_internal_candidate; meter relation uses converted z values and elevation_m. Both are diagnostic only."
+        status = "diagnostic_conversion_available"
+
+    base.update({
+        "available": True,
+        "raw_comparison_available": internal_available,
+        "internal_comparison_available": internal_available,
+        "meter_comparison_available": meter_available,
+        "unit_conversion_status": status,
+        "raw_relation_candidate": relation(zs, elev_internal, "internal"),
+        "meter_relation_candidate": relation(zms, elev_m, "meter"),
+        "reason": reason,
+    })
+    return base

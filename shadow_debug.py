@@ -104,6 +104,25 @@ def _summary_counts(section):
     return result
 
 
+
+def _unit_conversion_summary(out_payload):
+    diagnostics = (out_payload or {}).get("unit_conversion_diagnostics") or {}
+    keys = [
+        "available",
+        "diagnostic_only",
+        "backend",
+        "length",
+        "area",
+        "volume",
+        "raw_fields_preserved",
+        "converted_fields_added",
+        "converted_fields_suffix",
+        "used_for_legal_judgement",
+        "used_for_shadow_projection",
+        "warnings",
+    ]
+    return _sanitize_for_debug({key: diagnostics.get(key) for key in keys if key in diagnostics})
+
 def _summarize_out_for_debug(out_payload):
     out_payload = out_payload or {}
     settings = out_payload.get("settings_normalized") or {}
@@ -127,6 +146,7 @@ def _summarize_out_for_debug(out_payload):
         "shadow_caster_geometry_summary": _summary_counts(out_payload.get("shadow_caster_geometry")),
         "footprint_extraction_summary": _summary_counts(out_payload.get("footprint_extraction")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
+        "unit_conversion_summary": _unit_conversion_summary(out_payload),
         "warnings": _sanitize_for_debug(out_payload.get("warnings") or []),
         "warnings_count": len(out_payload.get("warnings") or []),
         "error_summary": _sanitize_for_debug(out_payload.get("error")),
@@ -153,6 +173,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "shadow_caster_geometry_summary": summary["shadow_caster_geometry_summary"],
         "footprint_extraction_summary": summary["footprint_extraction_summary"],
         "pipeline_readiness": summary["pipeline_readiness"],
+        "unit_conversion_summary": summary["unit_conversion_summary"],
         "warnings": summary["warnings"],
         "warnings_count": summary["warnings_count"],
         "error_summary": summary["error_summary"],

@@ -101,3 +101,7 @@ The following development-only settings are accepted for sanitized review logs:
 - `debug_log_filename`: optional fixed JSON filename, default `latest_debug.json`. Filenames containing `/`, `\\`, `..`, or growth/private prefixes such as `run_`, `raw_`, or `private_` are rejected with a warning and fall back to `latest_debug.json`.
 
 Debug logging is disabled by default, uses fixed filename overwrite behavior, and write failures are non-fatal diagnostics warnings only.
+
+## Unit basis
+
+Settings length values, including `average_ground_level_elevation_m` and `measurement_height_m`, are SI meters. Revit geometry diagnostics may originate in internal feet and are converted into meter-suffixed diagnostic fields before comparison with meter-based measurement-plane context. No legal defaults are invented for measurement height or average ground level.
