@@ -4,7 +4,61 @@ from shadow_policies import GEOMETRY_EXTRACTION_POLICY
 from shadow_utils import *
 from shadow_measurement_plane import _measurement_plane_relation
 from shadow_footprint import _extract_footprint_candidates_from_faces
-from shadow_units import _solid_summary_raw_to_meters, _face_summary_raw_to_meters, _edge_summary_raw_to_meters, _bbox_raw_to_meters
+from shadow_units import _solid_summary_raw_to_meters, _face_summary_raw_to_meters, _edge_summary_raw_to_meters, _bbox_raw_to_meters, _point_raw_to_meters
+
+
+def _diagnostic_point_cap(settings_normalized):
+    normalized = (settings_normalized or {}).get("normalized") or {}
+    try:
+        return max(1, int(normalized.get("max_diagnostic_source_points_per_caster") or 1000))
+    except Exception:
+        return 1000
+
+
+def _source_point_key(point_m):
+    try:
+        return (round(float(point_m.get("x")), 6), round(float(point_m.get("y")), 6), round(float(point_m.get("z")), 6))
+    except Exception:
+        return None
+
+
+def _append_source_point(points, seen, raw_point, source, cap):
+    if len(points) >= cap:
+        return False
+    point_m, _warnings = _point_raw_to_meters(_xyz_to_raw_dict(raw_point))
+    if point_m is None:
+        return False
+    key = _source_point_key(point_m)
+    if key is None or key in seen:
+        return False
+    seen.add(key)
+    points.append({"x": key[0], "y": key[1], "z": key[2], "source": source, "units": "meter"})
+    return True
+
+
+def _collect_curve_source_points(value, source_prefix, points, seen, cap, warnings):
+    curve = value
+    if _is_edge_like(value):
+        curve, err = _safe_call(value, "AsCurve")
+        if err:
+            warnings.append("Edge.AsCurve unavailable for diagnostic source points: {0}".format(err))
+            return
+    if curve is None:
+        return
+    for endpoint_index in (0, 1):
+        point, err = _safe_call(curve, "GetEndPoint", endpoint_index)
+        if err:
+            if endpoint_index == 0:
+                warnings.append("Curve.GetEndPoint unavailable for diagnostic source points: {0}".format(err))
+            continue
+        _append_source_point(points, seen, point, "{0}.endpoint{1}".format(source_prefix, endpoint_index), cap)
+    tessellated, err = _safe_call(curve, "Tessellate")
+    if err:
+        return
+    for point_index, point in enumerate(_safe_iter(tessellated)):
+        if len(points) >= cap:
+            return
+        _append_source_point(points, seen, point, "{0}.tessellate:{1}".format(source_prefix, point_index), cap)
 
 
 def _safe_get_bounding_box(element):
@@ -129,7 +183,7 @@ def _summarize_edge_or_curve(value):
 
 def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings_normalized, measurement_plane=None):
     items_in = _to_list(building_elements)
-    diag = {"policy": GEOMETRY_EXTRACTION_POLICY, "provided": bool(items_in), "count": len(items_in), "accepted_caster_count": (shadow_casters or {}).get("accepted_count", 0), "geometry_readable_caster_count": 0, "solid_count": 0, "positive_solid_count": 0, "face_count": 0, "edge_count": 0, "mesh_count": 0, "bottom_face_candidate_count": 0, "top_face_candidate_count": 0, "vertical_face_candidate_count": 0, "footprint_candidate_count": 0, "footprint_loop_candidate_count": 0, "closed_footprint_loop_candidate_count": 0, "best_candidate_count": 0, "casters_with_footprint_candidate_count": 0, "casters_with_closed_footprint_loop_candidate_count": 0, "measurement_plane_relation_available": False, "measurement_plane_elevation_m": ((measurement_plane or {}).get("elevation_m")), "units": {"geometry": "revit_raw_internal_units", "official_unit_conversion": "diagnostic_meter_fields_added"}, "items": [], "readiness": {}, "warnings": [], "info": ["Geometry extraction diagnostics are read-only and create no Revit elements.", "Footprint candidates are diagnostic only; no footprint polygon, shadow polygon, projection, grid accumulation, or equal-time contour is generated."]}
+    diag = {"policy": GEOMETRY_EXTRACTION_POLICY, "provided": bool(items_in), "count": len(items_in), "accepted_caster_count": (shadow_casters or {}).get("accepted_count", 0), "geometry_readable_caster_count": 0, "solid_count": 0, "positive_solid_count": 0, "face_count": 0, "edge_count": 0, "mesh_count": 0, "diagnostic_source_point_count": 0, "bottom_face_candidate_count": 0, "top_face_candidate_count": 0, "vertical_face_candidate_count": 0, "footprint_candidate_count": 0, "footprint_loop_candidate_count": 0, "closed_footprint_loop_candidate_count": 0, "best_candidate_count": 0, "casters_with_footprint_candidate_count": 0, "casters_with_closed_footprint_loop_candidate_count": 0, "measurement_plane_relation_available": False, "measurement_plane_elevation_m": ((measurement_plane or {}).get("elevation_m")), "units": {"geometry": "revit_raw_internal_units", "official_unit_conversion": "diagnostic_meter_fields_added"}, "settings_caps": {"max_diagnostic_source_points_per_caster": _diagnostic_point_cap(settings_normalized), "max_projected_points_output_per_slice": (((settings_normalized or {}).get("normalized") or {}).get("max_projected_points_output_per_slice") or 300)}, "items": [], "readiness": {}, "warnings": [], "info": ["Geometry extraction diagnostics are read-only and create no Revit elements.", "Footprint candidates are diagnostic only; no footprint polygon, shadow polygon, projection, grid accumulation, or equal-time contour is generated."]}
     caster_items = (shadow_casters or {}).get("items") or []
     for index, item in enumerate(items_in):
         unwrapped = _try_unwrap(item)
@@ -140,6 +194,9 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
         item_warnings.extend(collected.get("warnings", []))
         objs = collected.get("objects") or []
         solids=[]; faces=[]; face_objects=[]; edges=[]; mesh_count=0
+        diagnostic_source_points=[]; diagnostic_source_seen=set()
+        diagnostic_source_point_cap = _diagnostic_point_cap(settings_normalized)
+        diagnostic_source_point_warnings=[]
         for obj in objs:
             val = obj.get("object")
             if _is_solid_like(val):
@@ -148,12 +205,19 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
                     fs, _uw = _face_summary_raw_to_meters(_summarize_face(f)); faces.append(fs); face_objects.append(f)
                 for e in _safe_iter(_safe_attr(val, "Edges")):
                     es, _uw = _edge_summary_raw_to_meters(_summarize_edge_or_curve(e)); edges.append(es)
+                    _collect_curve_source_points(e, "solid_edge", diagnostic_source_points, diagnostic_source_seen, diagnostic_source_point_cap, diagnostic_source_point_warnings)
             elif _is_face_like(val):
                 fs, _uw = _face_summary_raw_to_meters(_summarize_face(val)); faces.append(fs); face_objects.append(val)
+                for loop_index, loop in enumerate(_safe_iter(_safe_attr(val, "EdgeLoops"))):
+                    for edge_index, edge in enumerate(_safe_iter(loop)):
+                        _collect_curve_source_points(edge, "face_edge_loop:{0}:{1}".format(loop_index, edge_index), diagnostic_source_points, diagnostic_source_seen, diagnostic_source_point_cap, diagnostic_source_point_warnings)
             elif _is_edge_like(val) or _is_curve_like(val):
                 es, _uw = _edge_summary_raw_to_meters(_summarize_edge_or_curve(val)); edges.append(es)
+                _collect_curve_source_points(val, "geometry_curve", diagnostic_source_points, diagnostic_source_seen, diagnostic_source_point_cap, diagnostic_source_point_warnings)
             elif _is_mesh_like(val):
                 mesh_count += 1
+        if diagnostic_source_point_warnings:
+            item_warnings.extend(diagnostic_source_point_warnings[:20])
         bottom=sum(1 for f in faces if f.get("height_role_candidate")=="bottom_face_candidate")
         top=sum(1 for f in faces if f.get("height_role_candidate")=="top_face_candidate")
         vertical=sum(1 for f in faces if f.get("height_role_candidate")=="side_face_candidate")
@@ -167,10 +231,10 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
             item_warnings.extend(footprint.get("warnings") or [])
         if relation.get("available"):
             diag["measurement_plane_relation_available"] = True
-        entry={"index": index, "element_id": _element_id(unwrapped), "name": _element_name(unwrapped), "category_name": _category_name(unwrapped), "accepted_shadow_caster": accepted, "geometry_attempted": accepted, "geometry_available": len(objs)>0, "geometry_object_count": len(objs), "solid_count": len(solids), "positive_solid_count": pos, "face_count": len(faces), "edge_count": len(edges), "mesh_count": mesh_count, "bottom_face_candidate_count": bottom, "top_face_candidate_count": top, "vertical_face_candidate_count": vertical, "footprint_candidate_count": len(footprint.get("candidates") or []), "footprint_loop_candidate_count": footprint.get("loop_candidate_count", 0), "closed_footprint_loop_candidate_count": footprint.get("closed_loop_candidate_count", 0), "best_footprint_candidate": footprint.get("best_candidate"), "footprint_extraction": footprint, "footprint_extraction_warnings": footprint.get("warnings", []), "bounding_box_diagnostic": bbox, "measurement_plane_relation": relation, "solids": solids[:20], "faces_summary": faces[:20], "edges_summary_sample": edges[:20], "warnings": item_warnings}
+        entry={"index": index, "element_id": _element_id(unwrapped), "name": _element_name(unwrapped), "category_name": _category_name(unwrapped), "accepted_shadow_caster": accepted, "geometry_attempted": accepted, "geometry_available": len(objs)>0, "geometry_object_count": len(objs), "solid_count": len(solids), "positive_solid_count": pos, "face_count": len(faces), "edge_count": len(edges), "mesh_count": mesh_count, "bottom_face_candidate_count": bottom, "top_face_candidate_count": top, "vertical_face_candidate_count": vertical, "footprint_candidate_count": len(footprint.get("candidates") or []), "footprint_loop_candidate_count": footprint.get("loop_candidate_count", 0), "closed_footprint_loop_candidate_count": footprint.get("closed_loop_candidate_count", 0), "best_footprint_candidate": footprint.get("best_candidate"), "footprint_extraction": footprint, "footprint_extraction_warnings": footprint.get("warnings", []), "bounding_box_diagnostic": bbox, "measurement_plane_relation": relation, "diagnostic_source_points_m": diagnostic_source_points, "diagnostic_source_point_count": len(diagnostic_source_points), "diagnostic_source_points_truncated": len(diagnostic_source_points) >= diagnostic_source_point_cap, "solids": solids[:20], "faces_summary": faces[:20], "edges_summary_sample": edges[:20], "warnings": item_warnings}
         diag["items"].append(entry); diag["warnings"].extend(item_warnings)
         if len(objs)>0: diag["geometry_readable_caster_count"] += 1
-        diag["solid_count"] += len(solids); diag["positive_solid_count"] += pos; diag["face_count"] += len(faces); diag["edge_count"] += len(edges); diag["mesh_count"] += mesh_count; diag["bottom_face_candidate_count"] += bottom; diag["top_face_candidate_count"] += top; diag["vertical_face_candidate_count"] += vertical; diag["footprint_candidate_count"] += len(footprint.get("candidates") or []); diag["footprint_loop_candidate_count"] += footprint.get("loop_candidate_count", 0); diag["closed_footprint_loop_candidate_count"] += footprint.get("closed_loop_candidate_count", 0); diag["best_candidate_count"] += 1 if footprint.get("best_candidate") else 0; diag["casters_with_footprint_candidate_count"] += 1 if footprint.get("loop_candidate_count", 0) > 0 else 0; diag["casters_with_closed_footprint_loop_candidate_count"] += 1 if footprint.get("closed_loop_candidate_count", 0) > 0 else 0
+        diag["solid_count"] += len(solids); diag["positive_solid_count"] += pos; diag["face_count"] += len(faces); diag["edge_count"] += len(edges); diag["mesh_count"] += mesh_count; diag["diagnostic_source_point_count"] += len(diagnostic_source_points); diag["bottom_face_candidate_count"] += bottom; diag["top_face_candidate_count"] += top; diag["vertical_face_candidate_count"] += vertical; diag["footprint_candidate_count"] += len(footprint.get("candidates") or []); diag["footprint_loop_candidate_count"] += footprint.get("loop_candidate_count", 0); diag["closed_footprint_loop_candidate_count"] += footprint.get("closed_loop_candidate_count", 0); diag["best_candidate_count"] += 1 if footprint.get("best_candidate") else 0; diag["casters_with_footprint_candidate_count"] += 1 if footprint.get("loop_candidate_count", 0) > 0 else 0; diag["casters_with_closed_footprint_loop_candidate_count"] += 1 if footprint.get("closed_loop_candidate_count", 0) > 0 else 0
     fp_ready = diag["accepted_caster_count"] > 0 and diag["closed_footprint_loop_candidate_count"] > 0
     settings_ready = (((settings_normalized or {}).get("readiness") or {}).get("ready_for_equal_time_shadow_calculation") is True)
     fp_blockers=[]; proj_blockers=[]

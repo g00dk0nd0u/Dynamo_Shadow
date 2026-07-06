@@ -149,6 +149,8 @@ def _range_warning(key, value):
         "grid_resolution_m": (0.0, None, False, True),
         "analysis_margin_m": (0.0, None, True, True),
         "closure_tolerance_m": (0.0, None, False, True),
+        "max_diagnostic_source_points_per_caster": (1.0, None, True, True),
+        "max_projected_points_output_per_slice": (1.0, None, True, True),
     }
     if key not in ranges:
         return None
@@ -165,7 +167,7 @@ def _normalize_settings(settings, level=None):
     defaults_applied = []
     invalid_keys = []
     info = []
-    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "time_basis", "true_solar_start_time", "true_solar_end_time", "sun_time_step_minutes", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename"])
+    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "time_basis", "true_solar_start_time", "true_solar_end_time", "sun_time_step_minutes", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename", "max_diagnostic_source_points_per_caster", "max_projected_points_output_per_slice"])
     ignored_keys = sorted([_safe_text(k) for k in settings_dict.keys() if k not in known])
     if ignored_keys:
         info.append("Unknown settings keys are ignored by v1 diagnostics: {0}".format(", ".join(ignored_keys)))
@@ -206,6 +208,18 @@ def _normalize_settings(settings, level=None):
             invalid_keys.append(key)
             value = None
         if value is None and key in SETTINGS_DIAGNOSTIC_DEFAULTS:
+            value = SETTINGS_DIAGNOSTIC_DEFAULTS[key]
+            defaults_applied.append(key)
+        normalized[key] = value
+
+    for key in ["max_diagnostic_source_points_per_caster", "max_projected_points_output_per_slice"]:
+        value, warn = _parse_int(settings_dict.get(key), key)
+        range_warn = _range_warning(key, value)
+        if warn or range_warn:
+            warnings.append(warn or range_warn)
+            invalid_keys.append(key)
+            value = None
+        if value is None:
             value = SETTINGS_DIAGNOSTIC_DEFAULTS[key]
             defaults_applied.append(key)
         normalized[key] = value
