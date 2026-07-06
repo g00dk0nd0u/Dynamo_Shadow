@@ -77,12 +77,27 @@ def _sync_dynamo_runtime_globals():
 
 
 def _minimal_import_failure(error_text):
+    unit_conversion_diagnostics = None
+    unit_conversion_policy = None
+    unit_conversion_warnings = []
+    try:
+        if "_build_unit_conversion_diagnostics" in globals():
+            unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
+        if "UNIT_CONVERSION_POLICY" in globals():
+            unit_conversion_policy = UNIT_CONVERSION_POLICY
+        if isinstance(unit_conversion_diagnostics, dict):
+            unit_conversion_warnings = list(unit_conversion_diagnostics.get("warnings", []))
+    except Exception:
+        unit_conversion_diagnostics = None
+        unit_conversion_policy = None
+        unit_conversion_warnings = []
+
     return {
         "success": False,
         "tool": "Dynamo_Shadow",
         "stage": "v1_footprint_extraction_diagnostics",
         "message": "script.py failed while importing diagnostic modules.",
-        "warnings": list(unit_conversion_diagnostics.get("warnings", [])),
+        "warnings": unit_conversion_warnings,
         "error": error_text,
         "debug_log": {
             "enabled": False,
@@ -93,8 +108,8 @@ def _minimal_import_failure(error_text):
             "warnings": [],
             "error": None,
         },
-        "unit_conversion_diagnostics": _build_unit_conversion_diagnostics() if "_build_unit_conversion_diagnostics" in globals() else None,
-        "unit_conversion_policy": UNIT_CONVERSION_POLICY if "UNIT_CONVERSION_POLICY" in globals() else None,
+        "unit_conversion_diagnostics": unit_conversion_diagnostics,
+        "unit_conversion_policy": unit_conversion_policy,
         "debug_log_policy": {
             "purpose": "development_review_debug_log",
             "enabled_by_default": False,
