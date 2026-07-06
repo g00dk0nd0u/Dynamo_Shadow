@@ -108,8 +108,7 @@
       "ready_for_legal_judgement_masks": false
     },
     "warnings": [
-      "Measurement plane could not be constructed; this is non-fatal for input diagnostics.",
-      "Geometry raw_internal_units and measurement plane meters are not formally converted in this PR."
+      "Measurement plane could not be constructed; this is non-fatal for input diagnostics."
     ]
   },
   "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint po...",
@@ -321,7 +320,6 @@
     "building_elements is empty; select one or more user-defined Mass or Generic Model shadow proxy elements.",
     "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
     "Measurement plane could not be constructed; this is non-fatal for input diagnostics.",
-    "Geometry raw_internal_units and measurement plane meters are not formally converted in this PR.",
     "No accepted shadow caster proxy elements are available.",
     "Settings are not ready for future equal-time shadow calculation; missing=['average_ground_level_elevation_m', 'measurement_height_m', 'latitude', 'longitude'...",
     "average_ground_level_elevation_m missing",
@@ -336,9 +334,10 @@
     "measurement_height_m missing",
     "measurement plane unavailable",
     "settings not ready for equal-time shadow calculation",
+    "No accepted shadow caster proxy elements are available.",
     {
-      "truncated_count": 11
+      "truncated_count": 10
     }
   ],
-  "warnings_count": 31
+  "warnings_count": 30
 }

@@ -114,6 +114,31 @@ SETTINGS_DIAGNOSTIC_DEFAULTS = {
     "closure_tolerance_m": 0.01,
 }
 
+
+UNIT_CONVERSION_POLICY = {
+    "purpose": "revit_internal_units_to_legal_si_meters_diagnostics",
+    "diagnostic_only": True,
+    "revit_internal_length_unit": "foot",
+    "legal_length_unit": "meter",
+    "preferred_api": "Revit DB UnitUtils",
+    "fallback_length_factor": "1 ft = 0.3048 m",
+    "fallback_area_factor": "1 ft2 = 0.09290304 m2",
+    "fallback_volume_factor": "1 ft3 = 0.028316846592 m3",
+    "reverse_length_factor": "1 m = 3.280839895013123 ft",
+    "formal_geometry_projection_enabled": False,
+    "legal_judgement_generated": False,
+    "create_revit_elements": False,
+    "raw_fields_preserved": True,
+    "converted_fields_suffix": "_m / _m2 / _m3",
+    "not_implemented_in_this_pr": [
+        "formal footprint polygon",
+        "CurveLoop",
+        "shadow projection",
+        "equal-time contour",
+        "legal judgement",
+    ],
+}
+
 DEBUG_LOG_POLICY = {
     "purpose": "development_review_debug_log",
     "enabled_by_default": False,
@@ -219,7 +244,7 @@ GEOMETRY_EXTRACTION_POLICY = {
     "use_bounding_box_for_shadow_judgement": False,
     "bounding_box_allowed_for": ["diagnostic_summary", "future_analysis_extent_estimation"],
     "geometry_units": "revit_raw_internal_units",
-    "official_unit_conversion": "not_implemented_in_this_pr",
+    "official_unit_conversion": "diagnostic_meter_fields_added",
     "footprint_polygon_generated": False,
     "shadow_projection_generated": False,
     "equal_time_contours_generated": False,
@@ -242,7 +267,7 @@ FOOTPRINT_EXTRACTION_POLICY = {
     "offset_generated": False,
     "self_intersection_checked": False,
     "polygon_boolean_generated": False,
-    "formal_unit_conversion": "not_implemented_in_this_pr",
+    "formal_unit_conversion": "diagnostic_meter_fields_added",
     "geometry_units": "revit_raw_internal_units",
     "measurement_plane_units": "meter",
     "bounding_box_used_for_footprint": False,
@@ -298,7 +323,7 @@ MEASUREMENT_PLANE_POLICY = {
     "measurement_height_source": "settings.measurement_height_m",
     "revit_level_used_as_average_ground_level": False,
     "revit_level_used_as_measurement_plane": False,
-    "revit_internal_unit_conversion": "not_implemented_in_this_pr",
+    "revit_internal_unit_conversion": "diagnostic_meter_fields_added",
     "geometry_relation": "diagnostic_only",
     "formal_intersection_with_revit_geometry": "not_implemented_in_this_pr",
     "site_boundary_required_for_plane_construction": False,

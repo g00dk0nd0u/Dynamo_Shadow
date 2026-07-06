@@ -175,3 +175,7 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 ## Code organization note
 
 `script.py` is the Dynamo-facing orchestration layer that builds the top-level `OUT` payload. Implementation details are split into focused `shadow_*.py` modules for optional Revit API imports, policies, safe utilities, input diagnostics, settings normalization, measurement plane diagnostics, geometry diagnostics, footprint diagnostics, and pipeline readiness. This organization is intended to preserve the existing diagnostics-only behavior while keeping future implementation steps small and reviewable.
+
+## Unit conversion diagnostics v1
+
+Revit geometry raw values are internal units, normally feet, while settings and Article 56-2 measurement plane values are SI meters. Diagnostics now preserve raw fields and add converted `_m`, `_m2`, and `_m3` fields for review only. Unit conversion diagnostics are not legal judgement readiness and are not used for shadow projection.

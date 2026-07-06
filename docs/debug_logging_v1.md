@@ -59,3 +59,7 @@ Committed debug logs must be sanitized more strictly than runtime-only diagnosti
 String-level redaction is mandatory, not only dictionary-key filtering. Warnings, error summaries, traceback-like strings, object summaries, and fallback messages must pass through privacy redaction before they can appear in a debug log.
 
 Forbidden content includes local user paths, usernames, email addresses, client/project names, OneDrive paths, common user folders, UNC/network paths, raw Revit objects, and Dynamo/Revit object repr strings. Privacy scan failures in committed `debug_logs/*.json` artifacts are merge blockers.
+
+## Unit conversion summary in debug logs
+
+Sanitized debug logs may include `unit_conversion_diagnostics` and policy summaries. Logs must not include personal paths, usernames, email addresses, client/project names, OneDrive paths, raw Revit object representations, or large geometry payloads. The privacy scan must pass whenever debug logs are committed.

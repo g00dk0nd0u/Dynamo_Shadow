@@ -198,3 +198,14 @@ Before opening a PR, confirm:
 - String-level redaction is required, not only key filtering.
 - If the debug log privacy scan fails, do not merge.
 - Debug log write failure remains non-fatal, but privacy failure in committed artifacts is a merge blocker.
+
+## Unit conversion diagnostic rules
+
+- Revit geometry raw values are internal units, normally feet.
+- Settings and Article 56-2 measurement plane values are meters.
+- Never silently replace raw fields; preserve raw fields and add converted meter fields with `_m`, `_m2`, or `_m3` suffixes.
+- Do not use raw Revit units for legal comparison once meter fields exist.
+- Unit conversion diagnostics are not legal judgement readiness.
+- Do not implement formal footprint polygon generation, shadow projection, or legal judgement in a unit conversion PR.
+- Debug logs may include unit conversion summaries but must remain sanitized.
+- The debug log privacy scan must pass when debug logs are committed.

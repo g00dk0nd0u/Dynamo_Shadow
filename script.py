@@ -48,6 +48,7 @@ try:
         FOOTPRINT_EXTRACTION_POLICY,
         MEASUREMENT_PLANE_POLICY,
         DEBUG_LOG_POLICY,
+        UNIT_CONVERSION_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
     from shadow_settings import _normalize_settings
@@ -56,6 +57,7 @@ try:
     from shadow_footprint import _build_footprint_extraction_summary
     from shadow_readiness import _build_pipeline_readiness
     from shadow_debug import _write_debug_log_if_enabled, _build_debug_log_status
+    from shadow_units import _build_unit_conversion_diagnostics
 except Exception:
     _IMPORT_ERROR_TEXT = traceback.format_exc()
 else:
@@ -91,6 +93,8 @@ def _minimal_import_failure(error_text):
             "warnings": [],
             "error": None,
         },
+        "unit_conversion_diagnostics": _build_unit_conversion_diagnostics() if "_build_unit_conversion_diagnostics" in globals() else None,
+        "unit_conversion_policy": UNIT_CONVERSION_POLICY if "UNIT_CONVERSION_POLICY" in globals() else None,
         "debug_log_policy": {
             "purpose": "development_review_debug_log",
             "enabled_by_default": False,
@@ -113,6 +117,7 @@ def _build_success():
     _sync_dynamo_runtime_globals()
     raw_inputs, input_source = _read_inputs()
     warnings = []
+    unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
 
     for key in INPUT_KEYS:
         if key in ("site_boundary", "settings"):
@@ -141,6 +146,7 @@ def _build_success():
     warnings.extend(pipeline_readiness.get("blockers_for_future_projection_context", []))
     warnings.extend(pipeline_readiness.get("blockers_for_future_shadow_projection", []))
     warnings.extend(pipeline_readiness.get("blockers_for_legal_judgement_masks", []))
+    warnings.extend(unit_conversion_diagnostics.get("warnings", []))
     if not pipeline_readiness.get("boundary_dependent_steps_ready"):
         warnings.extend(pipeline_readiness.get("blockers_for_boundary_dependent_steps", []))
 
@@ -150,6 +156,8 @@ def _build_success():
         "stage": STAGE_NAME,
         "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint polygon generation, Revit element creation, true solar time calculation, sun vector calculation, shadow projection, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented.",
         "legal_constants": LEGAL_CONSTANTS,
+        "unit_conversion_diagnostics": unit_conversion_diagnostics,
+        "unit_conversion_policy": UNIT_CONVERSION_POLICY,
         "inputs": {
             "source": input_source,
             "building_elements": _summarize_input(raw_inputs.get("building_elements")),
