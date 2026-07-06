@@ -170,6 +170,23 @@ SUN_POSITION_POLICY = {
     ],
 }
 
+SHADOW_PROJECTION_POLICY = {
+    "purpose": "diagnostic_shadow_projection_point_cloud",
+    "diagnostic_only": True,
+    "source_geometry": "meter_based_geometry_diagnostic_points",
+    "measurement_plane_source": "measurement_plane.elevation_m",
+    "sun_table_source": "sun_time_slices shadow_direction_vector and shadow_length_factor",
+    "formal_shadow_polygons_generated": False,
+    "equal_time_contours_generated": False,
+    "legal_masks_generated": False,
+    "site_boundary_clipping_performed": False,
+    "legal_judgement_generated": False,
+    "revit_elements_created": False,
+    "jst_conversion_performed": False,
+    "equation_of_time_correction_performed": False,
+    "uses_bounding_box_as_shadow_geometry": False,
+}
+
 DEBUG_LOG_POLICY = {
     "purpose": "development_review_debug_log",
     "enabled_by_default": False,
@@ -277,7 +294,7 @@ GEOMETRY_EXTRACTION_POLICY = {
     "geometry_units": "revit_raw_internal_units",
     "official_unit_conversion": "diagnostic_meter_fields_added",
     "footprint_polygon_generated": False,
-    "shadow_projection_generated": False,
+    "shadow_projection_generated": "diagnostic_point_cloud_only",
     "equal_time_contours_generated": False,
 }
 
