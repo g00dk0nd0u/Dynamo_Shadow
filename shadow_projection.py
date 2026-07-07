@@ -121,6 +121,122 @@ def _extent_from_points(points):
     }
 
 
+def _convex_shadow_envelope_base(warnings=None):
+    return {
+        "available": False,
+        "diagnostic_only": True,
+        "envelope_type": "convex_hull",
+        "point_source": "projected_point_cloud",
+        "algorithm": "2d_monotonic_chain_convex_hull",
+        "over_approximation": True,
+        "true_volume_silhouette": False,
+        "formal_shadow_polygon": False,
+        "hull_point_count": 0,
+        "hull_points_m": [],
+        "closed": False,
+        "area_m2": None,
+        "perimeter_m": None,
+        "extent_m": None,
+        "warnings": list(warnings or []),
+    }
+
+
+def _projected_xy_points(projected_points):
+    points = set()
+    skipped_count = 0
+    for point in projected_points or []:
+        x = _safe_float((point or {}).get("x_m"))
+        y = _safe_float((point or {}).get("y_m"))
+        if x is None or y is None:
+            skipped_count += 1
+            continue
+        points.add((_round(x), _round(y)))
+    return sorted(points), skipped_count
+
+
+def _cross(origin, a, b):
+    return (a[0] - origin[0]) * (b[1] - origin[1]) - (a[1] - origin[1]) * (b[0] - origin[0])
+
+
+def _monotonic_chain_convex_hull(points):
+    if len(points) <= 1:
+        return list(points)
+    lower = []
+    for point in points:
+        while len(lower) >= 2 and _cross(lower[-2], lower[-1], point) <= 0:
+            lower.pop()
+        lower.append(point)
+    upper = []
+    for point in reversed(points):
+        while len(upper) >= 2 and _cross(upper[-2], upper[-1], point) <= 0:
+            upper.pop()
+        upper.append(point)
+    return lower[:-1] + upper[:-1]
+
+
+def _polygon_area(points):
+    if len(points) < 3:
+        return 0.0
+    total = 0.0
+    for index, point in enumerate(points):
+        next_point = points[(index + 1) % len(points)]
+        total += point[0] * next_point[1] - next_point[0] * point[1]
+    return abs(total) * 0.5
+
+
+def _polygon_perimeter(points):
+    if len(points) < 3:
+        return None
+    total = 0.0
+    for index, point in enumerate(points):
+        next_point = points[(index + 1) % len(points)]
+        dx = next_point[0] - point[0]
+        dy = next_point[1] - point[1]
+        total += (dx * dx + dy * dy) ** 0.5
+    return total
+
+
+def _build_convex_shadow_envelope_v0(projected_points, measurement_plane_elevation_m):
+    warnings = []
+    plane_z = _safe_float(measurement_plane_elevation_m)
+    if plane_z is None:
+        warnings.append("measurement_plane.elevation_m is missing; convex_shadow_envelope_v0 is skipped non-fatally.")
+        return _convex_shadow_envelope_base(warnings)
+
+    unique_points, skipped_count = _projected_xy_points(projected_points)
+    if skipped_count:
+        warnings.append("{0} projected points without numeric x_m/y_m were skipped for convex_shadow_envelope_v0.".format(skipped_count))
+    if len(unique_points) < 3:
+        warnings.append("Fewer than 3 unique projected x/y points are available; convex_shadow_envelope_v0 is unavailable.")
+        return _convex_shadow_envelope_base(warnings)
+
+    hull = _monotonic_chain_convex_hull(unique_points)
+    area = _polygon_area(hull)
+    if len(hull) < 3 or area <= 1e-9:
+        result = _convex_shadow_envelope_base(warnings + ["Projected x/y points are collinear or area is effectively zero; convex_shadow_envelope_v0 is unavailable."])
+        result["area_m2"] = 0
+        return result
+
+    hull_points_m = [{"x_m": _round(point[0]), "y_m": _round(point[1]), "z_m": _round(plane_z)} for point in hull]
+    return {
+        "available": True,
+        "diagnostic_only": True,
+        "envelope_type": "convex_hull",
+        "point_source": "projected_point_cloud",
+        "algorithm": "2d_monotonic_chain_convex_hull",
+        "over_approximation": True,
+        "true_volume_silhouette": False,
+        "formal_shadow_polygon": False,
+        "hull_point_count": len(hull_points_m),
+        "hull_points_m": hull_points_m,
+        "closed": True,
+        "area_m2": _round(area),
+        "perimeter_m": _round(_polygon_perimeter(hull)),
+        "extent_m": _extent_from_points(hull_points_m),
+        "warnings": warnings,
+    }
+
+
 def _vertical_delta_to_measurement_plane(point, measurement_plane_elevation_m):
     z = _safe_float(point.get("z_m"))
     plane_z = _safe_float(measurement_plane_elevation_m)
@@ -196,6 +312,7 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
                     if pp is not None:
                         projected.append(pp)
             projected_points = [p.get("projected_point_m") for p in projected]
+            convex_shadow_envelope_v0 = _build_convex_shadow_envelope_v0(projected_points, plane_z)
             projected_output = projected[:projected_output_cap]
             slice_outputs.append({
                 "slice_index": index,
@@ -211,6 +328,7 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
                 "projected_points_truncated": len(projected) > len(projected_output),
                 "max_projected_points_output_per_slice": projected_output_cap,
                 "projected_extent_m": _extent_from_points(projected_points),
+                "convex_shadow_envelope_v0": convex_shadow_envelope_v0,
                 "warnings": slice_warnings,
             })
 
