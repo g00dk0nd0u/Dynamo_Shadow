@@ -59,6 +59,7 @@ def _collect_diagnostic_geometry_points(shadow_caster_geometry):
     seen = set()
     used_preferred = False
     used_fallback = False
+    skipped_symbol_fallback_count = 0
     for item in (shadow_caster_geometry or {}).get("items") or []:
         if item.get("accepted_shadow_caster") is not True:
             continue
@@ -70,6 +71,9 @@ def _collect_diagnostic_geometry_points(shadow_caster_geometry):
                 source = point.get("source") or "diagnostic_source_points_m:{0}".format(point_index)
                 _append_point(points, seen, point, source, caster_index)
             continue
+        if item.get("legacy_projection_fallback_allowed") is False:
+            skipped_symbol_fallback_count += 1
+            continue
         used_fallback = True
         for face_index, face in enumerate(item.get("faces_summary") or []):
             _append_point(points, seen, face.get("origin_m"), "face_origin_m:{0}".format(face_index), caster_index)
@@ -80,8 +84,15 @@ def _collect_diagnostic_geometry_points(shadow_caster_geometry):
         for candidate_index, candidate in enumerate(footprint.get("candidates") or []):
             for point_index, point in enumerate(candidate.get("endpoints_m_sample") or []):
                 _append_point(points, seen, point, "footprint_endpoint_m:{0}:{1}".format(candidate_index, point_index), caster_index)
-    strategy = "diagnostic_source_points_m" if used_preferred and not used_fallback else "diagnostic_source_points_m_with_legacy_fallback" if used_preferred else "legacy_faces_edges_footprint_fallback"
-    return points, strategy
+    if skipped_symbol_fallback_count and not used_preferred and not used_fallback:
+        strategy = "symbol_geometry_only_casters_skipped"
+    elif skipped_symbol_fallback_count and used_preferred and not used_fallback:
+        strategy = "diagnostic_source_points_m_with_symbol_geometry_only_casters_skipped"
+    elif skipped_symbol_fallback_count and used_fallback:
+        strategy = "diagnostic_source_points_m_or_legacy_fallback_with_symbol_geometry_only_casters_skipped"
+    else:
+        strategy = "diagnostic_source_points_m" if used_preferred and not used_fallback else "diagnostic_source_points_m_with_legacy_fallback" if used_preferred else "legacy_faces_edges_footprint_fallback"
+    return points, strategy, skipped_symbol_fallback_count
 
 
 def _projected_output_cap(shadow_caster_geometry):
@@ -150,7 +161,7 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
     plane_z = _safe_float((measurement_plane or {}).get("elevation_m"))
     if plane_z is None:
         warnings.append("measurement_plane.elevation_m is missing; diagnostic shadow projection point cloud is skipped non-fatally.")
-    points, source_strategy = _collect_diagnostic_geometry_points(shadow_caster_geometry)
+    points, source_strategy, skipped_symbol_fallback_count = _collect_diagnostic_geometry_points(shadow_caster_geometry)
     projected_output_cap = _projected_output_cap(shadow_caster_geometry)
     if not points:
         warnings.append("No meter-based diagnostic geometry points are available; diagnostic shadow projection point cloud is skipped non-fatally.")
@@ -215,6 +226,7 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
         "measurement_plane_elevation_m": _round(plane_z),
         "source_geometry_point_strategy": source_strategy,
         "geometry_instance_source_strategy": (shadow_caster_geometry or {}).get("geometry_instance_source_strategy"),
+        "legacy_projection_fallback_skipped_due_to_symbol_geometry": skipped_symbol_fallback_count,
         "source_geometry_point_count": len(points),
         "skipped_point_count_below_or_on_measurement_plane": skipped_point_count,
         "projectable_source_point_count": len(projectable_points),
