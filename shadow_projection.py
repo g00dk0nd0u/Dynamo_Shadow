@@ -57,10 +57,24 @@ def _append_point(points, seen, point, source, caster_index):
 def _collect_diagnostic_geometry_points(shadow_caster_geometry):
     points = []
     seen = set()
+    used_preferred = False
+    used_fallback = False
+    skipped_symbol_fallback_count = 0
     for item in (shadow_caster_geometry or {}).get("items") or []:
         if item.get("accepted_shadow_caster") is not True:
             continue
         caster_index = item.get("index")
+        source_points = item.get("diagnostic_source_points_m") or []
+        if source_points:
+            used_preferred = True
+            for point_index, point in enumerate(source_points):
+                source = point.get("source") or "diagnostic_source_points_m:{0}".format(point_index)
+                _append_point(points, seen, point, source, caster_index)
+            continue
+        if item.get("legacy_projection_fallback_allowed") is False:
+            skipped_symbol_fallback_count += 1
+            continue
+        used_fallback = True
         for face_index, face in enumerate(item.get("faces_summary") or []):
             _append_point(points, seen, face.get("origin_m"), "face_origin_m:{0}".format(face_index), caster_index)
         for edge_index, edge in enumerate(item.get("edges_summary_sample") or []):
@@ -70,7 +84,23 @@ def _collect_diagnostic_geometry_points(shadow_caster_geometry):
         for candidate_index, candidate in enumerate(footprint.get("candidates") or []):
             for point_index, point in enumerate(candidate.get("endpoints_m_sample") or []):
                 _append_point(points, seen, point, "footprint_endpoint_m:{0}:{1}".format(candidate_index, point_index), caster_index)
-    return points
+    if skipped_symbol_fallback_count and not used_preferred and not used_fallback:
+        strategy = "symbol_geometry_only_casters_skipped"
+    elif skipped_symbol_fallback_count and used_preferred and not used_fallback:
+        strategy = "diagnostic_source_points_m_with_symbol_geometry_only_casters_skipped"
+    elif skipped_symbol_fallback_count and used_fallback:
+        strategy = "diagnostic_source_points_m_or_legacy_fallback_with_symbol_geometry_only_casters_skipped"
+    else:
+        strategy = "diagnostic_source_points_m" if used_preferred and not used_fallback else "diagnostic_source_points_m_with_legacy_fallback" if used_preferred else "legacy_faces_edges_footprint_fallback"
+    return points, strategy, skipped_symbol_fallback_count
+
+
+def _projected_output_cap(shadow_caster_geometry):
+    try:
+        value = ((shadow_caster_geometry or {}).get("settings_caps") or {}).get("max_projected_points_output_per_slice")
+        return max(1, int(value or 300))
+    except Exception:
+        return 300
 
 
 def _extent_from_points(points):
@@ -131,7 +161,8 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
     plane_z = _safe_float((measurement_plane or {}).get("elevation_m"))
     if plane_z is None:
         warnings.append("measurement_plane.elevation_m is missing; diagnostic shadow projection point cloud is skipped non-fatally.")
-    points = _collect_diagnostic_geometry_points(shadow_caster_geometry)
+    points, source_strategy, skipped_symbol_fallback_count = _collect_diagnostic_geometry_points(shadow_caster_geometry)
+    projected_output_cap = _projected_output_cap(shadow_caster_geometry)
     if not points:
         warnings.append("No meter-based diagnostic geometry points are available; diagnostic shadow projection point cloud is skipped non-fatally.")
     slices = sun_time_slices or []
@@ -165,6 +196,7 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
                     if pp is not None:
                         projected.append(pp)
             projected_points = [p.get("projected_point_m") for p in projected]
+            projected_output = projected[:projected_output_cap]
             slice_outputs.append({
                 "slice_index": index,
                 "true_solar_time": sun_slice.get("true_solar_time"),
@@ -175,7 +207,9 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
                 "skipped_point_count_below_or_on_measurement_plane": skipped_point_count,
                 "projectable_source_point_count": len(projectable_points),
                 "projected_point_count": len(projected),
-                "projected_points": projected,
+                "projected_points": projected_output,
+                "projected_points_truncated": len(projected) > len(projected_output),
+                "max_projected_points_output_per_slice": projected_output_cap,
                 "projected_extent_m": _extent_from_points(projected_points),
                 "warnings": slice_warnings,
             })
@@ -190,6 +224,9 @@ def _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_pla
         "legal_judgement_generated": False,
         "revit_elements_created": False,
         "measurement_plane_elevation_m": _round(plane_z),
+        "source_geometry_point_strategy": source_strategy,
+        "geometry_instance_source_strategy": (shadow_caster_geometry or {}).get("geometry_instance_source_strategy"),
+        "legacy_projection_fallback_skipped_due_to_symbol_geometry": skipped_symbol_fallback_count,
         "source_geometry_point_count": len(points),
         "skipped_point_count_below_or_on_measurement_plane": skipped_point_count,
         "projectable_source_point_count": len(projectable_points),

@@ -113,6 +113,8 @@ SETTINGS_DIAGNOSTIC_DEFAULTS = {
     "grid_resolution_m": 1.0,
     "analysis_margin_m": 20.0,
     "closure_tolerance_m": 0.01,
+    "max_diagnostic_source_points_per_caster": 1000,
+    "max_projected_points_output_per_slice": 300,
 }
 
 
