@@ -13,7 +13,7 @@
       "Name": "Watch",
       "Type": "unknown",
       "InitialValue": "",
-      "Description": "Visualizes a node's output"
+      "Description": "ノードの出力を可視化"
     }
   ],
   "Nodes": [
@@ -74,7 +74,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Runs an embedded Python script."
+      "Description": "埋め込み Python スクリプトを実行します。"
     },
     {
       "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
@@ -105,27 +105,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Visualizes a node's output"
-    },
-    {
-      "ConcreteType": "Dynamo.Nodes.DSModelElementsSelection, DSRevitNodesUI",
-      "NodeType": "ExtensionNode",
-      "InstanceId": [],
-      "Id": "f94a5a6bd58644329c8ff5e90c652e5c",
-      "Inputs": [],
-      "Outputs": [
-        {
-          "Id": "bbc46354868c449aac38cee94c98414e",
-          "Name": "Elements",
-          "Description": "The selected elements.",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Replication": "Disabled",
-      "Description": "Select model elements from the document."
+      "Description": "ノードの出力を可視化"
     },
     {
       "ConcreteType": "Dynamo.Nodes.DSModelElementsSelection, DSRevitNodesUI",
@@ -145,7 +125,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select model elements from the document."
+      "Description": "Revit ドキュメントから複数の要素を選択します。"
     },
     {
       "ConcreteType": "DSRevitNodesUI.Levels, DSRevitNodesUI",
@@ -166,7 +146,29 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select a level in the active document"
+      "Description": "アクティブなドキュメントでレベルを選択"
+    },
+    {
+      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "InstanceId": [
+        "a9c2d697-bd79-4670-a571-ebc256a1a940-00650d5f"
+      ],
+      "Id": "af2519f73dff436c8aba2f16c3788bf3",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "713068306cfc4043879784e49f0e9d0a",
+          "Name": "Element",
+          "Description": "選択した要素。",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "ドキュメントからモデル要素を選択します。"
     }
   ],
   "Connectors": [
@@ -174,12 +176,6 @@
       "Start": "756090e555e6482eac340c07d57ec1d0",
       "End": "a0ebc2a430a14ef09805306ac53eede1",
       "Id": "f1f9ce228b2f48feb3bb06748dd04ccd",
-      "IsHidden": "False"
-    },
-    {
-      "Start": "bbc46354868c449aac38cee94c98414e",
-      "End": "4f72ad39e52b41beb3ddb7ecc8e85d35",
-      "Id": "b580aaf37db64fbbb8e6e965746a9626",
       "IsHidden": "False"
     },
     {
@@ -192,6 +188,12 @@
       "Start": "86389f2ae1e449a484ef9de9700eea9d",
       "End": "978af3626b954931af2e2b8834f9387c",
       "Id": "a7ac232ececd40ff8aa8d31edca87258",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "713068306cfc4043879784e49f0e9d0a",
+      "End": "4f72ad39e52b41beb3ddb7ecc8e85d35",
+      "Id": "b0a20c3342f94d1f9f25b6e538bbf8b2",
       "IsHidden": "False"
     }
   ],
@@ -216,7 +218,7 @@
   ],
   "Author": "",
   "Linting": {
-    "activeLinter": "None",
+    "activeLinter": "なし",
     "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
     "warningCount": 0,
     "errorCount": 0
@@ -232,7 +234,7 @@
       "RunPeriod": "1000"
     },
     "Camera": {
-      "Name": "_Background Preview",
+      "Name": "背景プレビュー(_B)",
       "EyeX": -17.0,
       "EyeY": 24.0,
       "EyeZ": 50.0,
@@ -266,16 +268,6 @@
         "Y": 349.5502799356898
       },
       {
-        "Id": "f94a5a6bd58644329c8ff5e90c652e5c",
-        "Name": "Select Shadow Caster Elements",
-        "IsSetAsInput": false,
-        "IsSetAsOutput": false,
-        "Excluded": false,
-        "ShowGeometry": true,
-        "X": -49.93831254136285,
-        "Y": 154.74979141820725
-      },
-      {
         "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
         "Name": "Select Site Boundary Elements",
         "IsSetAsInput": false,
@@ -294,11 +286,21 @@
         "ShowGeometry": true,
         "X": -36.92990291087733,
         "Y": 579.235526243188
+      },
+      {
+        "Id": "af2519f73dff436c8aba2f16c3788bf3",
+        "Name": "Select Model Element",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -38.81342800749371,
+        "Y": -76.43267331634905
       }
     ],
     "Annotations": [],
-    "X": 197.88294370880556,
-    "Y": 102.64685121173483,
-    "Zoom": 0.9270823474814578
+    "X": 626.1465866664468,
+    "Y": 311.20802427205683,
+    "Zoom": 0.7665507579513152
   }
 }
