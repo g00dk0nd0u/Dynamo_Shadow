@@ -13,7 +13,7 @@
       "Name": "Watch",
       "Type": "unknown",
       "InitialValue": "",
-      "Description": "ノードの出力を可視化"
+      "Description": "Visualizes a node's output"
     }
   ],
   "Nodes": [
@@ -21,6 +21,7 @@
       "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
       "Code": "# Dynamo Python Node / CPython3\n# Minimal bootstrap: load dynamo_loader.py from the same folder as this .dyn file.\n\nimport clr\nimport os\nimport traceback\n\nclr.AddReference(\"DynamoServices\")\nfrom Dynamo.Applications import DynamoRevit\n\nLOADER_NAME = \"dynamo_loader.py\"\n\n\ndef get_workspace_file():\n    try:\n        return DynamoRevit.RevitDynamoModel.CurrentWorkspace.FileName\n    except Exception:\n        return None\n\n\ntry:\n    workspace_file = get_workspace_file()\n    workspace_dir = os.path.dirname(workspace_file) if workspace_file else None\n    loader_path = os.path.join(workspace_dir, LOADER_NAME) if workspace_dir else None\n\n    if not loader_path or not os.path.isfile(loader_path):\n        OUT = {\n            \"success\": False,\n            \"loader_name\": LOADER_NAME,\n            \"workspace_file\": workspace_file,\n            \"workspace_dir\": workspace_dir,\n            \"loader_path\": loader_path,\n            \"error\": \"dynamo_loader.py not found in the same folder as the .dyn file.\"\n        }\n    else:\n        with open(loader_path, \"r\", encoding=\"utf-8-sig\") as f:\n            loader_code = f.read()\n\n        loader_globals = {\n            \"__file__\": loader_path,\n            \"__name__\": \"__dynamo_loader__\",\n            \"IN\": IN,\n            \"OUT\": None,\n            \"WORKSPACE_FILE\": workspace_file,\n            \"WORKSPACE_DIR\": workspace_dir,\n            \"LOADER_PATH\": loader_path,\n        }\n\n        try:\n            loader_globals[\"UnwrapElement\"] = UnwrapElement\n        except Exception:\n            pass\n\n        exec(compile(loader_code, loader_path, \"exec\"), loader_globals)\n        OUT = loader_globals.get(\"OUT\", None)\n\nexcept Exception:\n    OUT = {\n        \"success\": False,\n        \"loader_name\": LOADER_NAME,\n        \"error\": traceback.format_exc()\n    }",
       "Engine": "CPython3",
+      "EngineName": "CPython3",
       "VariableInputPorts": true,
       "Id": "ea8bb68cb9d54950a6aead55fe300741",
       "NodeType": "PythonScriptNode",
@@ -51,6 +52,15 @@
           "Level": 2,
           "UseLevels": false,
           "KeepListStructure": false
+        },
+        {
+          "Id": "169676b8f6464027b1022827c364e96e",
+          "Name": "IN[3]",
+          "Description": "Input #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
         }
       ],
       "Outputs": [
@@ -65,7 +75,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "埋め込み Python スクリプトを実行します。"
+      "Description": "Runs an embedded Python script."
     },
     {
       "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
@@ -96,7 +106,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "ノードの出力を可視化"
+      "Description": "Visualizes a node's output"
     },
     {
       "ConcreteType": "Dynamo.Nodes.DSModelElementsSelection, DSRevitNodesUI",
@@ -116,7 +126,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Revit ドキュメントから複数の要素を選択します。"
+      "Description": "Select multiple elements from the Revit document."
     },
     {
       "ConcreteType": "DSRevitNodesUI.Levels, DSRevitNodesUI",
@@ -137,13 +147,13 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "アクティブなドキュメントでレベルを選択"
+      "Description": "Select a level in the active document"
     },
     {
       "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
       "NodeType": "ExtensionNode",
       "InstanceId": [
-        "a9c2d697-bd79-4670-a571-ebc256a1a940-00650d5f"
+        "bab2fa04-1569-4986-851b-9e0255650363-0060d07e"
       ],
       "Id": "af2519f73dff436c8aba2f16c3788bf3",
       "Inputs": [],
@@ -159,7 +169,27 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "ドキュメントからモデル要素を選択します。"
+      "Description": "Select a model element from the document."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "Id": "f688e0f729b946d0b8ac25514f4531da",
+      "NodeType": "StringInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "cbc50f7be15b48d9be232a88efa07c59",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a string",
+      "InputValue": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671,\r\n  \"site_latitude_deg\": 35.6812,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"true_solar_start_time\": \"08:00\",\r\n  \"true_solar_end_time\": \"16:00\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\"\r\n}"
     }
   ],
   "Connectors": [
@@ -186,11 +216,16 @@
       "End": "4f72ad39e52b41beb3ddb7ecc8e85d35",
       "Id": "b0a20c3342f94d1f9f25b6e538bbf8b2",
       "IsHidden": "False"
+    },
+    {
+      "Start": "cbc50f7be15b48d9be232a88efa07c59",
+      "End": "169676b8f6464027b1022827c364e96e",
+      "Id": "8d731ce9e0b04fedb8b21bd4e8e97eac",
+      "IsHidden": "False"
     }
   ],
   "Dependencies": [],
   "NodeLibraryDependencies": [],
-  "EnableLegacyPolyCurveBehavior": true,
   "Thumbnail": "",
   "GraphDocumentationURL": null,
   "ExtensionWorkspaceData": [
@@ -209,7 +244,7 @@
   ],
   "Author": "",
   "Linting": {
-    "activeLinter": "なし",
+    "activeLinter": "None",
     "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
     "warningCount": 0,
     "errorCount": 0
@@ -220,12 +255,12 @@
       "ScaleFactor": 1.0,
       "HasRunWithoutCrash": true,
       "IsVisibleInDynamoLibrary": true,
-      "Version": "3.3.0.6316",
+      "Version": "2.19.3.6394",
       "RunType": "Manual",
       "RunPeriod": "1000"
     },
     "Camera": {
-      "Name": "背景プレビュー(_B)",
+      "Name": "_Background Preview",
       "EyeX": -17.0,
       "EyeY": 24.0,
       "EyeZ": 50.0,
@@ -245,7 +280,7 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": 409.7177448633731,
+        "X": 409.71774486337313,
         "Y": 253.6228118487943
       },
       {
@@ -256,7 +291,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": 884.1897989600634,
-        "Y": 349.5502799356898
+        "Y": 349.55027993568979
       },
       {
         "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
@@ -265,8 +300,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -51.36101044009689,
-        "Y": 377.8808699583776
+        "X": -326.89163960879176,
+        "Y": 289.46432477737847
       },
       {
         "Id": "3daad2f0de954b2a971f92fd9f671601",
@@ -275,8 +310,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -36.92990291087733,
-        "Y": 579.235526243188
+        "X": -246.25093313007994,
+        "Y": 437.35781420856165
       },
       {
         "Id": "af2519f73dff436c8aba2f16c3788bf3",
@@ -285,13 +320,23 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -38.81342800749371,
-        "Y": -76.43267331634905
+        "X": -258.004212107366,
+        "Y": 145.22554925369064
+      },
+      {
+        "Id": "f688e0f729b946d0b8ac25514f4531da",
+        "Name": "String",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -182.52185203880413,
+        "Y": 564.04218610472481
       }
     ],
     "Annotations": [],
-    "X": 609.5307698506456,
-    "Y": 101.60585061739448,
-    "Zoom": 1.2354550054769982
+    "X": 944.46005461485458,
+    "Y": -153.52213972994753,
+    "Zoom": 1.287039447560304
   }
 }
