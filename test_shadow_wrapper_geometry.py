@@ -98,3 +98,39 @@ def test_debug_log_sanitizes_private_text():
     debug=_build_debug_log_payload(payload)
     text=str(debug)
     assert 'C:/Users' not in text and 'alice@example.com' not in text
+
+def test_formal_footprint_generated_from_box_bottom_loop():
+    from shadow_footprint import _build_footprint_extraction_summary
+    candidates = [{
+        'candidate_index': 0,
+        'endpoints_m_sample': [
+            {'x': 0, 'y': 0, 'z': 0}, {'x': 2, 'y': 0, 'z': 0},
+            {'x': 2, 'y': 0, 'z': 0}, {'x': 2, 'y': 1, 'z': 0},
+            {'x': 2, 'y': 1, 'z': 0}, {'x': 0, 'y': 1, 'z': 0},
+            {'x': 0, 'y': 1, 'z': 0}, {'x': 0, 'y': 0, 'z': 0},
+        ],
+        'closed_candidate': True,
+        'horizontal_candidate': True,
+    }]
+    geometry = {'accepted_caster_count': 1, 'items': [{'index': 0, 'accepted_shadow_caster': True, 'footprint_extraction': {'candidates': candidates, 'best_candidate': candidates[0]}}]}
+    summary = _build_footprint_extraction_summary(geometry, {'readiness': {'measurement_plane_constructed': True}}, {'readiness': {'ready_for_equal_time_shadow_calculation': True}}, {})
+    formal = summary['formal_footprints']
+    assert formal['available'] is True
+    assert formal['polygon_count'] == 1
+    assert formal['outer_loop_count'] == 1
+    assert formal['items'][0]['area_m2'] == 2.0
+    assert formal['items'][0]['point_count'] == 4
+
+
+def test_formal_footprint_rejects_self_intersection():
+    from shadow_footprint import _build_formal_footprints_from_candidates
+    candidate = {'candidate_index': 0, 'endpoints_m_sample': [
+        {'x': 0, 'y': 0}, {'x': 1, 'y': 1},
+        {'x': 1, 'y': 1}, {'x': 0, 'y': 1},
+        {'x': 0, 'y': 1}, {'x': 1, 'y': 0},
+        {'x': 1, 'y': 0}, {'x': 0, 'y': 0},
+    ]}
+    formal = _build_formal_footprints_from_candidates([{'index': 0, 'accepted_shadow_caster': True, 'footprint_extraction': {'candidates': [candidate]}}])
+    assert formal['available'] is False
+    assert formal['invalid_loop_count'] == 1
+    assert 'self-intersecting' in formal['invalid_loops'][0]['reasons'][0]

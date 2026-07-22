@@ -143,6 +143,7 @@ def _extract_edge_loop_candidates_from_face(face, face_summary=None):
         non_line=any(ct is not None and not _is_line_curve_type_name(ct) for ct in curve_types)
         loop_summary={"loop_index":li,"edge_count":_safe_count(_safe_iter(loop)),"curve_count":curve_count,"endpoint_count":len(endpoints),"unique_endpoint_count":len(unique),"endpoints_raw_sample":endpoints[:12],"z_min_raw":min(zvals) if zvals else None,"z_max_raw":max(zvals) if zvals else None,"z_variation_raw":(max(zvals)-min(zvals)) if zvals else None,"closed_candidate":closed,"closure_method":method,"horizontal_candidate":horiz,"curve_types":sorted(set([c for c in curve_types if c])),"total_length_raw":total if total_known else None,"has_arc_or_non_line_curve":non_line,"formal_polygon_generated":False,"self_intersection_checked":False,"warnings":lw}
         converted, cw = _candidate_raw_to_meters(loop_summary)
+        loop_summary["endpoints_m"] = [_point_raw_to_meters(pt)[0] for pt in endpoints]
         loop_summary["endpoints_m_sample"] = converted.get("endpoints_m_sample")
         loop_summary["total_length_m"] = converted.get("total_length_m")
         loop_summary["z_min_m"] = converted.get("z_min_m")
@@ -162,7 +163,7 @@ def _extract_footprint_candidates_from_faces(face_summaries, face_objects, measu
         loops = _extract_edge_loop_candidates_from_face(face, fs) if face is not None else {"available":False,"loops":[],"warnings":["bottom face object unavailable; summary only."]}
         warnings.extend(loops.get("warnings") or [])
         for loop in loops.get("loops") or []:
-            candidates.append({"candidate_index":len(candidates),"source":"bottom_face_candidate_edge_loop","source_face_index":idx,"source_face_type":fs.get("type"),"source_face_area_raw":fs.get("area_raw"),"source_face_origin_raw":fs.get("origin_raw"),"source_face_normal_raw":fs.get("normal_raw"),"loop_index":loop.get("loop_index"),"edge_count":loop.get("edge_count"),"curve_count":loop.get("curve_count"),"closed_candidate":loop.get("closed_candidate"),"horizontal_candidate":loop.get("horizontal_candidate"),"z_min_raw":loop.get("z_min_raw"),"z_max_raw":loop.get("z_max_raw"),"z_min_m":loop.get("z_min_m"),"z_max_m":loop.get("z_max_m"),"z_variation_raw":loop.get("z_variation_raw"),"total_length_raw":loop.get("total_length_raw"),"total_length_m":loop.get("total_length_m"),"curve_types":loop.get("curve_types"),"endpoints_raw_sample":loop.get("endpoints_raw_sample"),"endpoints_m_sample":loop.get("endpoints_m_sample"),"formal_footprint_polygon_generated":False,"units":"revit_raw_internal_units","relation_to_measurement_plane":{"measurement_plane_available":(measurement_plane or {}).get("available") is True,"diagnostic_only":True,"meter_comparison_available": (measurement_plane or {}).get("available") is True and loop.get("z_min_m") is not None,"meter_relation_candidate": "diagnostic_candidate_only","unit_conversion_status":"diagnostic_conversion_available","used_for_legal_judgement":False,"used_for_shadow_geometry":False,"formal_intersection_test_performed":False},"warnings":loop.get("warnings") or []})
+            candidates.append({"candidate_index":len(candidates),"source":"bottom_face_candidate_edge_loop","source_face_index":idx,"source_face_type":fs.get("type"),"source_face_area_raw":fs.get("area_raw"),"source_face_origin_raw":fs.get("origin_raw"),"source_face_normal_raw":fs.get("normal_raw"),"loop_index":loop.get("loop_index"),"edge_count":loop.get("edge_count"),"curve_count":loop.get("curve_count"),"closed_candidate":loop.get("closed_candidate"),"horizontal_candidate":loop.get("horizontal_candidate"),"z_min_raw":loop.get("z_min_raw"),"z_max_raw":loop.get("z_max_raw"),"z_min_m":loop.get("z_min_m"),"z_max_m":loop.get("z_max_m"),"z_variation_raw":loop.get("z_variation_raw"),"total_length_raw":loop.get("total_length_raw"),"total_length_m":loop.get("total_length_m"),"curve_types":loop.get("curve_types"),"endpoints_raw_sample":loop.get("endpoints_raw_sample"),"endpoints_m":loop.get("endpoints_m"),"endpoints_m_sample":loop.get("endpoints_m_sample"),"formal_footprint_polygon_generated":False,"units":"revit_raw_internal_units","relation_to_measurement_plane":{"measurement_plane_available":(measurement_plane or {}).get("available") is True,"diagnostic_only":True,"meter_comparison_available": (measurement_plane or {}).get("available") is True and loop.get("z_min_m") is not None,"meter_relation_candidate": "diagnostic_candidate_only","unit_conversion_status":"diagnostic_conversion_available","used_for_legal_judgement":False,"used_for_shadow_geometry":False,"formal_intersection_test_performed":False},"warnings":loop.get("warnings") or []})
     def score(c):
         return (1 if c.get("closed_candidate") is True else 0, 1 if c.get("horizontal_candidate") is True else 0, c.get("edge_count") or 0, c.get("source_face_area_raw") or 0)
     best = sorted(candidates, key=score, reverse=True)[0] if candidates else None
@@ -173,6 +174,91 @@ def _extract_footprint_candidates_from_faces(face_summaries, face_objects, measu
     if not candidates: blockers.append("No edge loop candidate was found from bottom face candidates.")
     if closed<=0: blockers.append("No closed loop candidate was verified by raw endpoint comparison.")
     return {"available": bool(candidates), "bottom_face_candidate_count": bottom, "loop_candidate_count": len(candidates), "closed_loop_candidate_count": closed, "horizontal_loop_candidate_count": horiz, "best_candidate": best, "candidates": candidates, "readiness": {"ready_for_future_footprint_polygon_generation": bool(closed>0), "blockers": blockers}, "warnings": warnings, "info": info}
+
+
+def _signed_area_2d(points):
+    area = 0.0
+    for i in range(len(points)):
+        j = (i + 1) % len(points)
+        area += float(points[i]["x"]) * float(points[j]["y"]) - float(points[j]["x"]) * float(points[i]["y"])
+    return area / 2.0
+
+def _point_xy_equal(a, b, tol=1e-7):
+    try:
+        return abs(float(a.get("x")) - float(b.get("x"))) <= tol and abs(float(a.get("y")) - float(b.get("y"))) <= tol
+    except Exception:
+        return False
+
+def _orient(a, b, c):
+    return (float(b["x"])-float(a["x"]))*(float(c["y"])-float(a["y"])) - (float(b["y"])-float(a["y"]))*(float(c["x"])-float(a["x"]))
+
+def _segments_intersect(a, b, c, d, tol=1e-9):
+    o1 = _orient(a, b, c); o2 = _orient(a, b, d); o3 = _orient(c, d, a); o4 = _orient(c, d, b)
+    return (o1 * o2 < -tol) and (o3 * o4 < -tol)
+
+def _has_self_intersection(points):
+    n = len(points)
+    for i in range(n):
+        a = points[i]; b = points[(i + 1) % n]
+        for j in range(i + 1, n):
+            if abs(i - j) <= 1 or (i == 0 and j == n - 1):
+                continue
+            if _segments_intersect(a, b, points[j], points[(j + 1) % n]):
+                return True
+    return False
+
+def _formal_loop_from_candidate(candidate, tolerance_m=0.001):
+    warnings = []
+    raw = list(candidate.get("endpoints_m") or candidate.get("endpoints_m_sample") or [])
+    if len(raw) < 6 or len(raw) % 2 != 0:
+        return None, ["candidate endpoint sequence is unavailable or incomplete; no formal loop generated."]
+    ordered = [raw[0]] + [raw[i] for i in range(1, len(raw), 2)]
+    if len(ordered) > 1 and _point_xy_equal(ordered[0], ordered[-1], tolerance_m):
+        ordered = ordered[:-1]
+    clean = []
+    for pt in ordered:
+        if pt is None or pt.get("x") is None or pt.get("y") is None:
+            warnings.append("loop contains an invalid point; no formal loop generated.")
+            return None, warnings
+        if not clean or not _point_xy_equal(clean[-1], pt, tolerance_m):
+            clean.append({"x": float(pt.get("x")), "y": float(pt.get("y"))})
+        else:
+            warnings.append("duplicate adjacent point removed from formal loop candidate.")
+    if len(clean) > 1 and _point_xy_equal(clean[0], clean[-1], tolerance_m):
+        clean = clean[:-1]
+    if len(clean) < 3:
+        warnings.append("formal loop candidate has fewer than 3 unique XY points.")
+        return None, warnings
+    for i in range(len(clean)):
+        a = clean[i]; b = clean[(i + 1) % len(clean)]
+        if ((a["x"] - b["x"]) ** 2 + (a["y"] - b["y"]) ** 2) ** 0.5 <= tolerance_m:
+            warnings.append("formal loop candidate contains an extremely short edge.")
+            return None, warnings
+    if _has_self_intersection(clean):
+        warnings.append("formal loop candidate is self-intersecting.")
+        return None, warnings
+    area = _signed_area_2d(clean)
+    if abs(area) <= tolerance_m * tolerance_m:
+        warnings.append("formal loop candidate has near-zero area.")
+        return None, warnings
+    return {"points_m": clean, "closed": True, "area_m2_signed": area, "area_m2": abs(area), "orientation": "ccw" if area > 0 else "cw", "role": "outer" if area > 0 else "inner", "source_candidate_index": candidate.get("candidate_index"), "source_caster_index": candidate.get("caster_index"), "source_face_index": candidate.get("source_face_index"), "source_loop_index": candidate.get("loop_index"), "point_count": len(clean), "units": "meter"}, warnings
+
+def _build_formal_footprints_from_candidates(items):
+    polygons = []; invalid = []; warnings = []
+    caster_count = 0
+    for item in items or []:
+        if not item.get("accepted_shadow_caster"):
+            continue
+        caster_count += 1
+        for candidate in ((item.get("footprint_extraction") or {}).get("candidates") or []):
+            c = dict(candidate); c["caster_index"] = item.get("index")
+            loop, lw = _formal_loop_from_candidate(c)
+            if loop is None:
+                invalid.append({"caster_index": item.get("index"), "candidate_index": candidate.get("candidate_index"), "reasons": lw})
+            else:
+                loop["polygon_index"] = len(polygons); polygons.append(loop)
+            warnings.extend(lw)
+    return {"available": bool(polygons), "caster_count": caster_count, "polygon_count": len(polygons), "outer_loop_count": sum(1 for p in polygons if p.get("role") == "outer"), "inner_loop_count": sum(1 for p in polygons if p.get("role") == "inner"), "invalid_loop_count": len(invalid), "items": polygons, "invalid_loops": invalid, "boolean_union_performed": False, "ready_for_shadow_projection_input": bool(polygons), "warnings": warnings}
 
 def _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized, site_boundary):
     items = (shadow_caster_geometry or {}).get("items") or []
@@ -201,4 +287,6 @@ def _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plan
     if not settings_ready: blockers_proj.append("Settings are not ready for future equal-time shadow calculation.")
     blockers_legal=["site boundary loop extraction is not implemented", "own-site exclusion mask is not implemented", "target area mask is not implemented", "ordinance profile / beyond-5m legal range are not implemented"]
     if not site_ready: blockers_legal.append("site_boundary is missing or not usable; future legal judgement masks are blocked, but footprint diagnostics continue.")
-    return {"policy": FOOTPRINT_EXTRACTION_POLICY, "provided": accepted>0, "diagnostic_only": True, "formal_footprint_polygon_generated": False, "count": len(items), "accepted_caster_count": accepted, "candidate_count": len(candidates), "loop_candidate_count": (shadow_caster_geometry or {}).get("footprint_loop_candidate_count", len(candidates)), "closed_loop_candidate_count": closed, "casters_with_candidates": with_c, "casters_without_candidates": without, "best_candidates": best, "readiness": {"footprint_diagnostics_ready": True, "ready_for_future_footprint_polygon_generation": ready_poly, "ready_for_future_shadow_projection": ready_poly and mp_ready and settings_ready, "ready_for_future_legal_judgement_masks": False, "blockers_for_future_footprint_polygon_generation": blockers_poly, "blockers_for_future_shadow_projection": blockers_proj, "blockers_for_future_legal_judgement_masks": blockers_legal}, "warnings": warnings, "info": ["Footprint candidates are Revit raw_internal_units diagnostics with meter-converted fields; no formal footprint polygon or CurveLoop is generated.", "site_boundary is not required for footprint diagnostics, but is required later for legal judgement masks.", "Same-site multiple buildings awareness is retained for future duration accumulation; no caster union is performed in this PR."]}
+    formal_footprints = _build_formal_footprints_from_candidates(items)
+    warnings.extend(formal_footprints.get("warnings") or [])
+    return {"policy": FOOTPRINT_EXTRACTION_POLICY, "provided": accepted>0, "diagnostic_only": False, "formal_footprint_polygon_generated": formal_footprints.get("available") is True, "formal_footprints": formal_footprints, "count": len(items), "accepted_caster_count": accepted, "candidate_count": len(candidates), "loop_candidate_count": (shadow_caster_geometry or {}).get("footprint_loop_candidate_count", len(candidates)), "closed_loop_candidate_count": closed, "casters_with_candidates": with_c, "casters_without_candidates": without, "best_candidates": best, "readiness": {"footprint_diagnostics_ready": True, "ready_for_future_footprint_polygon_generation": formal_footprints.get("available") is True, "ready_for_future_shadow_projection": formal_footprints.get("available") is True and mp_ready and settings_ready, "ready_for_future_legal_judgement_masks": False, "blockers_for_future_footprint_polygon_generation": blockers_poly, "blockers_for_future_shadow_projection": blockers_proj, "blockers_for_future_legal_judgement_masks": blockers_legal}, "warnings": warnings, "info": ["Formal footprint loops are generated from accepted Mass / Generic Model bottom-face edge-loop candidates only; BoundingBox is not used as footprint geometry.", "Multiple caster loops are preserved separately for future logical union; no Revit elements, CurveLoops, offsets, booleans, shadow polygons, or legal judgement are created.", "site_boundary is not required for footprint generation, but is required later for legal judgement masks."]}
