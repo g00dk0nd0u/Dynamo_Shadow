@@ -51,15 +51,6 @@
           "Level": 2,
           "UseLevels": false,
           "KeepListStructure": false
-        },
-        {
-          "Id": "c19c98d8210547ec89e90d81d8d30371",
-          "Name": "IN[3]",
-          "Description": "Input #3",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
         }
       ],
       "Outputs": [
@@ -299,8 +290,8 @@
       }
     ],
     "Annotations": [],
-    "X": 626.1465866664468,
-    "Y": 311.20802427205683,
-    "Zoom": 0.7665507579513152
+    "X": 609.5307698506456,
+    "Y": 101.60585061739448,
+    "Zoom": 1.2354550054769982
   }
 }
