@@ -244,51 +244,82 @@ def _validate_formal_candidate_eligibility(candidate):
 def _distance_xy(a, b):
     return ((float(a["x"]) - float(b["x"])) ** 2 + (float(a["y"]) - float(b["y"])) ** 2) ** 0.5
 
-def _point_key_xy(point, tol):
-    return (round(float(point["x"]) / tol), round(float(point["y"]) / tol))
-
 def _normalize_xy_point(point):
     if point is None or point.get("x") is None or point.get("y") is None:
         return None
     return {"x": float(point.get("x")), "y": float(point.get("y"))}
 
-def _stitch_loop_segments(raw_points, tolerance_m):
-    if len(raw_points) < 6 or len(raw_points) % 2 != 0:
-        return None, ["candidate endpoint sequence is unavailable or incomplete; no formal loop generated."]
+def _find_matching_xy_cluster(clusters, point, tolerance_m):
+    for index, cluster in enumerate(clusters):
+        if _distance_xy(point, cluster["representative"]) <= tolerance_m:
+            return index
+    return None
+
+def _cluster_segment_endpoints(raw_points, tolerance_m):
+    clusters = []
+    point_nodes = []
+    for point in raw_points:
+        normalized = _normalize_xy_point(point)
+        if normalized is None:
+            return None, None, ["loop contains an invalid point; no formal loop generated."]
+        node = _find_matching_xy_cluster(clusters, normalized, tolerance_m)
+        if node is None:
+            node = len(clusters)
+            clusters.append({"node": node, "representative": normalized, "count": 0})
+        clusters[node]["count"] += 1
+        point_nodes.append(node)
+    return clusters, point_nodes, []
+
+def _build_segment_graph(raw_points, tolerance_m):
+    clusters, point_nodes, warnings = _cluster_segment_endpoints(raw_points, tolerance_m)
+    if warnings:
+        return None, None, None, warnings
     segments = []
     degree = {}
     seen_edges = set()
     for i in range(0, len(raw_points), 2):
         a = _normalize_xy_point(raw_points[i]); b = _normalize_xy_point(raw_points[i + 1])
-        if a is None or b is None:
-            return None, ["loop contains an invalid point; no formal loop generated."]
         if _distance_xy(a, b) <= tolerance_m:
-            return None, ["formal loop candidate contains an extremely short edge."]
-        ka = _point_key_xy(a, tolerance_m); kb = _point_key_xy(b, tolerance_m)
-        edge_key = tuple(sorted([ka, kb]))
+            return None, None, None, ["formal loop candidate contains an extremely short edge."]
+        na = point_nodes[i]; nb = point_nodes[i + 1]
+        if na == nb:
+            return None, None, None, ["formal loop candidate contains an extremely short edge."]
+        edge_key = tuple(sorted([na, nb]))
         if edge_key in seen_edges:
-            return None, ["segment graph contains a duplicate edge."]
+            return None, None, None, ["segment graph contains a duplicate edge."]
         seen_edges.add(edge_key)
-        segments.append({"a": a, "b": b, "ka": ka, "kb": kb, "used": False})
-        degree[ka] = degree.get(ka, 0) + 1; degree[kb] = degree.get(kb, 0) + 1
+        segments.append({"a": a, "b": b, "na": na, "nb": nb, "used": False})
+        degree[na] = degree.get(na, 0) + 1
+        degree[nb] = degree.get(nb, 0) + 1
+    return clusters, segments, degree, []
+
+def _stitch_loop_segments(raw_points, tolerance_m):
+    if len(raw_points) < 6 or len(raw_points) % 2 != 0:
+        return None, ["candidate endpoint sequence is unavailable or incomplete; no formal loop generated."]
+    clusters, segments, degree, graph_warnings = _build_segment_graph(raw_points, tolerance_m)
+    if graph_warnings:
+        return None, graph_warnings
     bad_degree = [k for k, v in degree.items() if v != 2]
-    if bad_degree:
+    if bad_degree or len(degree) != len(segments):
         if any(v > 2 for v in degree.values()):
             return None, ["segment graph contains a branch vertex."]
         return None, ["segment graph is open or disconnected; endpoints do not form one closed loop."]
     ordered = [segments[0]["a"], segments[0]["b"]]
     segments[0]["used"] = True
-    current = segments[0]["kb"]
-    start = segments[0]["ka"]
+    current = segments[0]["nb"]
+    start = segments[0]["na"]
     for _ in range(len(segments) - 1):
-        matches = [seg for seg in segments if not seg["used"] and (seg["ka"] == current or seg["kb"] == current)]
+        matches = [seg for seg in segments if not seg["used"] and (seg["na"] == current or seg["nb"] == current)]
         if len(matches) != 1:
             return None, ["segment graph is ambiguous or disconnected; loop stitching failed."]
-        seg = matches[0]; seg["used"] = True
-        if seg["ka"] == current:
-            ordered.append(seg["b"]); current = seg["kb"]
+        seg = matches[0]
+        seg["used"] = True
+        if seg["na"] == current:
+            ordered.append(seg["b"])
+            current = seg["nb"]
         else:
-            ordered.append(seg["a"]); current = seg["ka"]
+            ordered.append(seg["a"])
+            current = seg["na"]
     if current != start:
         return None, ["segment graph is open; stitched loop does not close."]
     if len(ordered) > 1 and _point_xy_equal(ordered[0], ordered[-1], tolerance_m):
@@ -322,16 +353,25 @@ def _normalize_loop_winding(loop, role):
 
 def _classify_and_normalize_caster_loops(polygons):
     warnings = []
-    by_caster = {}
+    by_group = {}
     for poly in polygons:
-        by_caster.setdefault(poly.get("source_caster_index"), []).append(poly)
-    for caster_polygons in by_caster.values():
-        for poly in caster_polygons:
+        face_index = poly.get("source_face_index")
+        if face_index is None:
+            poly["classification_group_key"] = [poly.get("source_caster_index"), None, poly.get("source_candidate_index")]
+            poly["containment_depth"] = 0
+            _normalize_loop_winding(poly, "outer")
+            continue
+        key = (poly.get("source_caster_index"), face_index)
+        poly["classification_group_key"] = list(key)
+        by_group.setdefault(key, []).append(poly)
+    for group_polygons in by_group.values():
+        for poly in group_polygons:
             probe = (poly.get("points_m") or [None])[0]
             if probe is None:
-                poly["role"] = "unknown"; warnings.append("unknown outer/inner role")
+                poly["role"] = "unknown"
+                warnings.append("unknown outer/inner role")
                 continue
-            depth = sum(1 for other in caster_polygons if other is not poly and _point_in_polygon(probe, other.get("points_m") or []))
+            depth = sum(1 for other in group_polygons if other is not poly and _point_in_polygon(probe, other.get("points_m") or []))
             poly["containment_depth"] = depth
             _normalize_loop_winding(poly, "outer" if depth % 2 == 0 else "inner")
     return warnings
@@ -357,7 +397,7 @@ def _formal_loop_from_candidate(candidate, tolerance_m=0.001):
         return None, warnings
     return {"points_m": clean, "closed": True, "area_m2_signed": area, "area_m2": abs(area), "orientation": "ccw" if area > 0 else "cw", "role": "unknown", "source_candidate_index": candidate.get("candidate_index"), "source_caster_index": candidate.get("caster_index"), "source_face_index": candidate.get("source_face_index"), "source_loop_index": candidate.get("loop_index"), "point_count": len(clean), "units": "meter"}, warnings
 
-def _build_formal_footprints_from_candidates(items):
+def _build_formal_footprints_from_candidates(items, tolerance_m=0.001):
     polygons = []; invalid = []; warnings = []
     caster_count = 0
     successful_casters = set(); failed_casters = set(); accepted_casters = []
@@ -373,7 +413,7 @@ def _build_formal_footprints_from_candidates(items):
             invalid.append({"caster_index": caster_index, "candidate_index": None, "source_face_index": None, "source_loop_index": None, "reasons": ["accepted caster has no valid formal footprint"]})
         for candidate in candidates:
             c = dict(candidate); c["caster_index"] = caster_index
-            loop, lw = _formal_loop_from_candidate(c)
+            loop, lw = _formal_loop_from_candidate(c, tolerance_m)
             if loop is None:
                 invalid.append({"caster_index": caster_index, "candidate_index": candidate.get("candidate_index"), "source_face_index": candidate.get("source_face_index"), "source_loop_index": candidate.get("loop_index"), "reasons": lw})
             else:
@@ -408,7 +448,7 @@ def _build_formal_footprints_from_candidates(items):
         if caster_index not in successful_casters:
             blocker_reasons.append("accepted caster has no valid formal footprint")
     blocker_reasons = _dedupe_text(blocker_reasons)
-    return {"available": bool(polygons), "complete": complete, "partial_success": partial_success, "caster_count": caster_count, "successful_caster_count": len(successful_casters), "failed_caster_count": len(failed_casters.union(set(accepted_casters) - successful_casters)), "polygon_count": len(polygons), "outer_loop_count": sum(1 for p in polygons if p.get("role") == "outer"), "inner_loop_count": sum(1 for p in polygons if p.get("role") == "inner"), "unknown_role_count": len(unknown_roles), "invalid_loop_count": len(invalid), "items": polygons, "invalid_loops": invalid, "blockers": blocker_reasons, "boolean_union_performed": False, "ready_for_shadow_projection_input": complete, "warnings": _dedupe_text(warnings)}
+    return {"available": bool(polygons), "complete": complete, "tolerance_m_used": tolerance_m, "partial_success": partial_success, "caster_count": caster_count, "successful_caster_count": len(successful_casters), "failed_caster_count": len(failed_casters.union(set(accepted_casters) - successful_casters)), "polygon_count": len(polygons), "outer_loop_count": sum(1 for p in polygons if p.get("role") == "outer"), "inner_loop_count": sum(1 for p in polygons if p.get("role") == "inner"), "unknown_role_count": len(unknown_roles), "invalid_loop_count": len(invalid), "items": polygons, "invalid_loops": invalid, "blockers": blocker_reasons, "boolean_union_performed": False, "ready_for_shadow_projection_input": complete, "warnings": _dedupe_text(warnings)}
 
 def _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized, site_boundary):
     items = (shadow_caster_geometry or {}).get("items") or []
@@ -437,7 +477,12 @@ def _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plan
     if not settings_ready: blockers_proj.append("Settings are not ready for future equal-time shadow calculation.")
     blockers_legal=["site boundary loop extraction is not implemented", "own-site exclusion mask is not implemented", "target area mask is not implemented", "ordinance profile / beyond-5m legal range are not implemented"]
     if not site_ready: blockers_legal.append("site_boundary is missing or not usable; future legal judgement masks are blocked, but footprint diagnostics continue.")
-    formal_footprints = _build_formal_footprints_from_candidates(items)
+    tolerance_m = 0.001
+    normalized_settings = (settings_normalized or {}).get("normalized") or {}
+    candidate_tolerance = normalized_settings.get("closure_tolerance_m")
+    if isinstance(candidate_tolerance, (int, float)) and candidate_tolerance > 0:
+        tolerance_m = float(candidate_tolerance)
+    formal_footprints = _build_formal_footprints_from_candidates(items, tolerance_m=tolerance_m)
     warnings.extend(formal_footprints.get("warnings") or [])
     blockers_poly.extend(formal_footprints.get("blockers") or [])
     if formal_footprints.get("partial_success"):

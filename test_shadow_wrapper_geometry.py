@@ -140,10 +140,10 @@ def test_formal_footprint_rejects_self_intersection():
 
 _DEFAULT_CURVE_TYPES = object()
 
-def _formal_candidate(curve_types=_DEFAULT_CURVE_TYPES, horizontal=True, non_line=False):
+def _formal_candidate(curve_types=_DEFAULT_CURVE_TYPES, horizontal=True, non_line=False, source_face_index=2):
     return {
         'candidate_index': 0,
-        'source_face_index': 2,
+        'source_face_index': source_face_index,
         'loop_index': 3,
         'curve_types': ['Line'] if curve_types is _DEFAULT_CURVE_TYPES else curve_types,
         'has_arc_or_non_line_curve': non_line,
@@ -253,8 +253,8 @@ def test_formal_footprint_accepts_outer_and_inner_line_horizontal_loops():
     assert formal['inner_loop_count'] == 1
 
 
-def _candidate_from_edges(edges, candidate_index=0):
-    candidate = _formal_candidate()
+def _candidate_from_edges(edges, candidate_index=0, source_face_index=2):
+    candidate = _formal_candidate(source_face_index=source_face_index)
     candidate['candidate_index'] = candidate_index
     candidate['endpoints_m_sample'] = []
     for a, b in edges:
@@ -330,3 +330,111 @@ def test_formal_footprint_preserves_multiple_casters_without_union():
     assert formal['successful_caster_count'] == 2
     assert formal['boolean_union_performed'] is False
     assert sorted(p['source_caster_index'] for p in formal['items']) == [0, 1]
+
+
+
+def test_formal_footprint_classifies_same_face_outer_and_hole():
+    outer = _candidate_from_edges([((0, 0), (4, 0)), ((4, 0), (4, 4)), ((4, 4), (0, 4)), ((0, 4), (0, 0))], 0, source_face_index=10)
+    inner = _candidate_from_edges([((1, 1), (2, 1)), ((2, 1), (2, 2)), ((2, 2), (1, 2)), ((1, 2), (1, 1))], 1, source_face_index=10)
+    formal = _formal_from_candidates([[outer, inner]])
+    assert formal['complete'] is True
+    assert formal['outer_loop_count'] == 1
+    assert formal['inner_loop_count'] == 1
+    roles = {p['source_candidate_index']: p for p in formal['items']}
+    assert roles[0]['role'] == 'outer'
+    assert roles[0]['orientation'] == 'ccw'
+    assert roles[0]['containment_depth'] == 0
+    assert roles[0]['classification_group_key'] == [0, 10]
+    assert roles[1]['role'] == 'inner'
+    assert roles[1]['orientation'] == 'cw'
+    assert roles[1]['containment_depth'] == 1
+    assert roles[1]['classification_group_key'] == [0, 10]
+
+
+def test_formal_footprint_same_caster_different_faces_nested_rectangles_are_outer():
+    large = _candidate_from_edges([((0, 0), (4, 0)), ((4, 0), (4, 4)), ((4, 4), (0, 4)), ((0, 4), (0, 0))], 0, source_face_index=20)
+    small = _candidate_from_edges([((1, 1), (2, 1)), ((2, 1), (2, 2)), ((2, 2), (1, 2)), ((1, 2), (1, 1))], 1, source_face_index=21)
+    formal = _formal_from_candidates([[large, small]])
+    assert formal['complete'] is True
+    assert formal['outer_loop_count'] == 2
+    assert formal['inner_loop_count'] == 0
+    assert {tuple(p['classification_group_key']) for p in formal['items']} == {(0, 20), (0, 21)}
+    assert {p['containment_depth'] for p in formal['items']} == {0}
+
+
+def test_formal_footprint_multiple_solid_like_nested_faces_do_not_create_hole():
+    large = _candidate_from_edges([((0, 0), (5, 0)), ((5, 0), (5, 5)), ((5, 5), (0, 5)), ((0, 5), (0, 0))], 0, source_face_index=30)
+    small = _candidate_from_edges([((2, 2), (3, 2)), ((3, 2), (3, 3)), ((3, 3), (2, 3)), ((2, 3), (2, 2))], 1, source_face_index=31)
+    formal = _formal_from_candidates([[large, small]])
+    assert formal['complete'] is True
+    assert [p['role'] for p in sorted(formal['items'], key=lambda p: p['source_candidate_index'])] == ['outer', 'outer']
+    assert formal['inner_loop_count'] == 0
+    assert formal['boolean_union_performed'] is False
+
+
+def test_formal_footprint_stitches_endpoint_across_rounding_boundary_within_tolerance():
+    tol = 0.01
+    # The first segment ends at x=1.0049 and the next starts at x=1.0051.
+    # Their distance is within tolerance, while round(x / tol) would place them in adjacent buckets.
+    edges = [
+        ((0, 0), (1.0049, 0)),
+        ((1.0051, 0), (1, 1)),
+        ((1, 1), (0, 1)),
+        ((0, 1), (0, 0)),
+    ]
+    formal = _build_formal_for_edges_with_tolerance(edges, tol)
+    assert formal['complete'] is True
+    assert formal['polygon_count'] == 1
+
+
+def test_formal_footprint_rejects_endpoint_gap_above_tolerance_as_open():
+    tol = 0.01
+    edges = [
+        ((0, 0), (1, 0)),
+        ((1.02, 0), (1, 1)),
+        ((1, 1), (0, 1)),
+        ((0, 1), (0, 0)),
+    ]
+    formal = _build_formal_for_edges_with_tolerance(edges, tol)
+    assert formal['available'] is False
+    assert formal['invalid_loop_count'] == 1
+    assert 'open' in formal['invalid_loops'][0]['reasons'][0]
+
+
+def _build_formal_for_edges_with_tolerance(edges, tolerance_m):
+    from shadow_footprint import _build_formal_footprints_from_candidates
+    return _build_formal_footprints_from_candidates([
+        {'index': 0, 'accepted_shadow_caster': True, 'footprint_extraction': {'candidates': [_candidate_from_edges(edges)]}}
+    ], tolerance_m=tolerance_m)
+
+
+def test_footprint_summary_uses_settings_closure_tolerance_m():
+    from shadow_footprint import _build_footprint_extraction_summary
+    edges = [
+        ((0, 0), (1, 0)),
+        ((1.005, 0), (1, 1)),
+        ((1, 1), (0, 1)),
+        ((0, 1), (0, 0)),
+    ]
+    item = {'index': 0, 'accepted_shadow_caster': True, 'footprint_extraction': {'candidates': [_candidate_from_edges(edges)]}}
+    geometry = {'items': [item], 'accepted_caster_count': 1, 'footprint_loop_candidate_count': 1}
+    strict = _build_footprint_extraction_summary(geometry, {}, {'normalized': {'closure_tolerance_m': 0.001}}, {})
+    loose = _build_footprint_extraction_summary(geometry, {}, {'normalized': {'closure_tolerance_m': 0.01}}, {})
+    assert strict['formal_footprints']['tolerance_m_used'] == 0.001
+    assert strict['formal_footprints']['available'] is False
+    assert loose['formal_footprints']['tolerance_m_used'] == 0.01
+    assert loose['formal_footprints']['available'] is True
+
+
+
+def test_formal_footprint_missing_source_face_index_is_independent_outer():
+    candidate = _candidate_from_edges([((0, 0), (1, 0)), ((1, 0), (1, 1)), ((1, 1), (0, 1)), ((0, 1), (0, 0))])
+    candidate['source_face_index'] = None
+    formal = _formal_from_candidates([[candidate]])
+    assert formal['complete'] is True
+    assert formal['outer_loop_count'] == 1
+    assert formal['inner_loop_count'] == 0
+    item = formal['items'][0]
+    assert item['role'] == 'outer'
+    assert item['containment_depth'] == 0
+    assert item['classification_group_key'] == [0, None, 0]
