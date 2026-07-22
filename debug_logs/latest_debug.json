@@ -71,7 +71,7 @@
         {
           "is_none": false,
           "type": "str",
-          "value": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671..."
+          "value": "{ \"profile\": \"standard_8_16\", \"average_ground_level_elevation_m\": 0.0, \"measurement_height_m\": 4.0, \"latitude\": 35.6812, \"longitude\": 139.7671..."
         }
       ],
       "sample_limit": 5,
@@ -283,7 +283,7 @@
     "warnings": [
       "category could not be read from BuiltInCategory or localized display name; accepted is False until it can be identified as OST_Mass or OST_GenericModel.",
       "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics.",
-      "geometry access is not available: Traceback (most recent call last):\n  File \"<redacted_path> - Gensler\\_MyPython\\Dynamo_Shadow\\shadow_inputs.py\", lin..."
+      "geometry access is not available: Traceback (most recent call last): File \"<redacted_path> - Gensler/_MyPython/Dynamo_Shadow/shadow_inputs.py\", lin..."
     ]
   },
   "site_boundary_summary": {
@@ -326,7 +326,7 @@
   "warnings": [
     "category could not be read from BuiltInCategory or localized display name; accepted is False until it can be identified as OST_Mass or OST_GenericModel.",
     "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics.",
-    "geometry access is not available: Traceback (most recent call last):\n  File \"<redacted_path> - Gensler\\_MyPython\\Dynamo_Shadow\\shadow_inputs.py\", lin...",
+    "geometry access is not available: Traceback (most recent call last): File \"<redacted_path> - Gensler/_MyPython/Dynamo_Shadow/shadow_inputs.py\", lin...",
     "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
     "Level reference is present but is not used as average ground level or measurement plane.",
     "shadow caster category is not accepted; geometry diagnostics skipped for this item.",

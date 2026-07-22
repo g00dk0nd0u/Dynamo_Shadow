@@ -40,6 +40,9 @@ def _redact_private_text(text):
 
 def _sanitize_text_for_debug(text):
     redacted = _redact_private_text(text)
+    redacted = redacted.replace("\r", " ").replace("\n", " ").replace("\t", " ")
+    redacted = redacted.replace("\\", "/")
+    redacted = re.sub(r"\s+", " ", redacted).strip()
     if len(redacted) > 500:
         return redacted[:500] + "...<truncated>"
     return redacted
@@ -88,14 +91,19 @@ def _summary_counts(section):
         return section
     keys = [
         "count", "accepted_count", "rejected_count", "provided", "available", "constructed",
-        "ready", "attempted", "solid_count", "mesh_count", "curve_count", "face_count",
-        "edge_count", "bottom_face_candidate_count", "edge_loop_candidate_count",
-        "closed_loop_candidate_count", "warning_count",
+        "ready", "attempted", "solid_count", "positive_solid_count", "mesh_count", "curve_count", "face_count",
+        "edge_count", "geometry_readable_caster_count", "geometry_instance_count",
+        "bottom_face_candidate_count", "edge_loop_candidate_count", "footprint_loop_candidate_count",
+        "closed_loop_candidate_count", "closed_footprint_loop_candidate_count",
+        "boundary_dependent_steps_skipped", "warning_count",
     ]
     result = {}
     for key in keys:
         if key in section:
             result[key] = _sanitize_for_debug(section.get(key))
+    if "items" in section:
+        wanted = ["wrapper_type", "native_type", "unwrap_strategy", "element_id", "category_id", "official_revit_api_category", "accepted", "accepted_shadow_caster", "geometry_access_method", "geometry_readable", "geometry_instance_count", "solid_count", "positive_solid_count", "face_count", "edge_count", "bottom_face_candidate_count", "closed_footprint_loop_candidate_count", "warnings"]
+        result["items"] = _sanitize_for_debug([{k: item.get(k) for k in wanted if k in item} for item in (section.get("items") or [])[:20]])
     for key in ("readiness", "summary", "totals", "warnings", "blockers_for_equal_time_shadow", "blockers_for_footprint_extraction", "blockers_for_measurement_plane"):
         if key in section:
             result[key] = _sanitize_for_debug(section.get(key))
@@ -142,6 +150,7 @@ def _summarize_out_for_debug(out_payload):
         }),
         "shadow_caster_summary": _summary_counts(out_payload.get("shadow_casters")),
         "site_boundary_summary": _summary_counts(out_payload.get("site_boundary")),
+        "site_boundary_skipped": bool((out_payload.get("site_boundary") or {}).get("boundary_dependent_steps_skipped", False)),
         "measurement_plane_summary": _summary_counts(out_payload.get("measurement_plane")),
         "shadow_caster_geometry_summary": _summary_counts(out_payload.get("shadow_caster_geometry")),
         "footprint_extraction_summary": _summary_counts(out_payload.get("footprint_extraction")),
@@ -169,6 +178,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "settings_summary": summary["settings_summary"],
         "shadow_caster_summary": summary["shadow_caster_summary"],
         "site_boundary_summary": summary["site_boundary_summary"],
+        "site_boundary_skipped": summary["site_boundary_skipped"],
         "measurement_plane_summary": summary["measurement_plane_summary"],
         "shadow_caster_geometry_summary": summary["shadow_caster_geometry_summary"],
         "footprint_extraction_summary": summary["footprint_extraction_summary"],
