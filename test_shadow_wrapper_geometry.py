@@ -251,3 +251,82 @@ def test_formal_footprint_accepts_outer_and_inner_line_horizontal_loops():
     assert formal['complete'] is True
     assert formal['outer_loop_count'] == 1
     assert formal['inner_loop_count'] == 1
+
+
+def _candidate_from_edges(edges, candidate_index=0):
+    candidate = _formal_candidate()
+    candidate['candidate_index'] = candidate_index
+    candidate['endpoints_m_sample'] = []
+    for a, b in edges:
+        candidate['endpoints_m_sample'].extend([{'x': a[0], 'y': a[1]}, {'x': b[0], 'y': b[1]}])
+    return candidate
+
+
+def test_formal_footprint_stitches_reversed_edge_rectangle():
+    edges = [((0, 0), (2, 0)), ((2, 1), (2, 0)), ((2, 1), (0, 1)), ((0, 0), (0, 1))]
+    formal = _formal_from_candidates([[_candidate_from_edges(edges)]])
+    assert formal['complete'] is True
+    assert formal['items'][0]['area_m2'] == 2.0
+    assert formal['items'][0]['role'] == 'outer'
+    assert formal['items'][0]['orientation'] == 'ccw'
+
+
+def test_formal_footprint_stitches_shuffled_rectangle_edges():
+    edges = [((2, 1), (0, 1)), ((0, 0), (2, 0)), ((0, 1), (0, 0)), ((2, 0), (2, 1))]
+    formal = _formal_from_candidates([[_candidate_from_edges(edges)]])
+    assert formal['complete'] is True
+    assert formal['items'][0]['point_count'] == 4
+    assert formal['items'][0]['area_m2'] == 2.0
+
+
+def test_formal_footprint_rejects_open_loop_segment_graph():
+    edges = [((0, 0), (1, 0)), ((1, 0), (1, 1)), ((1, 1), (0, 1))]
+    formal = _formal_from_candidates([[_candidate_from_edges(edges)]])
+    assert formal['available'] is False
+    assert formal['invalid_loop_count'] == 1
+    assert 'open' in formal['invalid_loops'][0]['reasons'][0]
+
+
+def test_formal_footprint_rejects_branch_segment_graph():
+    edges = [((0, 0), (1, 0)), ((1, 0), (1, 1)), ((1, 1), (0, 0)), ((1, 0), (2, 0))]
+    formal = _formal_from_candidates([[_candidate_from_edges(edges)]])
+    assert formal['available'] is False
+    assert formal['invalid_loop_count'] == 1
+    assert 'branch' in formal['invalid_loops'][0]['reasons'][0]
+
+
+def test_formal_footprint_rejects_duplicate_edge():
+    edges = [((0, 0), (1, 0)), ((1, 0), (1, 1)), ((1, 1), (0, 0)), ((1, 0), (0, 0))]
+    formal = _formal_from_candidates([[_candidate_from_edges(edges)]])
+    assert formal['available'] is False
+    assert formal['invalid_loop_count'] == 1
+    assert 'duplicate edge' in formal['invalid_loops'][0]['reasons'][0]
+
+
+def test_formal_footprint_rejects_tiny_edge():
+    edges = [((0, 0), (0.0001, 0)), ((0.0001, 0), (1, 1)), ((1, 1), (0, 0))]
+    formal = _formal_from_candidates([[_candidate_from_edges(edges)]])
+    assert formal['available'] is False
+    assert formal['invalid_loop_count'] == 1
+    assert 'short edge' in formal['invalid_loops'][0]['reasons'][0]
+
+
+def test_formal_footprint_classifies_reversed_winding_outer_and_inner_by_containment():
+    outer = _candidate_from_edges([((0, 0), (0, 2)), ((0, 2), (2, 2)), ((2, 2), (2, 0)), ((2, 0), (0, 0))], 0)
+    inner = _candidate_from_edges([((0.5, 0.5), (1.5, 0.5)), ((1.5, 0.5), (1.5, 1.5)), ((1.5, 1.5), (0.5, 1.5)), ((0.5, 1.5), (0.5, 0.5))], 1)
+    formal = _formal_from_candidates([[outer, inner]])
+    assert formal['complete'] is True
+    roles = {p['source_candidate_index']: (p['role'], p['orientation'], p['containment_depth']) for p in formal['items']}
+    assert roles[0] == ('outer', 'ccw', 0)
+    assert roles[1] == ('inner', 'cw', 1)
+
+
+def test_formal_footprint_preserves_multiple_casters_without_union():
+    c0 = _candidate_from_edges([((0, 0), (1, 0)), ((1, 0), (1, 1)), ((1, 1), (0, 1)), ((0, 1), (0, 0))])
+    c1 = _candidate_from_edges([((0.5, 0.5), (1.5, 0.5)), ((1.5, 0.5), (1.5, 1.5)), ((1.5, 1.5), (0.5, 1.5)), ((0.5, 1.5), (0.5, 0.5))])
+    formal = _formal_from_candidates([[c0], [c1]])
+    assert formal['complete'] is True
+    assert formal['polygon_count'] == 2
+    assert formal['successful_caster_count'] == 2
+    assert formal['boolean_union_performed'] is False
+    assert sorted(p['source_caster_index'] for p in formal['items']) == [0, 1]

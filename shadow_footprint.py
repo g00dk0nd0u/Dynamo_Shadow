@@ -241,36 +241,113 @@ def _validate_formal_candidate_eligibility(candidate):
     reasons.extend(horizontal_reasons)
     return line_ok and horizontal_ok, _dedupe_text(reasons)
 
+def _distance_xy(a, b):
+    return ((float(a["x"]) - float(b["x"])) ** 2 + (float(a["y"]) - float(b["y"])) ** 2) ** 0.5
+
+def _point_key_xy(point, tol):
+    return (round(float(point["x"]) / tol), round(float(point["y"]) / tol))
+
+def _normalize_xy_point(point):
+    if point is None or point.get("x") is None or point.get("y") is None:
+        return None
+    return {"x": float(point.get("x")), "y": float(point.get("y"))}
+
+def _stitch_loop_segments(raw_points, tolerance_m):
+    if len(raw_points) < 6 or len(raw_points) % 2 != 0:
+        return None, ["candidate endpoint sequence is unavailable or incomplete; no formal loop generated."]
+    segments = []
+    degree = {}
+    seen_edges = set()
+    for i in range(0, len(raw_points), 2):
+        a = _normalize_xy_point(raw_points[i]); b = _normalize_xy_point(raw_points[i + 1])
+        if a is None or b is None:
+            return None, ["loop contains an invalid point; no formal loop generated."]
+        if _distance_xy(a, b) <= tolerance_m:
+            return None, ["formal loop candidate contains an extremely short edge."]
+        ka = _point_key_xy(a, tolerance_m); kb = _point_key_xy(b, tolerance_m)
+        edge_key = tuple(sorted([ka, kb]))
+        if edge_key in seen_edges:
+            return None, ["segment graph contains a duplicate edge."]
+        seen_edges.add(edge_key)
+        segments.append({"a": a, "b": b, "ka": ka, "kb": kb, "used": False})
+        degree[ka] = degree.get(ka, 0) + 1; degree[kb] = degree.get(kb, 0) + 1
+    bad_degree = [k for k, v in degree.items() if v != 2]
+    if bad_degree:
+        if any(v > 2 for v in degree.values()):
+            return None, ["segment graph contains a branch vertex."]
+        return None, ["segment graph is open or disconnected; endpoints do not form one closed loop."]
+    ordered = [segments[0]["a"], segments[0]["b"]]
+    segments[0]["used"] = True
+    current = segments[0]["kb"]
+    start = segments[0]["ka"]
+    for _ in range(len(segments) - 1):
+        matches = [seg for seg in segments if not seg["used"] and (seg["ka"] == current or seg["kb"] == current)]
+        if len(matches) != 1:
+            return None, ["segment graph is ambiguous or disconnected; loop stitching failed."]
+        seg = matches[0]; seg["used"] = True
+        if seg["ka"] == current:
+            ordered.append(seg["b"]); current = seg["kb"]
+        else:
+            ordered.append(seg["a"]); current = seg["ka"]
+    if current != start:
+        return None, ["segment graph is open; stitched loop does not close."]
+    if len(ordered) > 1 and _point_xy_equal(ordered[0], ordered[-1], tolerance_m):
+        ordered = ordered[:-1]
+    return ordered, []
+
+def _point_in_polygon(point, polygon):
+    x = float(point["x"]); y = float(point["y"]); inside = False
+    n = len(polygon)
+    for i in range(n):
+        a = polygon[i]; b = polygon[(i + 1) % n]
+        yi = float(a["y"]); yj = float(b["y"])
+        if (yi > y) != (yj > y):
+            x_cross = (float(b["x"]) - float(a["x"])) * (y - yi) / (yj - yi) + float(a["x"])
+            if x < x_cross:
+                inside = not inside
+    return inside
+
+def _normalize_loop_winding(loop, role):
+    points = list(loop.get("points_m") or [])
+    area = _signed_area_2d(points)
+    want_ccw = role == "outer"
+    if (area > 0) != want_ccw:
+        points = list(reversed(points)); area = _signed_area_2d(points)
+    loop["points_m"] = points
+    loop["area_m2_signed"] = area
+    loop["area_m2"] = abs(area)
+    loop["orientation"] = "ccw" if area > 0 else "cw"
+    loop["role"] = role
+    return loop
+
+def _classify_and_normalize_caster_loops(polygons):
+    warnings = []
+    by_caster = {}
+    for poly in polygons:
+        by_caster.setdefault(poly.get("source_caster_index"), []).append(poly)
+    for caster_polygons in by_caster.values():
+        for poly in caster_polygons:
+            probe = (poly.get("points_m") or [None])[0]
+            if probe is None:
+                poly["role"] = "unknown"; warnings.append("unknown outer/inner role")
+                continue
+            depth = sum(1 for other in caster_polygons if other is not poly and _point_in_polygon(probe, other.get("points_m") or []))
+            poly["containment_depth"] = depth
+            _normalize_loop_winding(poly, "outer" if depth % 2 == 0 else "inner")
+    return warnings
+
 def _formal_loop_from_candidate(candidate, tolerance_m=0.001):
     warnings = []
     eligible, reasons = _validate_formal_candidate_eligibility(candidate)
     if not eligible:
         return None, reasons
     raw = list(candidate.get("endpoints_m") or candidate.get("endpoints_m_sample") or [])
-    if len(raw) < 6 or len(raw) % 2 != 0:
-        return None, ["candidate endpoint sequence is unavailable or incomplete; no formal loop generated."]
-    ordered = [raw[0]] + [raw[i] for i in range(1, len(raw), 2)]
-    if len(ordered) > 1 and _point_xy_equal(ordered[0], ordered[-1], tolerance_m):
-        ordered = ordered[:-1]
-    clean = []
-    for pt in ordered:
-        if pt is None or pt.get("x") is None or pt.get("y") is None:
-            warnings.append("loop contains an invalid point; no formal loop generated.")
-            return None, warnings
-        if not clean or not _point_xy_equal(clean[-1], pt, tolerance_m):
-            clean.append({"x": float(pt.get("x")), "y": float(pt.get("y"))})
-        else:
-            warnings.append("duplicate adjacent point removed from formal loop candidate.")
-    if len(clean) > 1 and _point_xy_equal(clean[0], clean[-1], tolerance_m):
-        clean = clean[:-1]
+    clean, stitch_warnings = _stitch_loop_segments(raw, tolerance_m)
+    if clean is None:
+        return None, stitch_warnings
     if len(clean) < 3:
         warnings.append("formal loop candidate has fewer than 3 unique XY points.")
         return None, warnings
-    for i in range(len(clean)):
-        a = clean[i]; b = clean[(i + 1) % len(clean)]
-        if ((a["x"] - b["x"]) ** 2 + (a["y"] - b["y"]) ** 2) ** 0.5 <= tolerance_m:
-            warnings.append("formal loop candidate contains an extremely short edge.")
-            return None, warnings
     if _has_self_intersection(clean):
         warnings.append("formal loop candidate is self-intersecting.")
         return None, warnings
@@ -278,7 +355,7 @@ def _formal_loop_from_candidate(candidate, tolerance_m=0.001):
     if abs(area) <= tolerance_m * tolerance_m:
         warnings.append("formal loop candidate has near-zero area.")
         return None, warnings
-    return {"points_m": clean, "closed": True, "area_m2_signed": area, "area_m2": abs(area), "orientation": "ccw" if area > 0 else "cw", "role": "outer" if area > 0 else "inner", "source_candidate_index": candidate.get("candidate_index"), "source_caster_index": candidate.get("caster_index"), "source_face_index": candidate.get("source_face_index"), "source_loop_index": candidate.get("loop_index"), "point_count": len(clean), "units": "meter"}, warnings
+    return {"points_m": clean, "closed": True, "area_m2_signed": area, "area_m2": abs(area), "orientation": "ccw" if area > 0 else "cw", "role": "unknown", "source_candidate_index": candidate.get("candidate_index"), "source_caster_index": candidate.get("caster_index"), "source_face_index": candidate.get("source_face_index"), "source_loop_index": candidate.get("loop_index"), "point_count": len(clean), "units": "meter"}, warnings
 
 def _build_formal_footprints_from_candidates(items):
     polygons = []; invalid = []; warnings = []
@@ -306,6 +383,7 @@ def _build_formal_footprints_from_candidates(items):
             successful_casters.add(caster_index)
         if len(invalid) > caster_invalid_before or len(polygons) == caster_polygons_before:
             failed_casters.add(caster_index)
+    warnings.extend(_classify_and_normalize_caster_loops(polygons))
     unknown_roles = [p for p in polygons if p.get("role") == "unknown"]
     if unknown_roles:
         warnings.append("unknown outer/inner role")
