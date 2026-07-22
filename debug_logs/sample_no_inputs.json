@@ -360,7 +360,7 @@
     "settings not ready for equal-time shadow calculation",
     "No accepted shadow caster proxy elements are available.",
     {
-      "truncated_count": 10
+      "truncated_count": 1
     }
   ],
   "warnings_count": 30

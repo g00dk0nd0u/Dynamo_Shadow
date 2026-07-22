@@ -1,5 +1,4 @@
 # Dynamo input summaries and source diagnostics.
-import traceback
 from shadow_revit_api import BuiltInCategory
 from shadow_policies import (INPUT_KEYS, SUPPORTED_CATEGORY_NAMES, ACCEPTED_BUILT_IN_CATEGORY_NAMES, SITE_BOUNDARY_FALLBACK_LINE_CATEGORY_NAMES, SITE_BOUNDARY_RELATED_CATEGORY_NAMES, SITE_BOUNDARY_TOPO_CATEGORY_NAMES)
 from shadow_utils import *
@@ -69,44 +68,47 @@ def _diagnose_geometry_access(element):
     result = {
         "attempted": False,
         "available": False,
-        "solid_count": None,
-        "curve_count": None,
-        "mesh_count": None,
+        "geometry_readable": False,
+        "geometry_access_method": None,
+        "geometry_fallback_used": False,
+        "geometry_instance_count": 0,
+        "solid_count": 0,
+        "positive_solid_count": 0,
+        "face_count": 0,
+        "edge_count": 0,
+        "mesh_count": 0,
+        "error_type": None,
         "error": None,
     }
     if element is None:
         result["error"] = "element is None"
         return result
-
-    geometry_method = getattr(element, "get_Geometry", None)
-    if not callable(geometry_method):
-        result["error"] = "get_Geometry is not available in this environment or for this element."
-        return result
-
-    result["attempted"] = True
-    try:
-        geometry = geometry_method(None)
-        if geometry is None:
-            result["error"] = "get_Geometry returned None."
-            return result
-        result["available"] = True
-        solid_count = 0
-        curve_count = 0
-        mesh_count = 0
-        for item in geometry:
-            item_type = _type_name(item).lower()
-            if "solid" in item_type:
-                solid_count += 1
-            elif "curve" in item_type or "line" in item_type or "arc" in item_type:
-                curve_count += 1
-            elif "mesh" in item_type:
-                mesh_count += 1
-        result["solid_count"] = solid_count
-        result["curve_count"] = curve_count
-        result["mesh_count"] = mesh_count
-    except Exception:
-        result["available"] = False
-        result["error"] = traceback.format_exc()
+    collected = _collect_geometry_objects(element)
+    access = collected.get("access") or {}
+    result["attempted"] = bool(access.get("attempted"))
+    result["geometry_readable"] = bool(access.get("geometry_readable"))
+    result["available"] = result["geometry_readable"]
+    result["geometry_access_method"] = access.get("geometry_access_method")
+    result["geometry_fallback_used"] = bool(access.get("geometry_fallback_used"))
+    result["error_type"] = access.get("error_type")
+    result["error"] = access.get("error")
+    for obj in collected.get("objects") or []:
+        value = obj.get("object")
+        if _is_geometry_instance_like(value):
+            result["geometry_instance_count"] += 1
+        elif _is_solid_like(value):
+            result["solid_count"] += 1
+            volume = _safe_float_attr(value, "Volume")
+            if volume is not None and volume > 0:
+                result["positive_solid_count"] += 1
+        elif _is_face_like(value):
+            result["face_count"] += 1
+        elif _is_edge_like(value) or _is_curve_like(value):
+            result["edge_count"] += 1
+        elif _is_mesh_like(value):
+            result["mesh_count"] += 1
+    if result["error"] is None and collected.get("warnings"):
+        result["error"] = "; ".join(collected.get("warnings")[:3])
     return result
 
 def _summarize_one(value):
@@ -166,7 +168,7 @@ def _diagnose_shadow_casters(building_elements):
         diagnostics["warnings"].append("building_elements is empty; select one or more user-defined Mass or Generic Model shadow proxy elements.")
 
     for index, item in enumerate(items):
-        unwrapped = _try_unwrap(item)
+        unwrapped, unwrap_diag = _try_unwrap_with_diagnostics(item)
         category_name = _category_name(unwrapped)
         category_match = _diagnose_shadow_category(unwrapped, category_name)
         shadow_role = _lookup_parameter_text(unwrapped, "ShadowRole") if unwrapped is not None else None
@@ -185,7 +187,7 @@ def _diagnose_shadow_casters(building_elements):
         if shadow_role is None:
             item_warnings.append("ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics.")
         if not geometry_access.get("available"):
-            item_warnings.append("geometry access is not available: {0}".format(geometry_access.get("error")))
+            item_warnings.append("geometry_readable is false: {0}".format(geometry_access.get("error") or "no geometry returned"))
 
         accepted = (unwrapped is not None) and is_supported_category
         if accepted:
@@ -197,6 +199,9 @@ def _diagnose_shadow_casters(building_elements):
             "index": index,
             "is_none": unwrapped is None,
             "type": _type_name(unwrapped),
+            "wrapper_type": unwrap_diag.get("wrapper_type"),
+            "native_type": unwrap_diag.get("native_type"),
+            "unwrap_strategy": unwrap_diag.get("unwrap_strategy"),
             "category_name": category_name,
             "category_id": category_match.get("category_id"),
             "category_match_method": category_match.get("category_match_method"),
@@ -435,7 +440,7 @@ def _diagnose_site_boundary(site_boundary):
         diagnostics["warnings"].append("site_boundary received a single selected item; multiple Property Line segments or Model Lines may be required for a closed loop.")
 
     for index, item in enumerate(items):
-        unwrapped = _try_unwrap(item)
+        unwrapped, unwrap_diag = _try_unwrap_with_diagnostics(item)
         category_name = _category_name(unwrapped)
         category_match = _diagnose_site_category(unwrapped, category_name)
         official = category_match.get("official_revit_api_category")

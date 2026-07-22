@@ -1,6 +1,6 @@
 # Safe helpers and Revit-like type checks.
 import sys
-from shadow_revit_api import BuiltInCategory, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, Mesh
+from shadow_revit_api import BuiltInCategory, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, Mesh
 
 
 def _get_global(name, default=None):
@@ -32,14 +32,75 @@ def _fallback_in(index, default=None):
         pass
     return default
 
-def _try_unwrap(value):
-    unwrap = _get_global("UnwrapElement", None)
-    if unwrap is None:
-        return value
+def _is_native_revit_element_like(value):
+    if value is None:
+        return False
+    type_module = _safe_text(getattr(type(value), "__module__", "")) or ""
+    if type_module.startswith("Autodesk.Revit.DB"):
+        return True
+    return hasattr(value, "Category") and hasattr(value, "Id") and not (hasattr(value, "InternalElement") or hasattr(value, "InternalElementId"))
+
+def _document_manager_document():
     try:
-        return unwrap(value)
+        import clr
+        clr.AddReference("RevitServices")
+        from RevitServices.Persistence import DocumentManager
+        return DocumentManager.Instance.CurrentDBDocument
     except Exception:
-        return value
+        return None
+
+def _try_document_get_element(element_id):
+    doc = _document_manager_document()
+    if doc is None or element_id is None:
+        return None
+    try:
+        return doc.GetElement(element_id)
+    except Exception:
+        return None
+
+def _try_unwrap_with_diagnostics(value):
+    diagnostics = {"wrapper_type": _type_name(value), "native_type": _type_name(value), "unwrap_strategy": "original", "unwrapped": False}
+    current = value
+    unwrap = _get_global("UnwrapElement", None)
+    if unwrap is not None:
+        try:
+            candidate = unwrap(value)
+            if candidate is not None:
+                current = candidate
+                diagnostics["unwrap_strategy"] = "UnwrapElement"
+                diagnostics["unwrapped"] = current is not value
+                if _is_native_revit_element_like(current):
+                    diagnostics["native_type"] = _type_name(current)
+                    return current, diagnostics
+        except Exception:
+            diagnostics["unwrap_strategy"] = "UnwrapElement_failed"
+    if _is_native_revit_element_like(current):
+        diagnostics["native_type"] = _type_name(current)
+        return current, diagnostics
+    internal = _safe_attr(current, "InternalElement")
+    if internal is not None:
+        current = internal
+        diagnostics["unwrap_strategy"] = "InternalElement"
+        diagnostics["unwrapped"] = True
+        if _is_native_revit_element_like(current):
+            diagnostics["native_type"] = _type_name(current)
+            return current, diagnostics
+    internal_id = _safe_attr(value, "InternalElementId")
+    if internal_id is not None:
+        native = _try_document_get_element(internal_id)
+        if native is not None:
+            current = native
+            diagnostics["unwrap_strategy"] = "InternalElementId.CurrentDBDocument.GetElement"
+            diagnostics["unwrapped"] = True
+            if _is_native_revit_element_like(current):
+                diagnostics["native_type"] = _type_name(current)
+                return current, diagnostics
+    diagnostics["native_type"] = _type_name(current)
+    return current, diagnostics
+
+def _try_unwrap(value):
+    unwrapped, _diagnostics = _try_unwrap_with_diagnostics(value)
+    return unwrapped
 
 def _is_string(value):
     try:
@@ -262,6 +323,84 @@ def _safe_iter(value):
         return list(value)
     except Exception:
         return []
+
+
+def _safe_get_geometry(element):
+    result = {
+        "attempted": False,
+        "geometry": None,
+        "geometry_access_method": None,
+        "geometry_fallback_used": False,
+        "geometry_readable": False,
+        "error_type": None,
+        "error": None,
+    }
+    if element is None:
+        result["error"] = "element is None"
+        return result
+    method = getattr(element, "get_Geometry", None)
+    if not callable(method):
+        result["error"] = "get_Geometry is not available in this environment or for this element."
+        return result
+    result["attempted"] = True
+    option_error = None
+    if Options is not None:
+        try:
+            opts = Options()
+            try:
+                opts.ComputeReferences = False
+                opts.IncludeNonVisibleObjects = True
+            except Exception:
+                pass
+            geometry = method(opts)
+            result.update({"geometry": geometry, "geometry_access_method": "Options", "geometry_readable": geometry is not None})
+            if geometry is not None:
+                return result
+        except Exception as exc:
+            option_error = exc
+    try:
+        geometry = method(None)
+        result.update({"geometry": geometry, "geometry_access_method": "None_fallback", "geometry_fallback_used": True, "geometry_readable": geometry is not None})
+        if geometry is None and option_error is not None:
+            result["error_type"] = type(option_error).__name__
+            result["error"] = _safe_text(option_error)
+        return result
+    except Exception as exc:
+        result["geometry_access_method"] = "Options_then_None_fallback" if Options is not None else "None"
+        result["geometry_fallback_used"] = Options is not None
+        result["error_type"] = type(exc).__name__
+        result["error"] = _safe_text(exc)
+        return result
+
+def _collect_geometry_objects(element, max_depth=4):
+    access = _safe_get_geometry(element)
+    objects, warnings = [], []
+    if access.get("error"):
+        err = access.get("error")
+        if access.get("error_type"):
+            err = "{0}: {1}".format(access.get("error_type"), err)
+        warnings.append("geometry could not be read: {0}".format(err))
+    def add_many(values, depth, source):
+        if depth > max_depth:
+            warnings.append("geometry nesting exceeded diagnostic recursion depth; deeper objects were skipped.")
+            return
+        for val in _safe_iter(values):
+            objects.append({"depth": depth, "source": source, "type": _type_name(val), "object": val, "type_lower": _type_name_lower(val)})
+            if _is_geometry_instance_like(val):
+                inst, inst_error = _safe_call(val, "GetInstanceGeometry")
+                if inst_error:
+                    warnings.append("GeometryInstance.GetInstanceGeometry unavailable: {0}".format(inst_error))
+                elif inst is not None:
+                    add_many(inst, depth + 1, "geometry_instance_instance")
+                # SymbolGeometry is intentionally not traversed for projection-source geometry.
+            elif not (_is_solid_like(val) or _is_face_like(val) or _is_edge_like(val) or _is_curve_like(val) or _is_mesh_like(val)):
+                nested = _safe_iter(val)
+                if nested:
+                    add_many(nested, depth + 1, "nested_geometry")
+    if access.get("geometry") is not None:
+        add_many(access.get("geometry"), 0, "element_geometry")
+    access["geometry"] = None
+    return {"objects": objects, "warnings": warnings, "access": access}
 
 def _safe_float_attr(value, attr):
     raw = _safe_attr(value, attr)
