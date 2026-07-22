@@ -179,7 +179,7 @@ def _build_success():
         "success": True,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint polygon generation, formal shadow polygon generation, Revit element creation, JST conversion, equation-of-time correction, legal judgement, 5m/10m measurement line generation, or equal-time contours are implemented. Diagnostic-only true-solar-time sun position and shadow projection point-cloud outputs are included when explicit site_latitude_deg and solar_declination_deg are provided.",
+        "message": "Dynamo_Shadow v1 diagnostics; formal diagnostic footprint polygons are generated from eligible bottom-face Line edge loops. No formal shadow polygon generation, Revit element creation, JST conversion, equation-of-time correction, legal judgement, 5m/10m measurement line generation, Boolean union, or equal-time contours are implemented. Diagnostic-only true-solar-time sun position and shadow projection point-cloud outputs are included when explicit site_latitude_deg and solar_declination_deg are provided.",
         "legal_constants": LEGAL_CONSTANTS,
         "unit_conversion_diagnostics": unit_conversion_diagnostics,
         "unit_conversion_policy": UNIT_CONVERSION_POLICY,

@@ -1,7 +1,7 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
 TOOL_NAME = "Dynamo_Shadow"
-STAGE_NAME = "v1_footprint_extraction_diagnostics"
+STAGE_NAME = "v1_formal_footprint_stabilization"
 
 LEGAL_CONSTANTS = {
     "date_basis": "winter_solstice",
@@ -310,7 +310,7 @@ GEOMETRY_EXTRACTION_POLICY = {
     "bounding_box_allowed_for": ["diagnostic_summary", "future_analysis_extent_estimation"],
     "geometry_units": "revit_raw_internal_units",
     "official_unit_conversion": "diagnostic_meter_fields_added",
-    "footprint_polygon_generated": False,
+    "footprint_polygon_generated": True,
     "shadow_projection_generated": "diagnostic_point_cloud_only",
     "equal_time_contours_generated": False,
 }
@@ -327,10 +327,10 @@ FOOTPRINT_EXTRACTION_POLICY = {
     "per_caster_extraction": True,
     "merge_casters": False,
     "temporary_unified_revit_model": False,
-    "formal_footprint_polygon_generated": False,
+    "formal_footprint_polygon_generated": True,
     "curve_loop_generated": False,
     "offset_generated": False,
-    "self_intersection_checked": False,
+    "self_intersection_checked": True,
     "polygon_boolean_generated": False,
     "formal_unit_conversion": "diagnostic_meter_fields_added",
     "geometry_units": "revit_raw_internal_units",
@@ -339,10 +339,16 @@ FOOTPRINT_EXTRACTION_POLICY = {
     "bounding_box_used_for_shadow_geometry": False,
     "bounding_box_used_for_legal_judgement": False,
     "same_site_multiple_buildings_awareness": "buildings_on_same_site_are_treated_as_one_building_in_future_duration_accumulation",
+    "implemented_in_this_stage": [
+        "formal diagnostic footprint polygon generation from eligible Line edge loops",
+        "segment loop stitching",
+        "outer / inner classification within each source face",
+        "self-intersection check",
+    ],
     "not_implemented_in_this_pr": [
-        "formal footprint polygon generation", "CurveLoop creation", "polygon validity check",
-        "self-intersection check", "boolean union across casters", "site boundary clipping",
-        "own-site exclusion", "beyond-5m legal range", "shadow projection", "legal OK/NG judgement",
+        "CurveLoop creation", "boolean union across casters", "site boundary clipping",
+        "own-site exclusion", "beyond-5m legal range", "formal shadow polygon generation",
+        "equal-time contour generation", "legal OK/NG judgement",
     ],
 }
 
