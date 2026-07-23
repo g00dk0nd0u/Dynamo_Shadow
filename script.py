@@ -153,7 +153,7 @@ def _build_success():
     measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
     shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized, measurement_plane)
     footprint_extraction = _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized, site_boundary)
-    sun_time_slices, sun_position_diagnostics, sun_position_policy = _build_sun_position_diagnostics(settings_normalized)
+    sun_time_slices, sun_position_diagnostics, sun_position_policy, solar_calculation_v1 = _build_sun_position_diagnostics(settings_normalized)
     shadow_projection_diagnostics, shadow_projection_policy = _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_plane, sun_time_slices)
     pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction)
     warnings.extend(shadow_casters.get("warnings", []))
@@ -179,7 +179,7 @@ def _build_success():
         "success": True,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow v1 diagnostics; formal diagnostic footprint polygons are generated from eligible bottom-face Line edge loops. No formal shadow polygon generation, Revit element creation, JST conversion, equation-of-time correction, legal judgement, 5m/10m measurement line generation, Boolean union, or equal-time contours are implemented. Diagnostic-only true-solar-time sun position and shadow projection point-cloud outputs are included when explicit site_latitude_deg and solar_declination_deg are provided.",
+        "message": "Dynamo_Shadow v1 diagnostics; formal diagnostic footprint polygons are generated from eligible bottom-face Line edge loops. No formal shadow polygon generation, Revit element creation, date-based declination/equation-of-time calculation, legal judgement, 5m/10m measurement line generation, Boolean union, or equal-time contours are implemented. Diagnostic-only true-solar-time sun position and shadow projection point-cloud outputs are included when explicit site_latitude_deg and solar_declination_deg are provided.",
         "legal_constants": LEGAL_CONSTANTS,
         "unit_conversion_diagnostics": unit_conversion_diagnostics,
         "unit_conversion_policy": UNIT_CONVERSION_POLICY,
@@ -197,6 +197,7 @@ def _build_success():
         "footprint_extraction_policy": FOOTPRINT_EXTRACTION_POLICY,
         "sun_time_slices": sun_time_slices,
         "sun_position_diagnostics": sun_position_diagnostics,
+        "solar_calculation_v1": solar_calculation_v1,
         "sun_position_policy": sun_position_policy,
         "shadow_projection_diagnostics": shadow_projection_diagnostics,
         "shadow_projection_policy": shadow_projection_policy,
@@ -292,6 +293,7 @@ def _build_failure(error_text):
         "footprint_extraction_policy": FOOTPRINT_EXTRACTION_POLICY,
         "sun_time_slices": sun_time_slices,
         "sun_position_diagnostics": sun_position_diagnostics,
+        "solar_calculation_v1": solar_calculation_v1,
         "sun_position_policy": sun_position_policy,
         "shadow_projection_diagnostics": shadow_projection_diagnostics,
         "shadow_projection_policy": shadow_projection_policy,

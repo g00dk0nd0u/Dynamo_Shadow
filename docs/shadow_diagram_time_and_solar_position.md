@@ -206,3 +206,51 @@ z_up = 0
 ```
 
 This diagnostic does not create Revit elements, project shadow polygons, generate 5m / 10m legal masks, generate equal-time contours, or make legal OK/NG judgements.
+
+## Issue #33 implementation: explicit JST / true-solar-time contract
+
+`solar_calculation_v1` accepts exactly two `time_basis` values:
+
+- `true_solar_time`: input times are already local apparent solar times.
+- `japan_standard_time`: input times are Japan Standard Time clock times and must be converted to local true solar time before deriving the hour angle.
+
+Unknown or missing `time_basis` values are blockers for the formal `solar_calculation_v1` result. They are not silently treated as `true_solar_time`.
+
+For `japan_standard_time`, east longitude is positive and the conversion is:
+
+```text
+longitude_correction_minutes = 4.0 * (site_longitude_deg - standard_meridian_deg)
+true_solar_time_minutes = japan_standard_time_minutes
+                        + longitude_correction_minutes
+                        + equation_of_time_minutes
+```
+
+The Japanese standard meridian default used only for this computational setting is `135.0` degrees east and is recorded in `defaults_applied` when omitted. Sites east of 135°E produce a positive longitude correction; sites west of 135°E produce a negative correction. `equation_of_time_minutes` is defined as the signed value added in the formula above. This implementation normalizes converted minutes into the 0–1440 minute day and reports `day_offset` when the converted true solar time crosses midnight.
+
+For `true_solar_time`, input times are used directly as true solar time. Longitude correction and equation-of-time correction are not applied, and `site_longitude_deg` is not used for hour-angle calculation even if it is present.
+
+The hour angle is always derived from converted or directly supplied true solar time:
+
+```text
+hour_angle_deg = 15.0 * (true_solar_hour - 12.0)
+```
+
+Date-based calculation of `solar_declination_deg` and `equation_of_time_minutes` is not implemented. Both values must be explicit when needed by the selected time basis. Atmospheric refraction correction is not applied.
+
+`true_north_deg` is defined as the angle measured clockwise from the model coordinate +Y axis to the true-north direction:
+
+- `0`: model +Y is true north.
+- `90`: model +X is true north.
+- `-90`: model -X is true north.
+
+A true-north-referenced azimuth `A` is converted to model coordinates as:
+
+```text
+model_azimuth_deg = (A + true_north_deg) % 360
+x_model = sin(model_azimuth_deg)
+y_model = cos(model_azimuth_deg)
+```
+
+This PR does not read Revit `ProjectLocation` or `ProjectPosition` to infer true north. It uses only the explicit `settings.true_north_deg` value.
+
+The implementation is diagnostic and research-oriented. It is not permit-ready certification, does not reproduce ADS internal specifications, and does not implement formal shadow polygons, Boolean union, time accumulation, equal-time contours, site-boundary processing, 5m/10m legal ranges, legal OK/NG judgement, or Revit element generation.

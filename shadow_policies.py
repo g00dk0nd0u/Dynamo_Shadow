@@ -144,31 +144,38 @@ UNIT_CONVERSION_POLICY = {
 
 
 SUN_POSITION_POLICY = {
-    "purpose": "diagnostic_true_solar_time_sun_position_table",
+    "purpose": "diagnostic_solar_time_conversion_and_sun_position_table",
     "diagnostic_only": True,
-    "supported_time_basis": ["true_solar_time"],
-    "time_step_minutes": 30,
-    "requires_explicit_settings": ["site_latitude_deg", "solar_declination_deg"],
+    "supported_time_basis": ["true_solar_time", "japan_standard_time"],
+    "requires_explicit_settings": ["time_basis", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes", "site_latitude_deg", "solar_declination_deg", "true_north_deg"],
+    "jst_conversion_requires": ["site_longitude_deg", "standard_meridian_deg", "equation_of_time_minutes"],
     "formula": {
+        "longitude_correction_minutes": "4.0 * (site_longitude_deg - standard_meridian_deg)",
+        "true_solar_time_minutes": "japan_standard_time_minutes + longitude_correction_minutes + equation_of_time_minutes",
         "hour_angle_deg": "15 * (true_solar_hour - 12)",
         "solar_altitude": "asin(sin(latitude) * sin(declination) + cos(latitude) * cos(declination) * cos(hour_angle))",
         "solar_azimuth": "atan2(sin(hour_angle), cos(hour_angle) * sin(latitude) - tan(declination) * cos(latitude)) + 180deg",
-        "zenith_deg": "90 - solar_altitude_deg",
-        "shadow_length_factor": "1 / tan(solar_altitude) when altitude is above horizon",
+        "model_azimuth_deg": "(true_north_azimuth_deg + true_north_deg) % 360",
+        "shadow_length_factor": "1 / tan(solar_altitude) when altitude is above horizon"
     },
     "azimuth_convention": "degrees clockwise from true north: 0=N, 90=E, 180=S, 270=W",
-    "shadow_direction_vector_convention": "unit horizontal vector away from the sun in true-north axes: x_east=sin(azimuth+180), y_north=cos(azimuth+180)",
+    "true_north_convention": "true_north_deg is measured clockwise from model +Y to true north; 0 means model +Y is true north, 90 means model +X is true north, -90 means model -X is true north.",
+    "atmospheric_refraction_applied": False,
+    "date_based_declination_calculated": False,
+    "date_based_equation_of_time_calculated": False,
+    "permit_ready_certified": False,
     "not_implemented_in_this_pr": [
-        "JST to true solar time conversion",
-        "equation-of-time correction",
-        "135E standard meridian calculation except as future time-conversion reference",
-        "sun vector projection into Revit model coordinates",
-        "shadow projection",
+        "date-based winter solstice selection",
+        "date-based solar declination calculation",
+        "date-based equation-of-time calculation",
+        "Revit ProjectLocation true-north extraction",
+        "formal shadow polygons",
+        "Boolean union",
+        "time accumulation",
         "equal-time contours",
         "5m / 10m legal masks",
-        "site-boundary legal judgement",
         "legal OK/NG judgement",
-        "Revit element creation",
+        "Revit element creation"
     ],
 }
 
