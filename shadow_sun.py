@@ -26,9 +26,13 @@ def _parse_time_to_minutes(value, key, warnings):
 
 
 def _format_minutes(minutes):
-    hour = int(minutes // 60)
-    minute = int(minutes % 60)
-    return "{0:02d}:{1:02d}".format(hour, minute)
+    rounded_seconds = int(round(float(minutes) * 60.0))
+    day_seconds = 24 * 60 * 60
+    rounded_seconds = rounded_seconds % day_seconds
+    hour = rounded_seconds // 3600
+    minute = (rounded_seconds % 3600) // 60
+    second = rounded_seconds % 60
+    return "{0:02d}:{1:02d}:{2:02d}".format(hour, minute, second)
 
 
 def _deg(value):
@@ -74,6 +78,8 @@ def _model_direction_from_true_north_azimuth(azimuth_true_north_deg, true_north_
 
 
 def _build_solar_time_conversion(input_minutes, input_time_basis, site_longitude_deg, standard_meridian_deg, equation_of_time_minutes):
+    if input_time_basis not in VALID_TIME_BASES:
+        raise ValueError("input_time_basis must be one of: true_solar_time, japan_standard_time.")
     if input_time_basis == "japan_standard_time":
         raw_true = _jst_minutes_to_true_solar_minutes(input_minutes, site_longitude_deg, standard_meridian_deg, equation_of_time_minutes)
         normalized, day_offset = _normalize_minutes_with_day_offset(raw_true)

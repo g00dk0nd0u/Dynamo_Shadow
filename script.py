@@ -236,6 +236,7 @@ def _build_failure(error_text):
     sun_time_slices = []
     sun_position_diagnostics = None
     sun_position_policy = SUN_POSITION_POLICY
+    solar_calculation_v1 = None
     shadow_projection_diagnostics = None
     shadow_projection_policy = SHADOW_PROJECTION_POLICY
     try:
@@ -265,7 +266,7 @@ def _build_failure(error_text):
     try:
         shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters or {}, settings_normalized or {}, measurement_plane)
         footprint_extraction = _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized or {}, site_boundary or {})
-        sun_time_slices, sun_position_diagnostics, sun_position_policy = _build_sun_position_diagnostics(settings_normalized or {})
+        sun_time_slices, sun_position_diagnostics, sun_position_policy, solar_calculation_v1 = _build_sun_position_diagnostics(settings_normalized or {})
         shadow_projection_diagnostics, shadow_projection_policy = _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_plane, sun_time_slices)
         pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane, footprint_extraction)
     except Exception:

@@ -26,7 +26,7 @@ def test_true_solar_noon_has_zero_hour_angle_and_no_time_corrections():
     out = solar(base())
     s = out["slices"][0]
     assert out["available"] is True
-    assert s["true_solar_time"] == "12:00"
+    assert s["true_solar_time"] == "12:00:00"
     assert s["hour_angle_deg"] == 0.0
     assert s["longitude_correction_applied"] is False
     assert s["equation_of_time_applied"] is False
@@ -35,35 +35,35 @@ def test_true_solar_noon_has_zero_hour_angle_and_no_time_corrections():
 def test_jst_at_135e_has_zero_longitude_correction():
     out = solar(base(time_basis="japan_standard_time", site_longitude_deg=135, equation_of_time_minutes=0))
     assert out["longitude_correction_minutes"] == 0.0
-    assert out["slices"][0]["true_solar_time"] == "12:00"
+    assert out["slices"][0]["true_solar_time"] == "12:00:00"
 
 
 def test_jst_east_of_135e_adds_positive_twenty_minutes():
     out = solar(base(time_basis="japan_standard_time", site_longitude_deg=140, equation_of_time_minutes=0))
     assert out["longitude_correction_minutes"] == 20.0
-    assert out["slices"][0]["true_solar_time"] == "12:20"
+    assert out["slices"][0]["true_solar_time"] == "12:20:00"
 
 
 def test_jst_west_of_135e_adds_negative_twenty_minutes():
     out = solar(base(time_basis="japan_standard_time", site_longitude_deg=130, equation_of_time_minutes=0))
     assert out["longitude_correction_minutes"] == -20.0
-    assert out["slices"][0]["true_solar_time"] == "11:40"
+    assert out["slices"][0]["true_solar_time"] == "11:40:00"
 
 
 def test_equation_of_time_is_added_to_jst():
     out = solar(base(time_basis="japan_standard_time", site_longitude_deg=135, equation_of_time_minutes=10))
-    assert out["slices"][0]["true_solar_time"] == "12:10"
+    assert out["slices"][0]["true_solar_time"] == "12:10:00"
 
 
 def test_next_day_wrap_reports_day_offset_one():
     c = _build_solar_time_conversion(1430, "japan_standard_time", 140, 135, 10)
-    assert c["true_solar_time"] == "00:20"
+    assert c["true_solar_time"] == "00:20:00"
     assert c["day_offset"] == 1
 
 
 def test_previous_day_wrap_reports_day_offset_minus_one():
     c = _build_solar_time_conversion(10, "japan_standard_time", 130, 135, -10)
-    assert c["true_solar_time"] == "23:40"
+    assert c["true_solar_time"] == "23:40:00"
     assert c["day_offset"] == -1
 
 

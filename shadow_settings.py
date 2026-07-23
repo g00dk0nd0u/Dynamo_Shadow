@@ -1,7 +1,7 @@
 # Settings coercion and normalization.
 import json
 import math
-from shadow_policies import SETTINGS_SCHEMA_VERSION, SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW, SETTINGS_DIAGNOSTIC_DEFAULTS
+from shadow_policies import SETTINGS_SCHEMA_VERSION, SETTINGS_REQUIRED_FOR_MEASUREMENT_PLANE, SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR, SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD, SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_utils import *
 
 
@@ -143,7 +143,9 @@ def _range_warning(key, value):
         "site_latitude_deg": (-90.0, 90.0, True, True),
         "longitude": (-180.0, 180.0, True, True),
         "site_longitude_deg": (-180.0, 180.0, True, True),
-        "solar_declination_deg": (-90.0, 90.0, True, True),
+        "solar_declination_deg": (-23.5, 23.5, True, True),
+        "equation_of_time_minutes": (-20.0, 20.0, True, True),
+        "standard_meridian_deg": (-180.0, 180.0, True, True),
         "true_north_deg": (-360.0, 360.0, True, True),
         "measurement_height_m": (0.0, None, False, True),
         "grid_resolution_m": (0.0, None, False, True),
@@ -254,6 +256,8 @@ def _normalize_settings(settings, level=None):
     sun_step, warn = _parse_int(settings_dict.get("sun_time_step_minutes"), "sun_time_step_minutes")
     if warn:
         warnings.append(warn); invalid_keys.append("sun_time_step_minutes")
+    if sun_step is not None and sun_step <= 0:
+        warnings.append("settings.sun_time_step_minutes must be a positive integer."); invalid_keys.append("sun_time_step_minutes"); sun_step = None
     normalized["sun_time_step_minutes"] = sun_step
 
     agl = normalized.get("average_ground_level_elevation_m")
@@ -266,8 +270,21 @@ def _normalize_settings(settings, level=None):
         measurement_plane = {"available": False, "elevation_m": None, "reason": "missing average_ground_level_elevation_m or measurement_height_m"}
     normalized["measurement_plane_elevation_m"] = mpe
 
-    missing_required = [k for k in SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW if normalized.get(k) is None]
-    invalid_for_equal = [k for k in invalid_keys if k in SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW]
+    measurement_plane_required = list(SETTINGS_REQUIRED_FOR_MEASUREMENT_PLANE)
+    time_basis_key = normalized.get("time_basis")
+    solar_time_required = []
+    if time_basis_key == "true_solar_time":
+        solar_time_required = list(SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR)
+    elif time_basis_key == "japan_standard_time":
+        solar_time_required = list(SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD)
+    else:
+        solar_time_required = ["time_basis"]
+    missing_measurement_plane = [k for k in measurement_plane_required if normalized.get(k) is None]
+    missing_solar_time = [k for k in solar_time_required if normalized.get(k) is None]
+    missing_required = missing_measurement_plane + [k for k in missing_solar_time if k not in missing_measurement_plane]
+    invalid_for_measurement_plane = [k for k in invalid_keys if k in measurement_plane_required]
+    invalid_for_solar_time = [k for k in invalid_keys if k in solar_time_required or k == "time_basis"]
+    invalid_for_equal = sorted(set(invalid_for_measurement_plane + invalid_for_solar_time))
     if settings is None:
         info.append("settings is optional for input diagnostics; missing settings is not fatal.")
     info.append("Revit Level Elevation is not used as average ground level or measurement plane.")
@@ -284,6 +301,10 @@ def _normalize_settings(settings, level=None):
             "settings_ready_for_boundary_dependent_steps": len(missing_required) == 0 and len(invalid_for_equal) == 0,
             "missing_for_equal_time_shadow": missing_required,
             "invalid_for_equal_time_shadow": invalid_for_equal,
+            "missing_for_measurement_plane": missing_measurement_plane,
+            "invalid_for_measurement_plane": invalid_for_measurement_plane,
+            "missing_for_solar_time": missing_solar_time,
+            "invalid_for_solar_time": invalid_for_solar_time,
         },
         "defaults_applied": defaults_applied,
         "missing_required_keys": missing_required,
