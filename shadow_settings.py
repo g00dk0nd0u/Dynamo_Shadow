@@ -167,7 +167,7 @@ def _normalize_settings(settings, level=None):
     defaults_applied = []
     invalid_keys = []
     info = []
-    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "time_basis", "true_solar_start_time", "true_solar_end_time", "sun_time_step_minutes", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename", "max_diagnostic_source_points_per_caster", "max_projected_points_output_per_slice"])
+    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "equation_of_time_minutes", "standard_meridian_deg", "time_basis", "analysis_start_time", "analysis_end_time", "true_solar_start_time", "true_solar_end_time", "sun_time_step_minutes", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename", "max_diagnostic_source_points_per_caster", "max_projected_points_output_per_slice"])
     ignored_keys = sorted([_safe_text(k) for k in settings_dict.keys() if k not in known])
     if ignored_keys:
         info.append("Unknown settings keys are ignored by v1 diagnostics: {0}".format(", ".join(ignored_keys)))
@@ -200,7 +200,7 @@ def _normalize_settings(settings, level=None):
         defaults_applied.append("debug_log_filename")
     normalized["debug_log_filename"] = debug_log_filename
 
-    for key in ["average_ground_level_elevation_m", "measurement_height_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m"]:
+    for key in ["average_ground_level_elevation_m", "measurement_height_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "standard_meridian_deg", "equation_of_time_minutes", "solar_declination_deg", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m"]:
         value, warn = _parse_float(settings_dict.get(key), key)
         range_warn = _range_warning(key, value)
         if warn or range_warn:
@@ -209,6 +209,9 @@ def _normalize_settings(settings, level=None):
             value = None
         if value is None and key in SETTINGS_DIAGNOSTIC_DEFAULTS:
             value = SETTINGS_DIAGNOSTIC_DEFAULTS[key]
+            defaults_applied.append(key)
+        if value is None and key == "standard_meridian_deg":
+            value = 135.0
             defaults_applied.append(key)
         normalized[key] = value
 
@@ -234,11 +237,15 @@ def _normalize_settings(settings, level=None):
     time_basis, warn = _parse_text(settings_dict.get("time_basis"), "time_basis")
     if warn:
         warnings.append(warn); invalid_keys.append("time_basis")
-    if time_basis is None:
-        time_basis = "true_solar_time"; defaults_applied.append("time_basis")
+    if time_basis not in ("true_solar_time", "japan_standard_time"):
+        if time_basis is None:
+            warnings.append("settings.time_basis is required for formal solar_calculation_v1 and must be true_solar_time or japan_standard_time; no legacy fallback is used for formal calculation.")
+        else:
+            warnings.append("settings.time_basis has unsupported value {0}; formal solar_calculation_v1 will be unavailable.".format(time_basis))
+            invalid_keys.append("time_basis")
     normalized["time_basis"] = time_basis
 
-    for key in ["true_solar_start_time", "true_solar_end_time"]:
+    for key in ["analysis_start_time", "analysis_end_time", "true_solar_start_time", "true_solar_end_time"]:
         text, warn = _parse_text(settings_dict.get(key), key)
         if warn:
             warnings.append(warn); invalid_keys.append(key)
