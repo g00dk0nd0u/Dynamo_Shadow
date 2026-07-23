@@ -97,13 +97,27 @@ SITE_BOUNDARY_TOPO_CATEGORY_NAMES = set([
 
 SETTINGS_SCHEMA_VERSION = "v1"
 
-SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW = [
+SETTINGS_REQUIRED_FOR_MEASUREMENT_PLANE = [
     "average_ground_level_elevation_m",
     "measurement_height_m",
-    "latitude",
-    "longitude",
-    "true_north_deg",
 ]
+
+SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR = [
+    "site_latitude_deg",
+    "solar_declination_deg",
+    "true_north_deg",
+    "analysis_start_time",
+    "analysis_end_time",
+    "sun_time_step_minutes",
+]
+
+SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD = SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR + [
+    "site_longitude_deg",
+    "standard_meridian_deg",
+    "equation_of_time_minutes",
+]
+
+SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW = SETTINGS_REQUIRED_FOR_MEASUREMENT_PLANE + SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD
 
 SETTINGS_DIAGNOSTIC_DEFAULTS = {
     "profile": "standard_8_16",
@@ -148,6 +162,8 @@ SUN_POSITION_POLICY = {
     "diagnostic_only": True,
     "supported_time_basis": ["true_solar_time", "japan_standard_time"],
     "requires_explicit_settings": ["time_basis", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes", "site_latitude_deg", "solar_declination_deg", "true_north_deg"],
+    "true_solar_time_requires": SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR,
+    "japan_standard_time_requires": SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD,
     "jst_conversion_requires": ["site_longitude_deg", "standard_meridian_deg", "equation_of_time_minutes"],
     "formula": {
         "longitude_correction_minutes": "4.0 * (site_longitude_deg - standard_meridian_deg)",
@@ -206,8 +222,10 @@ SHADOW_PROJECTION_POLICY = {
     "site_boundary_clipping_performed": False,
     "legal_judgement_generated": False,
     "revit_elements_created": False,
-    "jst_conversion_performed": False,
-    "equation_of_time_correction_performed": False,
+    "supports_jst_conversion": True,
+    "supports_explicit_equation_of_time": True,
+    "date_based_equation_of_time_calculated": False,
+    "runtime_jst_conversion_reported_in_sun_position_diagnostics": True,
     "uses_bounding_box_as_shadow_geometry": False,
 }
 
@@ -238,6 +256,9 @@ SETTINGS_POLICY = {
     "level_used_as_average_ground_level": False,
     "level_used_as_measurement_plane": False,
     "required_for_equal_time_shadow": SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW,
+    "required_for_measurement_plane": SETTINGS_REQUIRED_FOR_MEASUREMENT_PLANE,
+    "required_for_true_solar_time": SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR,
+    "required_for_japan_standard_time": SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD,
     "diagnostic_defaults": SETTINGS_DIAGNOSTIC_DEFAULTS,
     "no_legal_assumption_defaults": SETTINGS_REQUIRED_FOR_EQUAL_TIME_SHADOW,
     "formal_permit_check": "external_tool_such_as_ADS",
