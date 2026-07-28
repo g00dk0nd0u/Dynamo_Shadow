@@ -1,6 +1,8 @@
 import builtins
 import importlib
 import os
+import sys
+import types
 
 import shadow_utils
 from shadow_settings import _normalize_settings
@@ -169,6 +171,159 @@ def test_debug_log_sanitizes_private_text():
     debug=_build_debug_log_payload(payload)
     text=str(debug)
     assert 'C:/Users' not in text and 'alice@example.com' not in text
+
+
+def _load_loader_definitions():
+    """Load the real loader helpers without invoking its Dynamo OUT assignment."""
+    loader_path = os.path.join(os.path.dirname(__file__), 'dynamo_loader.py')
+    namespace = {
+        '__file__': loader_path,
+        '__name__': '__loader_test__',
+        'IN': [],
+    }
+    fake_clr = types.ModuleType('clr')
+    fake_clr.AddReference = lambda name: None
+    previous = sys.modules.get('clr')
+    sys.modules['clr'] = fake_clr
+    try:
+        with open(loader_path, 'r', encoding='utf-8') as stream:
+            code = stream.read().rsplit('\nOUT = run_script()', 1)[0]
+        exec(compile(code, loader_path, 'exec'), namespace)
+    finally:
+        if previous is None:
+            sys.modules.pop('clr', None)
+        else:
+            sys.modules['clr'] = previous
+    return namespace
+
+
+def _write_loader_workspace(path, marker):
+    (path / 'shadow_settings.py').write_text(
+        'MARKER = {!r}\n'.format(marker), encoding='utf-8'
+    )
+    (path / 'script.py').write_text(
+        'import shadow_settings\n'
+        'OUT = {"success": True, "marker": shadow_settings.MARKER, '
+        '"bootstrap": RUNTIME_IMPORT_BOOTSTRAP}\n',
+        encoding='utf-8',
+    )
+
+
+def test_loader_removes_stale_cache_forces_workspace_first_and_preserves_external(tmp_path):
+    loader = _load_loader_definitions()
+    workspace = tmp_path / 'workspace'
+    stale = tmp_path / 'stale'
+    workspace.mkdir()
+    stale.mkdir()
+    _write_loader_workspace(workspace, 'fresh-workspace')
+    stale_module = types.ModuleType('shadow_settings')
+    stale_module.MARKER = 'stale-cache'
+    unrelated = types.ModuleType('shadow_external_not_in_workspace')
+    old_path = list(sys.path)
+    old_settings = sys.modules.get('shadow_settings')
+    sys.modules['shadow_settings'] = stale_module
+    sys.modules['shadow_external_not_in_workspace'] = unrelated
+    sys.path[:] = [str(stale), 'unchanged', str(workspace), str(workspace)] + old_path
+    loader['resolve_workspace'] = lambda: ('Shadow.dyn', str(workspace), 'dynamo_loader.py')
+    try:
+        result = loader['run_script']()
+        assert result['marker'] == 'fresh-workspace'
+        assert sys.path[0] == loader['_normalized_path'](str(workspace))
+        assert sum(loader['_normalized_path'](entry) == sys.path[0] for entry in sys.path if entry) == 1
+        assert result['bootstrap']['removed_cached_modules'] == ['shadow_settings']
+        assert sys.modules['shadow_external_not_in_workspace'] is unrelated
+    finally:
+        sys.path[:] = old_path
+        sys.modules.pop('shadow_external_not_in_workspace', None)
+        if old_settings is None:
+            sys.modules.pop('shadow_settings', None)
+        else:
+            sys.modules['shadow_settings'] = old_settings
+
+
+def test_loader_consecutive_exec_reads_updated_workspace_module(tmp_path):
+    loader = _load_loader_definitions()
+    workspace = tmp_path / 'workspace'
+    workspace.mkdir()
+    loader['resolve_workspace'] = lambda: ('Shadow.dyn', str(workspace), 'dynamo_loader.py')
+    old_path = list(sys.path)
+    old_settings = sys.modules.get('shadow_settings')
+    try:
+        _write_loader_workspace(workspace, 'first-version')
+        assert loader['run_script']()['marker'] == 'first-version'
+        _write_loader_workspace(workspace, 'second-version-longer')
+        assert loader['run_script']()['marker'] == 'second-version-longer'
+    finally:
+        sys.path[:] = old_path
+        if old_settings is None:
+            sys.modules.pop('shadow_settings', None)
+        else:
+            sys.modules['shadow_settings'] = old_settings
+
+
+def test_script_reports_local_module_source_mismatch(tmp_path):
+    script_path = os.path.join(os.path.dirname(__file__), 'script.py')
+    previous = sys.modules.get('shadow_settings')
+    outside_module = types.ModuleType('shadow_settings')
+    outside_module.__dict__.update(previous.__dict__)
+    outside_module.__file__ = str(tmp_path / 'outside' / 'shadow_settings.py')
+    sys.modules['shadow_settings'] = outside_module
+    namespace = {
+        '__file__': script_path,
+        '__name__': '__script_source_mismatch_test__',
+        'INPUTS': {},
+        'RUNTIME_IMPORT_BOOTSTRAP': {
+            'loader_build_id': 'test-loader',
+            'workspace_resolved': True,
+            'workspace_inserted_at_sys_path_zero': True,
+            'import_caches_invalidated': True,
+            'local_module_names': ['shadow_settings'],
+            'removed_cached_modules': [],
+            'cached_module_count_removed': 0,
+        },
+    }
+    try:
+        with open(script_path, 'r', encoding='utf-8') as stream:
+            exec(compile(stream.read(), script_path, 'exec'), namespace)
+        assert namespace['OUT']['success'] is False
+        assert namespace['OUT']['error_code'] == 'local_module_source_mismatch'
+        module = namespace['OUT']['runtime_code_diagnostics']['modules'][0]
+        assert module == {
+            'module_name': 'shadow_settings',
+            'module_filename': 'shadow_settings.py',
+            'loaded_from_workspace': False,
+            'module_file_available': True,
+        }
+    finally:
+        if previous is None:
+            sys.modules.pop('shadow_settings', None)
+        else:
+            sys.modules['shadow_settings'] = previous
+
+
+def test_runtime_code_diagnostics_debug_summary_is_allowlisted_and_private_path_free():
+    payload = {
+        'success': True,
+        'runtime_code_diagnostics': {
+            'code_build_id': '2026-07-28-module-isolation-v1',
+            'all_local_modules_from_workspace': True,
+            'workspace_path': r'C:\Users\alice\private\Shadow.dyn',
+            'modules': [{
+                'module_name': 'shadow_utils',
+                'module_filename': 'shadow_utils.py',
+                'loaded_from_workspace': True,
+                'module_file_available': True,
+                'absolute_path': r'C:\Users\alice\private\shadow_utils.py',
+            }],
+        },
+    }
+    debug = _build_debug_log_payload(payload)
+    runtime = debug['runtime_code_diagnostics']
+    assert runtime['code_build_id'] == '2026-07-28-module-isolation-v1'
+    assert runtime['all_local_modules_from_workspace'] is True
+    assert runtime['modules'][0]['loaded_from_workspace'] is True
+    text = str(debug)
+    assert 'C:' not in text and 'alice' not in text and 'absolute_path' not in text
 
 def test_formal_footprint_generated_from_box_bottom_loop():
     from shadow_footprint import _build_footprint_extraction_summary

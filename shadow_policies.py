@@ -1,5 +1,7 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
+CODE_BUILD_ID = "2026-07-28-module-isolation-v1"
+
 TOOL_NAME = "Dynamo_Shadow"
 STAGE_NAME = "v1_formal_footprint_stabilization"
 
@@ -444,4 +446,3 @@ GEOMETRY_READINESS_REQUIRED_FOR_FUTURE_SHADOW = [
     "at least one footprint candidate or bottom face candidate",
     "measurement plane readiness from settings is recommended, but geometry diagnostics can run without it",
 ]
-

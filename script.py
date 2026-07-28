@@ -11,7 +11,7 @@ import traceback
 
 
 def _ensure_local_module_path():
-    """Add the script/workspace directory for Dynamo Python imports."""
+    """Force the script/workspace directory to the front for local imports."""
     directory = None
     try:
         file_path = globals().get("__file__")
@@ -26,16 +26,33 @@ def _ensure_local_module_path():
                 directory = os.path.abspath(workspace_dir)
         except Exception:
             directory = None
-    if directory and directory not in sys.path:
-        sys.path.insert(0, directory)
-    return directory
+    normalized_directory = _normalized_path(directory)
+    if normalized_directory:
+        retained = []
+        for entry in sys.path:
+            try:
+                normalized_entry = _normalized_path(entry)
+            except Exception:
+                normalized_entry = None
+            if normalized_entry != normalized_directory:
+                retained.append(entry)
+        sys.path[:] = [normalized_directory] + retained
+    return normalized_directory
 
 
-_ensure_local_module_path()
+def _normalized_path(value):
+    if not value:
+        return None
+    return os.path.normcase(os.path.normpath(os.path.abspath(value)))
+
+
+_SCRIPT_DIRECTORY = _ensure_local_module_path()
+_LOADER_BOOTSTRAP = globals().get("RUNTIME_IMPORT_BOOTSTRAP")
 
 try:
     import shadow_utils as _shadow_utils
     from shadow_policies import (
+        CODE_BUILD_ID,
         TOOL_NAME,
         STAGE_NAME,
         LEGAL_CONSTANTS,
@@ -68,6 +85,52 @@ else:
     _IMPORT_ERROR_TEXT = None
 
 
+def _build_runtime_code_diagnostics():
+    bootstrap = _LOADER_BOOTSTRAP if isinstance(_LOADER_BOOTSTRAP, dict) else {}
+    local_names = bootstrap.get("local_module_names")
+    if not isinstance(local_names, list):
+        local_names = sorted(
+            name for name in sys.modules
+            if name.startswith("shadow_") and name != "shadow_policies"
+        )
+        if "shadow_policies" in sys.modules:
+            local_names.append("shadow_policies")
+            local_names.sort()
+    modules = []
+    for module_name in local_names:
+        module = sys.modules.get(module_name)
+        module_file = getattr(module, "__file__", None) if module is not None else None
+        module_filename = os.path.basename(module_file) if module_file else None
+        try:
+            module_dir = _normalized_path(os.path.dirname(os.path.abspath(module_file)))
+        except Exception:
+            module_dir = None
+        modules.append({
+            "module_name": module_name,
+            "module_filename": module_filename,
+            "loaded_from_workspace": bool(module_file and module_dir == _SCRIPT_DIRECTORY),
+            "module_file_available": bool(module_file),
+        })
+    path_zero = bool(sys.path and _normalized_path(sys.path[0]) == _SCRIPT_DIRECTORY)
+    return {
+        "code_build_id": globals().get("CODE_BUILD_ID", "2026-07-28-module-isolation-v1"),
+        "loader_build_id": bootstrap.get("loader_build_id"),
+        "loader_bootstrap_received": isinstance(_LOADER_BOOTSTRAP, dict),
+        "workspace_resolved": bool(bootstrap.get("workspace_resolved", _SCRIPT_DIRECTORY)),
+        "workspace_inserted_at_sys_path_zero": bool(bootstrap.get("workspace_inserted_at_sys_path_zero", path_zero)),
+        "import_caches_invalidated": bool(bootstrap.get("import_caches_invalidated", False)),
+        "cached_module_count_removed": int(bootstrap.get("cached_module_count_removed", 0)),
+        "removed_cached_modules": list(bootstrap.get("removed_cached_modules", [])),
+        "script_directory_resolved": bool(_SCRIPT_DIRECTORY),
+        "script_directory_at_sys_path_zero": path_zero,
+        "all_local_modules_from_workspace": bool(modules) and all(item["loaded_from_workspace"] for item in modules),
+        "modules": modules,
+    }
+
+
+_RUNTIME_CODE_DIAGNOSTICS = _build_runtime_code_diagnostics()
+
+
 def _sync_dynamo_runtime_globals():
     """Expose Dynamo-provided globals to helper modules without importing Dynamo."""
     if _IMPORT_ERROR_TEXT is not None:
@@ -98,6 +161,8 @@ def _minimal_import_failure(error_text):
 
     return {
         "success": False,
+        "error_code": "module_import_failure",
+        "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
         "tool": "Dynamo_Shadow",
         "stage": "v1_footprint_extraction_diagnostics",
         "message": "script.py failed while importing diagnostic modules.",
@@ -177,6 +242,7 @@ def _build_success():
 
     out_payload = {
         "success": True,
+        "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
         "message": "Dynamo_Shadow v1 diagnostics; formal diagnostic footprint polygons are generated from eligible bottom-face Line edge loops. No formal shadow polygon generation, Revit element creation, date-based declination/equation-of-time calculation, legal judgement, 5m/10m measurement line generation, Boolean union, or equal-time contours are implemented. Diagnostic-only true-solar-time sun position and shadow projection point-cloud outputs are included when explicit site_latitude_deg and solar_declination_deg are provided.",
@@ -274,6 +340,7 @@ def _build_failure(error_text):
 
     out_payload = {
         "success": False,
+        "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
         "message": "script.py failed while building v1 footprint extraction diagnostics.",
@@ -322,6 +389,9 @@ def _build_failure(error_text):
 
 if _IMPORT_ERROR_TEXT is not None:
     OUT = _minimal_import_failure(_IMPORT_ERROR_TEXT)
+elif not _RUNTIME_CODE_DIAGNOSTICS.get("all_local_modules_from_workspace"):
+    OUT = _minimal_import_failure("One or more local diagnostic modules were not loaded from the current workspace.")
+    OUT["error_code"] = "local_module_source_mismatch"
 else:
     try:
         OUT = _build_success()
