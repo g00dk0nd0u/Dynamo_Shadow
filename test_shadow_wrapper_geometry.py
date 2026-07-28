@@ -5,6 +5,7 @@ import sys
 import types
 
 import shadow_utils
+import shadow_inputs
 from shadow_settings import _normalize_settings
 from shadow_inputs import _diagnose_shadow_casters, _diagnose_site_boundary
 from shadow_geometry import _diagnose_shadow_caster_geometry
@@ -664,3 +665,116 @@ def test_formal_footprint_missing_source_face_index_is_independent_outer():
     assert item['role'] == 'outer'
     assert item['containment_depth'] == 0
     assert item['classification_group_key'] == [0, None, 0]
+
+class CallableId:
+    def __init__(self, value, modern=True):
+        if modern: self.Value = value
+        else: self.IntegerValue = value
+    def __call__(self):
+        raise AssertionError('property value must not be called')
+
+class CallableCategory(Category):
+    def __call__(self):
+        raise AssertionError('property value must not be called')
+
+
+def test_callable_clr_property_values_are_not_invoked():
+    element = NativeFamilyInstance(element_id_obj=CallableId(321))
+    element.Category = CallableCategory(CallableId(GENERIC_ID), 'Generic Models')
+    value, prop = shadow_utils._safe_property(element, 'Id')
+    assert value is element.Id and prop['direct_value_callable'] is True
+    assert prop['read_method'] == 'direct_getattr' and prop['reflection_attempted'] is False
+    item = _diagnose_shadow_casters([element])['items'][0]
+    assert item['element_id'] == 321 and item['category_id'] == GENERIC_ID
+    assert item['category_name_read_method'] == 'direct_getattr'
+
+
+def test_safe_property_reflection_success_and_failure():
+    class PropertyInfo:
+        def GetValue(self, value, *args): return 42
+    class ClrType:
+        def GetProperty(self, name, *args): return PropertyInfo() if name == 'Hidden' else None
+    class Reflected:
+        def __getattribute__(self, name):
+            if name in ('Hidden', 'Missing'): raise RuntimeError('direct access blocked')
+            return object.__getattribute__(self, name)
+        def GetType(self): return ClrType()
+    value, diag = shadow_utils._safe_property(Reflected(), 'Hidden')
+    assert value == 42 and diag['read_method'] == 'clr_reflection' and diag['reflection_succeeded']
+    value, diag = shadow_utils._safe_property(Reflected(), 'Missing')
+    assert value is None and not diag['direct_getattr_succeeded']
+    assert diag['reflection_attempted'] and not diag['reflection_succeeded'] and diag['error_type']
+
+
+def test_invalid_native_candidate_continues_to_internal_element(monkeypatch):
+    invalid = NativeFamilyInstance(); invalid.IsValidObject = False
+    valid = NativeFamilyInstance(); valid.IsValidObject = True
+    wrapper = MisleadingWrapper(native=valid)
+    monkeypatch.setattr(builtins, 'UnwrapElement', lambda value: invalid, raising=False)
+    result, diag = shadow_utils._try_unwrap_with_diagnostics(wrapper)
+    assert result is valid and diag['unwrap_strategy'] == 'InternalElement'
+    assert diag['candidate_probes'][1]['is_valid_object_status'] == 'false'
+
+
+def test_symbol_and_type_element_category_fallback(monkeypatch):
+    direct = NativeFamilyInstance(); direct.Symbol = object()
+    category, diag = shadow_utils._read_element_category(direct)
+    assert category is direct.Category and diag['category_source'] == 'element.Category'
+    symbol_category = Category(IdLegacy(GENERIC_ID), 'Generic Models')
+    class SymbolElement:
+        Category = None
+        Symbol = type('Symbol', (), {'Category': symbol_category})()
+    category, diag = shadow_utils._read_element_category(SymbolElement())
+    assert category is symbol_category and diag['category_source'] == 'element.Symbol.Category'
+    type_category = Category(IdLegacy(GENERIC_ID), 'Generic Models')
+    class TypeFallback:
+        Category = None
+        Symbol = None
+        def GetTypeId(self): return IdLegacy(7)
+    monkeypatch.setattr(shadow_utils, '_try_document_get_element', lambda value: type('T', (), {'Category': type_category})())
+    category, diag = shadow_utils._read_element_category(TypeFallback())
+    assert category is type_category and diag['category_source'] == 'type element Category'
+
+
+def test_unknown_category_still_runs_read_only_geometry_probe():
+    class UnknownCategoryNative(NativeFamilyInstance):
+        @property
+        def Category(self): raise RuntimeError('category unavailable')
+        @Category.setter
+        def Category(self, value): pass
+    native = UnknownCategoryNative(geometry=[Solid(1)])
+    casters = _diagnose_shadow_casters([native])
+    geometry = _diagnose_shadow_caster_geometry([native], casters, {'normalized': {}}, {})
+    assert casters['items'][0]['accepted'] is False
+    assert casters['items'][0]['geometry_probe_attempted'] is True
+    assert geometry['items'][0]['geometry_probe_attempted'] is True
+
+
+def test_settings_string_summary_is_not_unwrapped():
+    summary = shadow_inputs._summarize_input('{"profile":"standard_8_16"}')
+    assert summary['sample_type'] == 'str'
+    assert summary['sample'][0]['type'] == 'str'
+    assert summary['sample'][0]['value'] is not None
+
+
+def test_unusable_unwrapped_native_is_reacquired_from_wrapper_id(monkeypatch):
+    class UnreadableNative:
+        __module__ = 'Autodesk.Revit.DB'
+        IsValidObject = True
+        @property
+        def Id(self): raise RuntimeError('Id unavailable')
+        @property
+        def Category(self): raise RuntimeError('Category unavailable')
+        @property
+        def Symbol(self): raise RuntimeError('Symbol unavailable')
+        def get_Geometry(self, options): return []
+    good = NativeFamilyInstance()
+    wrapper = MisleadingWrapper(internal_id=Id2024(101))
+    monkeypatch.setattr(builtins, 'UnwrapElement', lambda value: UnreadableNative(), raising=False)
+    monkeypatch.setattr(shadow_utils, '_try_document_get_element', lambda value: good)
+    result, diag = shadow_utils._try_unwrap_with_diagnostics(wrapper)
+    assert result is good
+    assert diag['document_reacquire_succeeded'] is True
+    assert diag['document_reacquire_strategy'] == 'wrapper.InternalElementId'
+    unwrap_probe = next(p for p in diag['candidate_probes'] if p['strategy'] == 'UnwrapElement')
+    assert unwrap_probe['candidate_usable'] is False

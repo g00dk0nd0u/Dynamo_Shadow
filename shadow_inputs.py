@@ -112,7 +112,8 @@ def _diagnose_geometry_access(element):
     return result
 
 def _summarize_one(value):
-    unwrapped = _try_unwrap(value)
+    primitive = value is None or _is_string(value) or isinstance(value, (int, float, bool, dict))
+    unwrapped = value if primitive else _try_unwrap(value)
     summary = {
         "type": _type_name(unwrapped),
         "is_none": unwrapped is None,
@@ -133,7 +134,9 @@ def _summarize_one(value):
 
 def _summarize_input(value, sample_limit=5):
     items = _to_list(value)
-    sample_type = _type_name(_try_unwrap(items[0])) if items else None
+    first = items[0] if items else None
+    primitive = first is None or _is_string(first) or isinstance(first, (int, float, bool, dict))
+    sample_type = _type_name(first if primitive else _try_unwrap(first)) if items else None
 
     summary = {
         "is_none": value is None,
@@ -169,8 +172,14 @@ def _diagnose_shadow_casters(building_elements):
 
     for index, item in enumerate(items):
         unwrapped, unwrap_diag = _try_unwrap_with_diagnostics(item)
-        category_name = _category_name(unwrapped)
+        element_id, element_id_diag = _read_element_id(unwrapped)
+        category, category_diag = _read_element_category(unwrapped)
+        category_id_object, category_id_prop_diag = _safe_property(category, "Id")
+        category_id, category_id_diag = _read_id_object(category_id_object, "category_id")
+        category_name_value, category_name_diag = _safe_property(category, "Name")
+        category_name = _safe_text(category_name_value) if category_name_value else None
         category_match = _diagnose_shadow_category(unwrapped, category_name)
+        category_match["category_id"] = category_id
         shadow_role = _lookup_parameter_text(unwrapped, "ShadowRole") if unwrapped is not None else None
         is_supported_category = category_match.get("is_supported_category", False)
         geometry_access = _diagnose_geometry_access(unwrapped)
@@ -209,16 +218,39 @@ def _diagnose_shadow_casters(building_elements):
             "unwrapped": unwrap_diag.get("unwrapped"),
             "unwrap_attempts": unwrap_diag.get("unwrap_attempts"),
             "unwrap_failure_reasons": unwrap_diag.get("unwrap_failure_reasons"),
+            "native_candidate_usable": unwrap_diag.get("native_candidate_usable"),
+            "native_property_access_ready": element_id is not None or category is not None,
+            "is_valid_object_status": ((unwrap_diag.get("candidate_probes") or [{}])[-1]).get("is_valid_object_status", "unknown"),
+            "candidate_probes": unwrap_diag.get("candidate_probes"),
+            "property_access_diagnostics": {"Id": element_id_diag.get("property_diagnostics"), "Category": category_diag.get("property_diagnostics", {}).get("Category"), "IsValidObject": ((unwrap_diag.get("candidate_probes") or [{}])[-1]).get("property_access_diagnostics", {}).get("IsValidObject"), "Symbol": category_diag.get("property_diagnostics", {}).get("Symbol")},
+            "document_reacquire_attempted": unwrap_diag.get("document_reacquire_attempted"),
+            "document_reacquire_attempts": unwrap_diag.get("document_reacquire_attempts"),
+            "document_reacquire_succeeded": unwrap_diag.get("document_reacquire_succeeded"),
+            "document_reacquire_strategy": unwrap_diag.get("document_reacquire_strategy"),
             "category_name": category_name,
             "category_id": category_match.get("category_id"),
             "category_match_method": category_match.get("category_match_method"),
             "matched_revit_category": category_match.get("matched_revit_category"),
             "official_revit_api_category": category_match.get("official_revit_api_category"),
             "is_mass_related_category": category_match.get("is_mass_related_category"),
-            "element_id": _element_id(unwrapped),
-            "element_id_read_method": _id_read_method(_safe_attr(unwrapped, "Id")),
+            "element_id": element_id,
+            "element_id_object_type": element_id_diag.get("element_id_object_type"),
+            "element_id_property_read_method": element_id_diag.get("element_id_property_read_method"),
+            "element_id_value_read_method": element_id_diag.get("element_id_value_read_method"),
+            "element_id_access_error_type": element_id_diag.get("element_id_error_type"),
+            "element_id_access_error": element_id_diag.get("element_id_error"),
+            "element_id_read_method": element_id_diag.get("element_id_value_read_method"),
+            "category_available": category_diag.get("category_available"),
+            "category_source": category_diag.get("category_source"),
+            "category_object_type": category_diag.get("category_object_type"),
+            "category_property_read_method": category_diag.get("category_property_read_method"),
+            "category_id_read_method": category_id_diag.get("category_id_value_read_method"),
+            "category_name_read_method": category_name_diag.get("read_method"),
+            "category_access_error_type": category_diag.get("category_error_type"),
+            "category_access_error": category_diag.get("category_error"),
             "category_read_method": category_match.get("category_match_method"),
-            "category_id_raw_type": _type_name(_safe_attr(_category(unwrapped), "Id")) if _category(unwrapped) is not None else None,
+            "category_id_raw_type": _type_name(category_id_object) if category is not None else None,
+            "geometry_probe_attempted": geometry_access.get("attempted"),
             "name": _element_name(unwrapped),
             "family_name": _family_name(unwrapped),
             "type_name": _type_label(unwrapped),
