@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-28-clr-property-access-v1"
+CODE_BUILD_ID = "2026-07-28-node-checkpoint-v1"
 
 TOOL_NAME = "Dynamo_Shadow"
 STAGE_NAME = "v1_formal_footprint_stabilization"

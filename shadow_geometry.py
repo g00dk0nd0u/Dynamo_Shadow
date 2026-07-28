@@ -1,6 +1,7 @@
 # Read-only geometry diagnostics.
 from shadow_policies import GEOMETRY_EXTRACTION_POLICY
 from shadow_utils import *
+from shadow_utils import _runtime_checkpoint
 from shadow_measurement_plane import _measurement_plane_relation
 from shadow_footprint import _extract_footprint_candidates_from_faces
 from shadow_units import _solid_summary_raw_to_meters, _face_summary_raw_to_meters, _edge_summary_raw_to_meters, _bbox_raw_to_meters, _point_raw_to_meters
@@ -150,7 +151,9 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
         caster_info = caster_items[index] if index < len(caster_items) else {}
         accepted = caster_info.get("accepted") is True
         item_warnings = []
+        _runtime_checkpoint("GEOMETRY_PROBE_BEFORE")
         collected = _collect_geometry_objects(unwrapped) if unwrapped is not None else {"objects": [], "warnings": ["no native element is available for a read-only geometry probe."], "access": {"attempted": False, "geometry_readable": False}}
+        _runtime_checkpoint("GEOMETRY_PROBE_AFTER", "ok" if collected.get("objects") else "none")
         item_warnings.extend(collected.get("warnings", []))
         objs = collected.get("objects") or []
         solids=[]; faces=[]; face_objects=[]; edges=[]; mesh_count=0

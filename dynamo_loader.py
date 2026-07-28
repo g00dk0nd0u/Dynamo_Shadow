@@ -10,6 +10,17 @@ import traceback
 LOADER_NAME = "Shadow.dyn external loader"
 SCRIPT_NAME = "script.py"
 LOADER_BUILD_ID = "2026-07-28-loader-module-isolation-v1"
+_RUNTIME_CHECKPOINT = globals().get("RUNTIME_CHECKPOINT")
+
+
+def _checkpoint(stage, detail=None):
+    callback = _RUNTIME_CHECKPOINT
+    if callback is None:
+        return
+    try:
+        callback(stage, detail)
+    except BaseException:
+        pass
 
 
 def _normalized_path(value):
@@ -156,6 +167,7 @@ def resolve_workspace():
 
 
 def run_script():
+    _checkpoint("LOADER_ENTER")
     searched_paths = []
     workspace_file, workspace_dir, loader_path = resolve_workspace()
     script_path = None
@@ -185,10 +197,18 @@ def run_script():
                 runtime_import_bootstrap=runtime_import_bootstrap,
             )
 
+        _checkpoint("IMPORT_PREPARATION_BEFORE")
         runtime_import_bootstrap = _prepare_runtime_imports(workspace_dir)
+        _checkpoint("IMPORT_PREPARATION_AFTER", "ok")
 
+        _checkpoint("SCRIPT_FILE_READ_BEFORE")
         with open(script_path, "r", encoding="utf-8-sig") as f:
             code = f.read()
+        _checkpoint("SCRIPT_FILE_READ_AFTER", "ok")
+
+        _checkpoint("SCRIPT_COMPILE_BEFORE")
+        compiled_code = compile(code, script_path, "exec")
+        _checkpoint("SCRIPT_COMPILE_AFTER", "ok")
 
         script_globals = {
             "__file__": script_path,
@@ -197,16 +217,22 @@ def run_script():
             "INPUTS": INPUTS,
             "OUT": None,
             "RUNTIME_IMPORT_BOOTSTRAP": runtime_import_bootstrap,
+            "RUNTIME_CHECKPOINT": _RUNTIME_CHECKPOINT,
         }
+        _checkpoint("SCRIPT_GLOBALS_READY", "dict")
 
         try:
             script_globals["UnwrapElement"] = UnwrapElement
         except Exception:
             pass
 
-        exec(compile(code, script_path, "exec"), script_globals)
+        _checkpoint("SCRIPT_EXEC_BEFORE")
+        exec(compiled_code, script_globals)
+        _checkpoint("SCRIPT_EXEC_AFTER", "ok")
 
+        _checkpoint("SCRIPT_OUT_READ_BEFORE")
         script_out = script_globals.get("OUT", None)
+        _checkpoint("SCRIPT_OUT_READ_AFTER", "none" if script_out is None else "ok")
 
         if script_out is None:
             return build_failure(
@@ -224,10 +250,12 @@ def run_script():
                 runtime_import_bootstrap=runtime_import_bootstrap,
             )
 
+        _checkpoint("LOADER_RETURN_READY", "ok")
         return script_out
-    except Exception:
+    except BaseException as exc:
+        _checkpoint("LOADER_EXCEPTION", type(exc).__name__)
         return build_failure(
-            traceback.format_exc(),
+            "{0}: loader execution failed".format(type(exc).__name__),
             workspace_file=workspace_file,
             workspace_dir=workspace_dir,
             loader_path=loader_path,

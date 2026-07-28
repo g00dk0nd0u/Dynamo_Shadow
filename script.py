@@ -9,6 +9,21 @@ import os
 import sys
 import traceback
 
+_RUNTIME_CHECKPOINT = globals().get("RUNTIME_CHECKPOINT")
+
+
+def _checkpoint(stage, detail=None):
+    callback = _RUNTIME_CHECKPOINT
+    if callback is None:
+        return
+    try:
+        callback(stage, detail)
+    except BaseException:
+        pass
+
+
+_checkpoint("SCRIPT_ENTER")
+
 
 def _ensure_local_module_path():
     """Force the script/workspace directory to the front for local imports."""
@@ -49,6 +64,7 @@ def _normalized_path(value):
 _SCRIPT_DIRECTORY = _ensure_local_module_path()
 _LOADER_BOOTSTRAP = globals().get("RUNTIME_IMPORT_BOOTSTRAP")
 
+_checkpoint("SHADOW_IMPORTS_BEFORE")
 try:
     import shadow_utils as _shadow_utils
     from shadow_policies import (
@@ -79,10 +95,16 @@ try:
     from shadow_units import _build_unit_conversion_diagnostics
     from shadow_sun import _build_sun_position_diagnostics
     from shadow_projection import _build_shadow_projection_diagnostics
-except Exception:
+except BaseException:
     _IMPORT_ERROR_TEXT = traceback.format_exc()
 else:
     _IMPORT_ERROR_TEXT = None
+_checkpoint("SHADOW_IMPORTS_AFTER", "failure" if _IMPORT_ERROR_TEXT else "ok")
+if "_shadow_utils" in globals():
+    try:
+        setattr(_shadow_utils, "RUNTIME_CHECKPOINT", _RUNTIME_CHECKPOINT)
+    except BaseException:
+        pass
 
 
 def _build_runtime_code_diagnostics():
@@ -128,7 +150,9 @@ def _build_runtime_code_diagnostics():
     }
 
 
+_checkpoint("RUNTIME_DIAGNOSTICS_BEFORE")
 _RUNTIME_CODE_DIAGNOSTICS = _build_runtime_code_diagnostics()
+_checkpoint("RUNTIME_DIAGNOSTICS_AFTER", "dict")
 
 
 def _sync_dynamo_runtime_globals():
@@ -281,7 +305,9 @@ def _build_success():
         "debug_log": _build_debug_log_status(False, False),
         "debug_log_policy": DEBUG_LOG_POLICY,
     }
+    _checkpoint("DEBUG_JSON_WRITE_BEFORE")
     debug_log_status = _write_debug_log_if_enabled(out_payload, settings_normalized)
+    _checkpoint("DEBUG_JSON_WRITE_AFTER", "ok")
     out_payload["debug_log"] = debug_log_status
     if debug_log_status.get("warnings"):
         out_payload["warnings"].extend(debug_log_status.get("warnings"))
@@ -394,6 +420,11 @@ elif not _RUNTIME_CODE_DIAGNOSTICS.get("all_local_modules_from_workspace"):
     OUT["error_code"] = "local_module_source_mismatch"
 else:
     try:
+        _checkpoint("BUILD_SUCCESS_BEFORE")
         OUT = _build_success()
-    except Exception:
+        _checkpoint("BUILD_SUCCESS_AFTER", "dict")
+    except BaseException:
+        _checkpoint("SCRIPT_EXCEPTION", "failure")
         OUT = _build_failure(traceback.format_exc())
+
+_checkpoint("SCRIPT_RETURN_READY", "none" if OUT is None else "dict")
