@@ -19,7 +19,8 @@
       ],
       "blockers_for_future_shadow_projection": [
         "No accepted shadow caster proxy elements are available.",
-        "No closed footprint loop candidate was verified by raw endpoint comparison."
+        "No closed footprint loop candidate was verified by raw endpoint comparison.",
+        "Settings are not ready for future equal-time shadow calculation."
       ],
       "footprint_diagnostics_ready": true,
       "ready_for_future_footprint_polygon_generation": false,
@@ -96,7 +97,9 @@
     "available": true,
     "provided": true,
     "readiness": {
-      "blockers_for_future_shadow_projection_context": [],
+      "blockers_for_future_shadow_projection_context": [
+        "settings not ready for equal-time shadow calculation"
+      ],
       "blockers_for_legal_judgement_masks": [
         "legal judgement masks not implemented",
         "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR"
@@ -104,25 +107,23 @@
       "blockers_for_measurement_plane": [],
       "measurement_plane_constructed": true,
       "ready_for_future_footprint_projection_context": true,
-      "ready_for_future_shadow_projection_context": true,
+      "ready_for_future_shadow_projection_context": false,
       "ready_for_legal_judgement_masks": false
     },
     "warnings": [
       "Level reference is present but is not used as average ground level or measurement plane."
     ]
   },
-  "message": "Dynamo_Shadow v1 input diagnostics only; footprint extraction diagnostics added. Bottom face / edge loop candidates are diagnosed, but no formal footprint po...",
+  "message": "Dynamo_Shadow v1 diagnostics; formal diagnostic footprint polygons are generated from eligible bottom-face Line edge loops. No formal shadow polygon generati...",
   "not_implemented_summary": {
     "footprint_extraction": [
-      "formal footprint polygon generation",
       "CurveLoop creation",
-      "polygon validity check",
-      "self-intersection check",
       "boolean union across casters",
       "site boundary clipping",
       "own-site exclusion",
       "beyond-5m legal range",
-      "shadow projection",
+      "formal shadow polygon generation",
+      "equal-time contour generation",
       "legal OK/NG judgement"
     ],
     "planned_pipeline_pending": [
@@ -146,7 +147,8 @@
       "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
     ],
     "blockers_for_equal_time_shadow": [
-      "No accepted shadow caster proxy elements are available."
+      "No accepted shadow caster proxy elements are available.",
+      "Settings are not ready for future equal-time shadow calculation; missing=['analysis_start_time', 'analysis_end_time'], invalid=[]."
     ],
     "blockers_for_footprint_extraction": [
       "No accepted shadow caster proxy elements are available.",
@@ -156,10 +158,13 @@
       "No accepted shadow caster proxy elements are available.",
       "No closed footprint loop candidate was verified by raw endpoint comparison."
     ],
-    "blockers_for_future_projection_context": [],
+    "blockers_for_future_projection_context": [
+      "settings not ready for equal-time shadow calculation"
+    ],
     "blockers_for_future_shadow_projection": [
       "No accepted shadow caster proxy elements are available.",
-      "No closed footprint loop candidate was verified by raw endpoint comparison."
+      "No closed footprint loop candidate was verified by raw endpoint comparison.",
+      "Settings are not ready for future equal-time shadow calculation."
     ],
     "blockers_for_legal_judgement_masks": [
       "legal judgement masks not implemented",
@@ -173,7 +178,7 @@
     "footprint_extraction_ready": false,
     "footprint_loop_candidates_ready": false,
     "future_footprint_polygon_generation_ready": false,
-    "future_projection_context_ready": true,
+    "future_projection_context_ready": false,
     "future_shadow_projection_ready": false,
     "info": [
       "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generat..."
@@ -194,7 +199,7 @@
       "equal-time contour generation",
       "legal judgement report"
     ],
-    "settings_ready_for_equal_time_shadow": true,
+    "settings_ready_for_equal_time_shadow": false,
     "shadow_caster_geometry_ready": true,
     "shadow_caster_ready": false,
     "site_boundary_ready_for_boundary_dependent_steps": false,
@@ -203,6 +208,7 @@
   "sanitized": true,
   "settings_summary": {
     "defaults_applied": [
+      "standard_meridian_deg",
       "grid_resolution_m",
       "analysis_margin_m",
       "closure_tolerance_m",
@@ -210,14 +216,20 @@
       "max_projected_points_output_per_slice"
     ],
     "invalid_keys": [],
-    "missing_required_keys": [],
+    "missing_required_keys": [
+      "analysis_start_time",
+      "analysis_end_time"
+    ],
     "normalized": {
+      "analysis_end_time": null,
       "analysis_margin_m": 20.0,
+      "analysis_start_time": null,
       "average_ground_level_elevation_m": 0.0,
       "closure_tolerance_m": 0.01,
       "debug_log_dir": "debug_logs",
       "debug_log_enabled": true,
       "debug_log_filename": "latest_debug.json",
+      "equation_of_time_minutes": null,
       "grid_resolution_m": 1.0,
       "latitude": 35.6812,
       "longitude": 139.7671,
@@ -229,6 +241,7 @@
       "site_latitude_deg": 35.6812,
       "site_longitude_deg": 139.7671,
       "solar_declination_deg": -23.439,
+      "standard_meridian_deg": 135.0,
       "sun_time_step_minutes": 30,
       "time_basis": "true_solar_time",
       "true_north_deg": 0.0,
@@ -238,20 +251,52 @@
     "provided": true,
     "readiness": {
       "invalid_for_equal_time_shadow": [],
-      "missing_for_equal_time_shadow": [],
-      "ready_for_equal_time_shadow_calculation": true,
+      "invalid_for_measurement_plane": [],
+      "invalid_for_solar_time": [],
+      "missing_for_equal_time_shadow": [
+        "analysis_start_time",
+        "analysis_end_time"
+      ],
+      "missing_for_measurement_plane": [],
+      "missing_for_solar_time": [
+        "analysis_start_time",
+        "analysis_end_time"
+      ],
+      "ready_for_equal_time_shadow_calculation": false,
       "ready_for_input_diagnostics": true,
-      "settings_ready_for_boundary_dependent_steps": true
+      "settings_ready_for_boundary_dependent_steps": false
     },
     "schema_version": "v1",
     "warnings": []
   },
   "shadow_caster_geometry_summary": {
     "bottom_face_candidate_count": 0,
+    "closed_footprint_loop_candidate_count": 0,
     "count": 1,
     "edge_count": 0,
     "face_count": 0,
+    "footprint_loop_candidate_count": 0,
+    "geometry_readable_caster_count": 0,
+    "items": [
+      {
+        "accepted_shadow_caster": false,
+        "bottom_face_candidate_count": 0,
+        "closed_footprint_loop_candidate_count": 0,
+        "edge_count": 0,
+        "element_id": null,
+        "face_count": 0,
+        "geometry_access_method": null,
+        "geometry_instance_count": 0,
+        "geometry_readable": false,
+        "positive_solid_count": 0,
+        "solid_count": 0,
+        "warnings": [
+          "shadow caster category is not accepted; geometry diagnostics skipped for this item."
+        ]
+      }
+    ],
     "mesh_count": 0,
+    "positive_solid_count": 0,
     "provided": true,
     "readiness": {
       "blockers_for_future_footprint_extraction": [
@@ -264,7 +309,8 @@
         "No accepted shadow caster proxy elements are available.",
         "No bottom face candidate was found.",
         "No edge loop candidate was found from bottom face candidates.",
-        "No closed footprint loop candidate was verified."
+        "No closed footprint loop candidate was verified.",
+        "Settings are not ready for future equal-time shadow calculation."
       ],
       "geometry_diagnostics_ready": true,
       "ready_for_future_footprint_extraction": false,
@@ -279,21 +325,38 @@
   "shadow_caster_summary": {
     "accepted_count": 0,
     "count": 1,
+    "items": [
+      {
+        "accepted": false,
+        "category_id": null,
+        "element_id": null,
+        "native_type": "FamilyInstance",
+        "official_revit_api_category": null,
+        "unwrap_strategy": "UnwrapElement",
+        "warnings": [
+          "category could not be read from BuiltInCategory or localized display name; accepted is False until it can be identified as OST_Mass or OST_GenericModel.",
+          "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics."
+        ],
+        "wrapper_type": "FamilyInstance"
+      }
+    ],
     "rejected_count": 1,
     "warnings": [
       "category could not be read from BuiltInCategory or localized display name; accepted is False until it can be identified as OST_Mass or OST_GenericModel.",
-      "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics.",
-      "geometry access is not available: Traceback (most recent call last): File \"<redacted_path> - Gensler/_MyPython/Dynamo_Shadow/shadow_inputs.py\", lin..."
+      "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics."
     ]
   },
+  "site_boundary_skipped": true,
   "site_boundary_summary": {
     "accepted_count": 0,
+    "boundary_dependent_steps_skipped": true,
     "count": 0,
+    "items": [],
     "provided": false,
     "rejected_count": 0,
     "warnings": []
   },
-  "stage": "v1_footprint_extraction_diagnostics",
+  "stage": "v1_formal_footprint_stabilization",
   "success": true,
   "tool": "Dynamo_Shadow",
   "unit_conversion_summary": {
@@ -326,21 +389,23 @@
   "warnings": [
     "category could not be read from BuiltInCategory or localized display name; accepted is False until it can be identified as OST_Mass or OST_GenericModel.",
     "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics.",
-    "geometry access is not available: Traceback (most recent call last): File \"<redacted_path> - Gensler/_MyPython/Dynamo_Shadow/shadow_inputs.py\", lin...",
     "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
     "Level reference is present but is not used as average ground level or measurement plane.",
     "shadow caster category is not accepted; geometry diagnostics skipped for this item.",
     "No meter-based diagnostic geometry points are available; diagnostic shadow projection point cloud is skipped non-fatally.",
     "No accepted shadow caster proxy elements are available.",
+    "Settings are not ready for future equal-time shadow calculation; missing=['analysis_start_time', 'analysis_end_time'], invalid=[].",
     "No accepted shadow caster proxy elements are available.",
     "No closed footprint loop candidate was verified by raw endpoint comparison.",
+    "settings not ready for equal-time shadow calculation",
     "No accepted shadow caster proxy elements are available.",
     "No closed footprint loop candidate was verified by raw endpoint comparison.",
+    "Settings are not ready for future equal-time shadow calculation.",
     "legal judgement masks not implemented",
     "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
     "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.",
     "Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.",
     "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
   ],
-  "warnings_count": 17
+  "warnings_count": 19
 }
