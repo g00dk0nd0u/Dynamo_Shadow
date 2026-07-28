@@ -2,7 +2,7 @@
 try:
     import clr
     clr.AddReference("RevitAPI")
-    from Autodesk.Revit.DB import BuiltInCategory, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, Mesh, UnitUtils
+    from Autodesk.Revit.DB import BuiltInCategory, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, Mesh, UnitUtils, Element, ElementId
     try:
         from Autodesk.Revit.DB import UnitTypeId
     except Exception:
@@ -12,4 +12,4 @@ try:
     except Exception:
         DisplayUnitType = None
 except Exception:
-    BuiltInCategory = Options = Solid = GeometryInstance = Face = PlanarFace = Edge = Curve = Mesh = UnitUtils = UnitTypeId = DisplayUnitType = None
+    BuiltInCategory = Options = Solid = GeometryInstance = Face = PlanarFace = Edge = Curve = Mesh = UnitUtils = Element = ElementId = UnitTypeId = DisplayUnitType = None

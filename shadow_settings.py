@@ -253,6 +253,11 @@ def _normalize_settings(settings, level=None):
             warnings.append(warn); invalid_keys.append(key)
         normalized[key] = text
 
+    for canonical, alias in (("analysis_start_time", "true_solar_start_time"), ("analysis_end_time", "true_solar_end_time")):
+        if normalized.get(canonical) is None and normalized.get(alias) is not None:
+            normalized[canonical] = normalized.get(alias)
+            info.append("settings.{0} is accepted as a compatibility alias for settings.{1}.".format(alias, canonical))
+
     sun_step, warn = _parse_int(settings_dict.get("sun_time_step_minutes"), "sun_time_step_minutes")
     if warn:
         warnings.append(warn); invalid_keys.append("sun_time_step_minutes")
