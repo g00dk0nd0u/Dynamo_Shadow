@@ -1,6 +1,7 @@
 # Safe helpers and Revit-like type checks.
 import sys
 from shadow_revit_api import BuiltInCategory, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, Mesh, Element, ElementId
+from shadow_policies import CLR_REFLECTION_ENABLED
 
 RUNTIME_CHECKPOINT = None
 
@@ -111,6 +112,20 @@ def _try_document_get_element(element_id):
 def _error_details(exc):
     return type(exc).__name__, _safe_text(exc)
 
+
+def _is_autodesk_revit_db_clr_object(value):
+    """Return true only for objects whose exact CLR/Python namespace is Revit DB."""
+    if value is None:
+        return False
+    value_type = type(value)
+    if (_safe_text(getattr(value_type, "__module__", "")) or "") == "Autodesk.Revit.DB":
+        return True
+    try:
+        clr_type = value.GetType()
+    except BaseException:
+        return False
+    return (_safe_text(getattr(clr_type, "Namespace", None)) or "") == "Autodesk.Revit.DB"
+
 def _safe_clr_property(value, property_name):
     """Read a CLR property through reflection without exposing object reprs."""
     diagnostics = {"reflection_attempted": True, "reflection_property_found": False,
@@ -125,36 +140,31 @@ def _safe_clr_property(value, property_name):
             raise TypeError("GetType is not callable")
         clr_type = get_type()
         _runtime_checkpoint("CLR_GETTYPE_AFTER", "ok")
+    except BaseException as exc:
+        _runtime_checkpoint("CLR_GETTYPE_AFTER", "failed")
+        diagnostics["error_type"], diagnostics["error"] = _error_details(exc)
+        return None, diagnostics
+    try:
         _runtime_checkpoint("CLR_GETPROPERTY_BEFORE", property_name)
         get_property = getattr(clr_type, "GetProperty")
-        flags = None
-        try:
-            from System.Reflection import BindingFlags
-            flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy
-        except Exception:
-            pass
-        try:
-            property_info = get_property(property_name, flags) if flags is not None else get_property(property_name)
-        except TypeError:
-            property_info = get_property(property_name)
+        property_info = get_property(property_name)
         _runtime_checkpoint("CLR_GETPROPERTY_AFTER", "none" if property_info is None else "ok")
         diagnostics["reflection_property_found"] = property_info is not None
         if property_info is None:
             diagnostics.update({"error_type": "AttributeError", "error": "CLR property was not found"})
             return None, diagnostics
-        try:
-            _runtime_checkpoint("CLR_GETVALUE_BEFORE", property_name)
-            result = property_info.GetValue(value, None)
-        except TypeError:
-            result = property_info.GetValue(value)
+    except BaseException as exc:
+        _runtime_checkpoint("CLR_GETPROPERTY_AFTER", "failed")
+        diagnostics["error_type"], diagnostics["error"] = _error_details(exc)
+        return None, diagnostics
+    try:
+        _runtime_checkpoint("CLR_GETVALUE_BEFORE", property_name)
+        result = property_info.GetValue(value, None)
         _runtime_checkpoint("CLR_GETVALUE_AFTER", "none" if result is None else "ok")
         diagnostics["reflection_succeeded"] = True
         return result, diagnostics
-    except Exception as exc:
-        # An in-process Python/CLR exception gets an AFTER marker; a native
-        # process-level crash necessarily leaves the corresponding BEFORE last.
-        if diagnostics.get("reflection_property_found"):
-            _runtime_checkpoint("CLR_GETVALUE_AFTER", type(exc).__name__)
+    except BaseException as exc:
+        _runtime_checkpoint("CLR_GETVALUE_AFTER", "failed")
         diagnostics["error_type"], diagnostics["error"] = _error_details(exc)
         return None, diagnostics
 
@@ -164,7 +174,8 @@ def _safe_property(value, property_name, allow_reflection=True):
         "direct_getattr_succeeded": False, "direct_value_type": None,
         "direct_value_type_module": None, "direct_value_callable": None,
         "reflection_attempted": False, "reflection_property_found": False,
-        "reflection_succeeded": False, "read_method": None,
+        "reflection_succeeded": False, "reflection_skipped_reason": None,
+        "reflection_enabled_by_policy": bool(CLR_REFLECTION_ENABLED), "read_method": None,
         "error_type": None, "error": None,
     }
     direct_before_stage = {
@@ -196,6 +207,16 @@ def _safe_property(value, property_name, allow_reflection=True):
             _runtime_checkpoint(direct_after_stage, "failed")
         diagnostics["error_type"], diagnostics["error"] = _error_details(exc)
     if not allow_reflection:
+        diagnostics["reflection_skipped_reason"] = "disabled_by_caller"
+        return None, diagnostics
+    if property_name not in ("Id", "Category", "Value", "IntegerValue", "Name"):
+        diagnostics["reflection_skipped_reason"] = "property_not_whitelisted"
+        return None, diagnostics
+    if not CLR_REFLECTION_ENABLED:
+        diagnostics["reflection_skipped_reason"] = "disabled_by_policy"
+        return None, diagnostics
+    if not _is_autodesk_revit_db_clr_object(value):
+        diagnostics["reflection_skipped_reason"] = "non_revit_db_object"
         return None, diagnostics
     result, reflection = _safe_clr_property(value, property_name)
     diagnostics.update(reflection)
@@ -256,7 +277,7 @@ def _read_element_category(element):
     diagnostics["property_diagnostics"]["Category"] = prop_diag
     source = "element.Category"
     if category is None:
-        symbol, symbol_diag = _safe_property(element, "Symbol")
+        symbol, symbol_diag = _safe_property(element, "Symbol", allow_reflection=False)
         diagnostics["property_diagnostics"]["Symbol"] = symbol_diag
         diagnostics["category_fallback_attempts"].append("element.Symbol.Category")
         if symbol is not None:
@@ -286,7 +307,18 @@ def _read_element_category(element):
 def _probe_native_candidate(candidate, strategy):
     _runtime_checkpoint("CANDIDATE_PROBE_BEFORE", strategy)
     native = _is_native_revit_element_like(candidate)
-    valid, valid_diag = _safe_property(candidate, "IsValidObject")
+    if not native:
+        result = {"strategy": strategy, "candidate_type": _type_name(candidate),
+                "candidate_type_module": _type_module(candidate),
+                "is_native_revit_element": False, "is_valid_object": None,
+                "is_valid_object_status": "not_checked_non_native",
+                "is_valid_object_read_method": None, "element_id_readable": False,
+                "category_readable": False, "candidate_usable": False,
+                "element_id_diagnostics": None, "category_diagnostics": None,
+                "property_access_diagnostics": {}}
+        _runtime_checkpoint("CANDIDATE_PROBE_AFTER", "non_native_skipped")
+        return result
+    valid, valid_diag = _safe_property(candidate, "IsValidObject", allow_reflection=False)
     valid_status = "false" if valid is False else ("true" if valid is True else "unknown")
     element_id, id_diag = _read_element_id(candidate)
     category, category_diag = _read_element_category(candidate)

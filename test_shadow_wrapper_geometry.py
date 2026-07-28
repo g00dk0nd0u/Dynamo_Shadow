@@ -689,19 +689,21 @@ def test_callable_clr_property_values_are_not_invoked():
     assert item['category_name_read_method'] == 'direct_getattr'
 
 
-def test_safe_property_reflection_success_and_failure():
+def test_safe_property_reflection_success_and_failure(monkeypatch):
+    monkeypatch.setattr(shadow_utils, 'CLR_REFLECTION_ENABLED', True)
     class PropertyInfo:
         def GetValue(self, value, *args): return 42
     class ClrType:
-        def GetProperty(self, name, *args): return PropertyInfo() if name == 'Hidden' else None
+        Namespace = 'Autodesk.Revit.DB'
+        def GetProperty(self, name): return PropertyInfo() if name == 'Category' else None
     class Reflected:
         def __getattribute__(self, name):
-            if name in ('Hidden', 'Missing'): raise RuntimeError('direct access blocked')
+            if name in ('Category', 'Name'): raise RuntimeError('direct access blocked')
             return object.__getattribute__(self, name)
         def GetType(self): return ClrType()
-    value, diag = shadow_utils._safe_property(Reflected(), 'Hidden')
+    value, diag = shadow_utils._safe_property(Reflected(), 'Category')
     assert value == 42 and diag['read_method'] == 'clr_reflection' and diag['reflection_succeeded']
-    value, diag = shadow_utils._safe_property(Reflected(), 'Missing')
+    value, diag = shadow_utils._safe_property(Reflected(), 'Name')
     assert value is None and not diag['direct_getattr_succeeded']
     assert diag['reflection_attempted'] and not diag['reflection_succeeded'] and diag['error_type']
 
