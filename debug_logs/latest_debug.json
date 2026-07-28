@@ -19,8 +19,7 @@
       ],
       "blockers_for_future_shadow_projection": [
         "No accepted shadow caster proxy elements are available.",
-        "No closed footprint loop candidate was verified by raw endpoint comparison.",
-        "Settings are not ready for future equal-time shadow calculation."
+        "No closed footprint loop candidate was verified by raw endpoint comparison."
       ],
       "footprint_diagnostics_ready": true,
       "ready_for_future_footprint_polygon_generation": false,
@@ -70,13 +69,13 @@
       "provided": true,
       "sample": [
         {
-          "is_none": false,
-          "type": "str",
-          "value": "{ \"profile\": \"standard_8_16\", \"average_ground_level_elevation_m\": 0.0, \"measurement_height_m\": 4.0, \"latitude\": 35.6812, \"longitude\": 139.7671..."
+          "is_none": true,
+          "type": "NoneType",
+          "value": null
         }
       ],
       "sample_limit": 5,
-      "sample_type": "str",
+      "sample_type": "NoneType",
       "truncated_count": 0,
       "type": "str"
     },
@@ -97,9 +96,7 @@
     "available": true,
     "provided": true,
     "readiness": {
-      "blockers_for_future_shadow_projection_context": [
-        "settings not ready for equal-time shadow calculation"
-      ],
+      "blockers_for_future_shadow_projection_context": [],
       "blockers_for_legal_judgement_masks": [
         "legal judgement masks not implemented",
         "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR"
@@ -107,7 +104,7 @@
       "blockers_for_measurement_plane": [],
       "measurement_plane_constructed": true,
       "ready_for_future_footprint_projection_context": true,
-      "ready_for_future_shadow_projection_context": false,
+      "ready_for_future_shadow_projection_context": true,
       "ready_for_legal_judgement_masks": false
     },
     "warnings": [
@@ -147,8 +144,7 @@
       "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
     ],
     "blockers_for_equal_time_shadow": [
-      "No accepted shadow caster proxy elements are available.",
-      "Settings are not ready for future equal-time shadow calculation; missing=['analysis_start_time', 'analysis_end_time'], invalid=[]."
+      "No accepted shadow caster proxy elements are available."
     ],
     "blockers_for_footprint_extraction": [
       "No accepted shadow caster proxy elements are available.",
@@ -158,13 +154,10 @@
       "No accepted shadow caster proxy elements are available.",
       "No closed footprint loop candidate was verified by raw endpoint comparison."
     ],
-    "blockers_for_future_projection_context": [
-      "settings not ready for equal-time shadow calculation"
-    ],
+    "blockers_for_future_projection_context": [],
     "blockers_for_future_shadow_projection": [
       "No accepted shadow caster proxy elements are available.",
-      "No closed footprint loop candidate was verified by raw endpoint comparison.",
-      "Settings are not ready for future equal-time shadow calculation."
+      "No closed footprint loop candidate was verified by raw endpoint comparison."
     ],
     "blockers_for_legal_judgement_masks": [
       "legal judgement masks not implemented",
@@ -178,7 +171,7 @@
     "footprint_extraction_ready": false,
     "footprint_loop_candidates_ready": false,
     "future_footprint_polygon_generation_ready": false,
-    "future_projection_context_ready": false,
+    "future_projection_context_ready": true,
     "future_shadow_projection_ready": false,
     "info": [
       "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generat..."
@@ -199,11 +192,118 @@
       "equal-time contour generation",
       "legal judgement report"
     ],
-    "settings_ready_for_equal_time_shadow": false,
+    "settings_ready_for_equal_time_shadow": true,
     "shadow_caster_geometry_ready": true,
     "shadow_caster_ready": false,
     "site_boundary_ready_for_boundary_dependent_steps": false,
     "site_boundary_required_for_equal_time_shadow": false
+  },
+  "runtime_code_diagnostics": {
+    "all_local_modules_from_workspace": true,
+    "cached_module_count_removed": 13,
+    "code_build_id": "2026-07-28-module-isolation-v1",
+    "import_caches_invalidated": true,
+    "loader_bootstrap_received": true,
+    "loader_build_id": "2026-07-28-loader-module-isolation-v1",
+    "modules": [
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_debug.py",
+        "module_name": "shadow_debug"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_footprint.py",
+        "module_name": "shadow_footprint"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_geometry.py",
+        "module_name": "shadow_geometry"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_inputs.py",
+        "module_name": "shadow_inputs"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_measurement_plane.py",
+        "module_name": "shadow_measurement_plane"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_policies.py",
+        "module_name": "shadow_policies"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_projection.py",
+        "module_name": "shadow_projection"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_readiness.py",
+        "module_name": "shadow_readiness"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_revit_api.py",
+        "module_name": "shadow_revit_api"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_settings.py",
+        "module_name": "shadow_settings"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_sun.py",
+        "module_name": "shadow_sun"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_units.py",
+        "module_name": "shadow_units"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_utils.py",
+        "module_name": "shadow_utils"
+      }
+    ],
+    "removed_cached_modules": [
+      "shadow_debug",
+      "shadow_footprint",
+      "shadow_geometry",
+      "shadow_inputs",
+      "shadow_measurement_plane",
+      "shadow_policies",
+      "shadow_projection",
+      "shadow_readiness",
+      "shadow_revit_api",
+      "shadow_settings",
+      "shadow_sun",
+      "shadow_units",
+      "shadow_utils"
+    ],
+    "script_directory_at_sys_path_zero": true,
+    "script_directory_resolved": true,
+    "workspace_inserted_at_sys_path_zero": true,
+    "workspace_resolved": true
   },
   "sanitized": true,
   "settings_summary": {
@@ -216,14 +316,11 @@
       "max_projected_points_output_per_slice"
     ],
     "invalid_keys": [],
-    "missing_required_keys": [
-      "analysis_start_time",
-      "analysis_end_time"
-    ],
+    "missing_required_keys": [],
     "normalized": {
-      "analysis_end_time": null,
+      "analysis_end_time": "16:00",
       "analysis_margin_m": 20.0,
-      "analysis_start_time": null,
+      "analysis_start_time": "08:00",
       "average_ground_level_elevation_m": 0.0,
       "closure_tolerance_m": 0.01,
       "debug_log_dir": "debug_logs",
@@ -253,18 +350,12 @@
       "invalid_for_equal_time_shadow": [],
       "invalid_for_measurement_plane": [],
       "invalid_for_solar_time": [],
-      "missing_for_equal_time_shadow": [
-        "analysis_start_time",
-        "analysis_end_time"
-      ],
+      "missing_for_equal_time_shadow": [],
       "missing_for_measurement_plane": [],
-      "missing_for_solar_time": [
-        "analysis_start_time",
-        "analysis_end_time"
-      ],
-      "ready_for_equal_time_shadow_calculation": false,
+      "missing_for_solar_time": [],
+      "ready_for_equal_time_shadow_calculation": true,
       "ready_for_input_diagnostics": true,
-      "settings_ready_for_boundary_dependent_steps": false
+      "settings_ready_for_boundary_dependent_steps": true
     },
     "schema_version": "v1",
     "warnings": []
@@ -309,8 +400,7 @@
         "No accepted shadow caster proxy elements are available.",
         "No bottom face candidate was found.",
         "No edge loop candidate was found from bottom face candidates.",
-        "No closed footprint loop candidate was verified.",
-        "Settings are not ready for future equal-time shadow calculation."
+        "No closed footprint loop candidate was verified."
       ],
       "geometry_diagnostics_ready": true,
       "ready_for_future_footprint_extraction": false,
@@ -328,16 +418,31 @@
     "items": [
       {
         "accepted": false,
+        "candidate_type": "FamilyInstance",
+        "candidate_type_module": "Autodesk.Revit.DB",
         "category_id": null,
+        "category_id_raw_type": null,
+        "category_read_method": "none",
         "element_id": null,
+        "element_id_read_method": null,
         "native_type": "FamilyInstance",
+        "native_type_module": "Autodesk.Revit.DB",
         "official_revit_api_category": null,
+        "unwrap_attempts": [
+          "original_native_element",
+          "UnwrapElement"
+        ],
+        "unwrap_failure_reasons": [
+          "original_native_element: candidate is not a native Autodesk.Revit.DB.Element"
+        ],
         "unwrap_strategy": "UnwrapElement",
+        "unwrapped": true,
         "warnings": [
           "category could not be read from BuiltInCategory or localized display name; accepted is False until it can be identified as OST_Mass or OST_GenericModel.",
           "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics."
         ],
-        "wrapper_type": "FamilyInstance"
+        "wrapper_type": "FamilyInstance",
+        "wrapper_type_module": "Revit.Elements"
       }
     ],
     "rejected_count": 1,
@@ -394,18 +499,15 @@
     "shadow caster category is not accepted; geometry diagnostics skipped for this item.",
     "No meter-based diagnostic geometry points are available; diagnostic shadow projection point cloud is skipped non-fatally.",
     "No accepted shadow caster proxy elements are available.",
-    "Settings are not ready for future equal-time shadow calculation; missing=['analysis_start_time', 'analysis_end_time'], invalid=[].",
     "No accepted shadow caster proxy elements are available.",
     "No closed footprint loop candidate was verified by raw endpoint comparison.",
-    "settings not ready for equal-time shadow calculation",
     "No accepted shadow caster proxy elements are available.",
     "No closed footprint loop candidate was verified by raw endpoint comparison.",
-    "Settings are not ready for future equal-time shadow calculation.",
     "legal judgement masks not implemented",
     "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
     "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.",
     "Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.",
     "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
   ],
-  "warnings_count": 19
+  "warnings_count": 16
 }
