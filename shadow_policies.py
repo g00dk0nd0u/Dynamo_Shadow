@@ -1,6 +1,10 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-28-node-checkpoint-v1"
+CODE_BUILD_ID = "2026-07-28-non-native-reflection-guard-v1"
+
+# Emergency production switch for pythonnet CLR property reflection. Direct
+# attribute access remains available when this is disabled.
+CLR_REFLECTION_ENABLED = True
 
 TOOL_NAME = "Dynamo_Shadow"
 STAGE_NAME = "v1_formal_footprint_stabilization"

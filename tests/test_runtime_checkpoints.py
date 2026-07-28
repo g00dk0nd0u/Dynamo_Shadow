@@ -103,8 +103,13 @@ def test_checkpoint_lines_never_contain_absolute_paths(monkeypatch, tmp_path):
 def test_non_native_probe_type_check_precedes_reflection(monkeypatch):
     stages = []
     monkeypatch.setattr(shadow_utils, "RUNTIME_CHECKPOINT", lambda stage, detail=None: stages.append(stage))
-    shadow_utils._probe_native_candidate(object(), "test_strategy")
+    result = shadow_utils._probe_native_candidate(object(), "test_strategy")
+    assert result["is_valid_object_status"] == "not_checked_non_native"
     assert stages.index("NATIVE_TYPE_CHECK_BEFORE") < stages.index("CLR_GETTYPE_BEFORE")
+    assert stages[-1] == "CANDIDATE_PROBE_AFTER"
+    assert "PROPERTY_ISVALID_DIRECT_BEFORE" not in stages
+    assert "CLR_GETPROPERTY_BEFORE" not in stages
+    assert "CLR_GETVALUE_BEFORE" not in stages
 
 
 def test_clr_reflection_before_after_order(monkeypatch):
@@ -116,17 +121,19 @@ def test_clr_reflection_before_after_order(monkeypatch):
             return "category"
 
     class ClrType:
-        def GetProperty(self, name, flags=None):
+        Namespace = "Autodesk.Revit.DB"
+        def GetProperty(self, name):
             return Property()
 
     class Value:
         def GetType(self):
             return ClrType()
 
-    result, diagnostics = shadow_utils._safe_clr_property(Value(), "Category")
+    result, diagnostics = shadow_utils._safe_property(Value(), "Category")
     assert result == "category"
     assert diagnostics["reflection_succeeded"] is True
     assert [stage for stage, _ in events] == [
+        "PROPERTY_CATEGORY_DIRECT_BEFORE", "PROPERTY_CATEGORY_DIRECT_AFTER",
         "CLR_GETTYPE_BEFORE", "CLR_GETTYPE_AFTER", "CLR_GETPROPERTY_BEFORE",
         "CLR_GETPROPERTY_AFTER", "CLR_GETVALUE_BEFORE", "CLR_GETVALUE_AFTER",
     ]
@@ -141,14 +148,85 @@ def test_getvalue_failure_leaves_location_identifiable(monkeypatch):
             raise BaseException("simulated uncatchable CLR failure")
 
     class ClrType:
-        def GetProperty(self, name, flags=None):
+        Namespace = "Autodesk.Revit.DB"
+        def GetProperty(self, name):
             return Property()
 
     class Value:
         def GetType(self):
             return ClrType()
 
-    with pytest.raises(BaseException):
-        shadow_utils._safe_clr_property(Value(), "Category")
+    result, diagnostics = shadow_utils._safe_clr_property(Value(), "Category")
+    assert result is None
+    assert diagnostics["error_type"] == "BaseException"
     assert ("CLR_GETVALUE_BEFORE", "Category") in events
-    assert events[-1] == ("CLR_GETVALUE_BEFORE", "Category")
+    assert events[-1] == ("CLR_GETVALUE_AFTER", "failed")
+
+
+def test_non_native_wrapper_probe_never_reads_properties(monkeypatch):
+    events = []
+    monkeypatch.setattr(shadow_utils, "RUNTIME_CHECKPOINT", lambda stage, detail=None: events.append((stage, detail)))
+
+    class Wrapper:
+        __module__ = "Revit.Elements"
+        def GetType(self):
+            return types.SimpleNamespace(Namespace="Revit.Elements")
+        def __getattribute__(self, name):
+            if name in ("IsValidObject", "Id", "Category", "Symbol", "InternalElement", "InternalElementId"):
+                raise AssertionError("non-native property accessed: " + name)
+            return object.__getattribute__(self, name)
+
+    result = shadow_utils._probe_native_candidate(Wrapper(), "original_native_element")
+    assert result["is_native_revit_element"] is False
+    assert result["candidate_usable"] is False
+    assert ("NATIVE_TYPE_CHECK_AFTER", "none") in events
+    assert events[-1] == ("CANDIDATE_PROBE_AFTER", "non_native_skipped")
+    assert not any(stage.startswith("PROPERTY_") for stage, _ in events)
+    assert not any(stage in ("CLR_GETPROPERTY_BEFORE", "CLR_GETVALUE_BEFORE") for stage, _ in events)
+
+
+def test_unwrap_advances_from_wrapper_to_usable_native(monkeypatch):
+    class Wrapper:
+        __module__ = "Revit.Elements"
+        def GetType(self): return types.SimpleNamespace(Namespace="Revit.Elements")
+
+    class Native:
+        __module__ = "Autodesk.Revit.DB"
+        IsValidObject = True
+        Id = 42
+        Category = object()
+
+    monkeypatch.setattr(shadow_utils, "_get_global", lambda name, default=None: (lambda value: Native()) if name == "UnwrapElement" else default)
+    result, diagnostics = shadow_utils._try_unwrap_with_diagnostics(Wrapper())
+    assert isinstance(result, Native)
+    assert diagnostics["unwrap_strategy"] == "UnwrapElement"
+    assert diagnostics["native_candidate_usable"] is True
+
+
+def test_reflection_guards_namespace_whitelist_and_single_argument():
+    calls = []
+    class Property:
+        def GetValue(self, value, optional=None): return 7
+    class ClrType:
+        Namespace = "Autodesk.Revit.DB"
+        def GetProperty(self, *args):
+            calls.append(args)
+            assert len(args) == 1
+            return Property()
+    class RevitDbMock:
+        def __getattribute__(self, name):
+            if name == "Id": raise RuntimeError("direct blocked")
+            return object.__getattribute__(self, name)
+        def GetType(self): return ClrType()
+
+    value, diagnostics = shadow_utils._safe_property(RevitDbMock(), "Id")
+    assert value == 7 and diagnostics["reflection_succeeded"] is True
+    assert calls == [("Id",)]
+    for non_native in (object(), "text"):
+        value, diagnostics = shadow_utils._safe_property(non_native, "Id")
+        assert value is None
+        assert diagnostics["reflection_attempted"] is False
+        assert diagnostics["reflection_skipped_reason"] == "non_revit_db_object"
+    value, diagnostics = shadow_utils._safe_property(RevitDbMock(), "Symbol")
+    assert value is None
+    assert diagnostics["reflection_skipped_reason"] == "property_not_whitelisted"
