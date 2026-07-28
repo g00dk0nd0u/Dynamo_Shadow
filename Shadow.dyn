@@ -116,8 +116,8 @@
     },
     {
       "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
-      "WatchWidth": 200.0,
-      "WatchHeight": 200.0,
+      "WatchWidth": 49.777777777777779,
+      "WatchHeight": 38.222222222222221,
       "Id": "9ae7238e884c43319c3ae62f6db853ca",
       "NodeType": "ExtensionNode",
       "Inputs": [
