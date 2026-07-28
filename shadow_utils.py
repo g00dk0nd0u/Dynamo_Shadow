@@ -2,6 +2,18 @@
 import sys
 from shadow_revit_api import BuiltInCategory, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, Mesh, Element, ElementId
 
+RUNTIME_CHECKPOINT = None
+
+
+def _runtime_checkpoint(stage, detail=None):
+    callback = RUNTIME_CHECKPOINT
+    if callback is None:
+        return
+    try:
+        callback(stage, detail)
+    except BaseException:
+        pass
+
 
 def _get_global(name, default=None):
     try:
@@ -46,24 +58,33 @@ def _fallback_in(index, default=None):
     return default
 
 def _is_native_revit_element_like(value):
+    _runtime_checkpoint("NATIVE_TYPE_CHECK_BEFORE")
     if value is None:
+        _runtime_checkpoint("NATIVE_TYPE_CHECK_AFTER", "none")
         return False
     if _is_instance_of_optional(value, Element):
+        _runtime_checkpoint("NATIVE_TYPE_CHECK_AFTER", "ok")
         return True
     value_type = type(value)
     type_module = _safe_text(getattr(value_type, "__module__", "")) or ""
     namespace = _safe_text(getattr(value_type, "Namespace", None)) or ""
     try:
+        _runtime_checkpoint("CLR_GETTYPE_BEFORE")
         clr_type = value.GetType()
+        _runtime_checkpoint("CLR_GETTYPE_AFTER", "ok")
         namespace = _safe_text(getattr(clr_type, "Namespace", None)) or namespace
     except Exception:
+        _runtime_checkpoint("CLR_GETTYPE_AFTER", "failed")
         pass
     if type_module == "Autodesk.Revit.DB" or namespace == "Autodesk.Revit.DB":
+        _runtime_checkpoint("NATIVE_TYPE_CHECK_AFTER", "ok")
         return True
     # Narrow fallback for non-Revit unit tests only. Wrapper-like objects are
     # deliberately excluded even when they expose Category and Id properties.
     wrapper_namespace = type_module.startswith(("Revit.Elements", "Dynamo."))
-    return Element is None and not wrapper_namespace and callable(getattr(value, "get_Geometry", None)) and not (hasattr(value, "InternalElement") or hasattr(value, "InternalElementId"))
+    result = Element is None and not wrapper_namespace and callable(getattr(value, "get_Geometry", None)) and not (hasattr(value, "InternalElement") or hasattr(value, "InternalElementId"))
+    _runtime_checkpoint("NATIVE_TYPE_CHECK_AFTER", "ok" if result else "none")
+    return result
 
 def _document_manager_document():
     try:
@@ -79,8 +100,12 @@ def _try_document_get_element(element_id):
     if doc is None or element_id is None:
         return None
     try:
-        return doc.GetElement(element_id)
+        _runtime_checkpoint("DOCUMENT_GETELEMENT_BEFORE")
+        result = doc.GetElement(element_id)
+        _runtime_checkpoint("DOCUMENT_GETELEMENT_AFTER", "none" if result is None else "ok")
+        return result
     except Exception:
+        _runtime_checkpoint("DOCUMENT_GETELEMENT_AFTER", "failed")
         return None
 
 def _error_details(exc):
@@ -94,10 +119,13 @@ def _safe_clr_property(value, property_name):
         diagnostics.update({"error_type": "ValueError", "error": "value is None"})
         return None, diagnostics
     try:
+        _runtime_checkpoint("CLR_GETTYPE_BEFORE")
         get_type = getattr(value, "GetType")
         if not callable(get_type):
             raise TypeError("GetType is not callable")
         clr_type = get_type()
+        _runtime_checkpoint("CLR_GETTYPE_AFTER", "ok")
+        _runtime_checkpoint("CLR_GETPROPERTY_BEFORE", property_name)
         get_property = getattr(clr_type, "GetProperty")
         flags = None
         try:
@@ -109,17 +137,24 @@ def _safe_clr_property(value, property_name):
             property_info = get_property(property_name, flags) if flags is not None else get_property(property_name)
         except TypeError:
             property_info = get_property(property_name)
+        _runtime_checkpoint("CLR_GETPROPERTY_AFTER", "none" if property_info is None else "ok")
         diagnostics["reflection_property_found"] = property_info is not None
         if property_info is None:
             diagnostics.update({"error_type": "AttributeError", "error": "CLR property was not found"})
             return None, diagnostics
         try:
+            _runtime_checkpoint("CLR_GETVALUE_BEFORE", property_name)
             result = property_info.GetValue(value, None)
         except TypeError:
             result = property_info.GetValue(value)
+        _runtime_checkpoint("CLR_GETVALUE_AFTER", "none" if result is None else "ok")
         diagnostics["reflection_succeeded"] = True
         return result, diagnostics
     except Exception as exc:
+        # An in-process Python/CLR exception gets an AFTER marker; a native
+        # process-level crash necessarily leaves the corresponding BEFORE last.
+        if diagnostics.get("reflection_property_found"):
+            _runtime_checkpoint("CLR_GETVALUE_AFTER", type(exc).__name__)
         diagnostics["error_type"], diagnostics["error"] = _error_details(exc)
         return None, diagnostics
 
@@ -132,8 +167,24 @@ def _safe_property(value, property_name, allow_reflection=True):
         "reflection_succeeded": False, "read_method": None,
         "error_type": None, "error": None,
     }
+    direct_before_stage = {
+        "Id": "PROPERTY_ID_DIRECT_BEFORE",
+        "Category": "PROPERTY_CATEGORY_DIRECT_BEFORE",
+        "IsValidObject": "PROPERTY_ISVALID_DIRECT_BEFORE",
+        "Symbol": "PROPERTY_SYMBOL_DIRECT_BEFORE",
+    }.get(property_name)
+    direct_after_stage = {
+        "Id": "PROPERTY_ID_DIRECT_AFTER",
+        "Category": "PROPERTY_CATEGORY_DIRECT_AFTER",
+        "IsValidObject": "PROPERTY_ISVALID_DIRECT_AFTER",
+        "Symbol": "PROPERTY_SYMBOL_DIRECT_AFTER",
+    }.get(property_name)
+    if direct_before_stage:
+        _runtime_checkpoint(direct_before_stage, property_name)
     try:
         result = getattr(value, property_name)
+        if direct_after_stage:
+            _runtime_checkpoint(direct_after_stage, "none" if result is None else "ok")
         diagnostics.update({"direct_getattr_succeeded": True,
                             "direct_value_type": _type_name(result),
                             "direct_value_type_module": _type_module(result),
@@ -141,6 +192,8 @@ def _safe_property(value, property_name, allow_reflection=True):
                             "read_method": "direct_getattr"})
         return result, diagnostics
     except Exception as exc:
+        if direct_after_stage:
+            _runtime_checkpoint(direct_after_stage, "failed")
         diagnostics["error_type"], diagnostics["error"] = _error_details(exc)
     if not allow_reflection:
         return None, diagnostics
@@ -231,13 +284,14 @@ def _read_element_category(element):
     return category, diagnostics
 
 def _probe_native_candidate(candidate, strategy):
+    _runtime_checkpoint("CANDIDATE_PROBE_BEFORE", strategy)
     native = _is_native_revit_element_like(candidate)
     valid, valid_diag = _safe_property(candidate, "IsValidObject")
     valid_status = "false" if valid is False else ("true" if valid is True else "unknown")
     element_id, id_diag = _read_element_id(candidate)
     category, category_diag = _read_element_category(candidate)
     usable = native and valid_status != "false" and (element_id is not None or category is not None)
-    return {"strategy": strategy, "candidate_type": _type_name(candidate),
+    result = {"strategy": strategy, "candidate_type": _type_name(candidate),
             "candidate_type_module": _type_module(candidate),
             "is_native_revit_element": native, "is_valid_object": valid,
             "is_valid_object_status": valid_status,
@@ -249,8 +303,11 @@ def _probe_native_candidate(candidate, strategy):
                                              "Category": category_diag.get("property_diagnostics", {}).get("Category"),
                                              "IsValidObject": valid_diag,
                                              "Symbol": category_diag.get("property_diagnostics", {}).get("Symbol")}}
+    _runtime_checkpoint("CANDIDATE_PROBE_AFTER", "ok" if usable else "none")
+    return result
 
 def _try_unwrap_with_diagnostics(value):
+    _runtime_checkpoint("UNWRAP_BEFORE")
     diagnostics = {"wrapper_type": _type_name(value), "wrapper_type_module": _type_module(value), "candidate_type": None, "candidate_type_module": None, "native_type": None, "native_type_module": None, "unwrap_strategy": "none", "unwrapped": False, "unwrap_attempts": [], "unwrap_failure_reasons": [], "candidate_probes": [], "native_candidate_usable": False, "document_reacquire_attempted": False, "document_reacquire_attempts": [], "document_reacquire_succeeded": False, "document_reacquire_strategy": None, "document_reacquired_type": None, "document_reacquired_type_module": None, "document_reacquire_error_type": None, "document_reacquire_error": None}
     first_native = [None]
     def adopt(candidate, strategy):
@@ -279,6 +336,7 @@ def _try_unwrap_with_diagnostics(value):
 
     native = adopt(value, "original_native_element")
     if native is not None:
+        _runtime_checkpoint("UNWRAP_AFTER", "ok")
         return native, diagnostics
 
     unwrap = _get_global("UnwrapElement", None)
@@ -287,7 +345,9 @@ def _try_unwrap_with_diagnostics(value):
         try:
             unwrap_candidate = unwrap(value)
             native = adopt(unwrap_candidate, "UnwrapElement")
-            if native is not None: return native, diagnostics
+            if native is not None:
+                _runtime_checkpoint("UNWRAP_AFTER", "ok")
+                return native, diagnostics
         except Exception as exc:
             diagnostics["unwrap_attempts"].append("UnwrapElement")
             diagnostics["unwrap_failure_reasons"].append("UnwrapElement failed: {0}".format(_safe_text(exc)))
@@ -295,9 +355,13 @@ def _try_unwrap_with_diagnostics(value):
         diagnostics["unwrap_failure_reasons"].append("UnwrapElement is unavailable")
 
     native = adopt(_safe_attr(value, "InternalElement"), "InternalElement")
-    if native is not None: return native, diagnostics
+    if native is not None:
+        _runtime_checkpoint("UNWRAP_AFTER", "ok")
+        return native, diagnostics
     native = adopt(_safe_attr(unwrap_candidate, "InternalElement"), "UnwrapElement.InternalElement")
-    if native is not None: return native, diagnostics
+    if native is not None:
+        _runtime_checkpoint("UNWRAP_AFTER", "ok")
+        return native, diagnostics
 
     seen_ids = set()
     for owner, source in ((value, "wrapper.InternalElementId"), (value, "wrapper.Id"), (unwrap_candidate, "unwrapped.InternalElementId"), (unwrap_candidate, "unwrapped.Id")):
@@ -325,14 +389,17 @@ def _try_unwrap_with_diagnostics(value):
             diagnostics.update({"document_reacquire_succeeded": True, "document_reacquire_strategy": source,
                                 "document_reacquired_type": _type_name(native),
                                 "document_reacquired_type_module": _type_module(native)})
+            _runtime_checkpoint("UNWRAP_AFTER", "ok")
             return native, diagnostics
     if first_native[0] is not None:
         diagnostics["first_native_candidate_type"] = _type_name(first_native[0])
         diagnostics["first_native_candidate_type_module"] = _type_module(first_native[0])
+    _runtime_checkpoint("UNWRAP_AFTER", "none")
     return None, diagnostics
 
 def _try_unwrap(value):
     unwrapped, _diagnostics = _try_unwrap_with_diagnostics(value)
+    _runtime_checkpoint("UNWRAP_AFTER", "none" if unwrapped is None else "ok")
     return unwrapped
 
 def _is_string(value):
@@ -574,26 +641,35 @@ def _safe_get_geometry(element):
     option_error = None
     if Options is not None:
         try:
+            _runtime_checkpoint("GEOMETRY_OPTIONS_BEFORE")
             opts = Options()
             try:
                 opts.ComputeReferences = False
                 opts.IncludeNonVisibleObjects = True
             except Exception:
                 pass
+            _runtime_checkpoint("GEOMETRY_OPTIONS_AFTER", "ok")
+            _runtime_checkpoint("GET_GEOMETRY_BEFORE")
             geometry = method(opts)
+            _runtime_checkpoint("GET_GEOMETRY_AFTER", "none" if geometry is None else "ok")
             result.update({"geometry": geometry, "geometry_access_method": "Options", "geometry_readable": geometry is not None})
             if geometry is not None:
                 return result
         except Exception as exc:
+            _runtime_checkpoint("GEOMETRY_OPTIONS_AFTER", "failed")
+            _runtime_checkpoint("GET_GEOMETRY_AFTER", "failed")
             option_error = exc
     try:
+        _runtime_checkpoint("GET_GEOMETRY_BEFORE")
         geometry = method(None)
+        _runtime_checkpoint("GET_GEOMETRY_AFTER", "none" if geometry is None else "ok")
         result.update({"geometry": geometry, "geometry_access_method": "None_fallback", "geometry_fallback_used": True, "geometry_readable": geometry is not None})
         if geometry is None and option_error is not None:
             result["error_type"] = type(option_error).__name__
             result["error"] = _safe_text(option_error)
         return result
     except Exception as exc:
+        _runtime_checkpoint("GET_GEOMETRY_AFTER", "failed")
         result["geometry_access_method"] = "Options_then_None_fallback" if Options is not None else "None"
         result["geometry_fallback_used"] = Options is not None
         result["error_type"] = type(exc).__name__
@@ -615,13 +691,17 @@ def _collect_geometry_objects(element, max_depth=4):
         for val in _safe_iter(values):
             objects.append({"depth": depth, "source": source, "type": _type_name(val), "object": val, "type_lower": _type_name_lower(val)})
             if _is_geometry_instance_like(val):
+                _runtime_checkpoint("INSTANCE_GEOMETRY_BEFORE")
                 inst, inst_error = _safe_call(val, "GetInstanceGeometry")
+                _runtime_checkpoint("INSTANCE_GEOMETRY_AFTER", "failed" if inst_error else ("none" if inst is None else "ok"))
                 if inst_error:
                     warnings.append("GeometryInstance.GetInstanceGeometry unavailable: {0}".format(inst_error))
                 elif inst is not None:
                     add_many(inst, depth + 1, "geometry_instance_instance")
                 if inst_error or inst is None or not _safe_iter(inst):
+                    _runtime_checkpoint("SYMBOL_GEOMETRY_BEFORE")
                     symbol, symbol_error = _safe_call(val, "GetSymbolGeometry")
+                    _runtime_checkpoint("SYMBOL_GEOMETRY_AFTER", "failed" if symbol_error else ("none" if symbol is None else "ok"))
                     if symbol_error:
                         warnings.append("GeometryInstance.GetSymbolGeometry fallback unavailable: {0}".format(symbol_error))
                     elif symbol is not None:
