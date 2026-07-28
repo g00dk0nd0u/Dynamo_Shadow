@@ -15,6 +15,33 @@
       "Value": "",
       "Description": "Select multiple elements from the Revit document.",
       "SelectedIndex": 0
+    },
+    {
+      "Id": "3daad2f0de954b2a971f92fd9f671601",
+      "Name": "Levels",
+      "Type": "selection",
+      "Type2": "dropdownSelection",
+      "Value": "1FL",
+      "Description": "Select a level in the active document",
+      "SelectedIndex": 0
+    },
+    {
+      "Id": "af2519f73dff436c8aba2f16c3788bf3",
+      "Name": "Select Model Element",
+      "Type": "selection",
+      "Type2": "hostSelection",
+      "Value": "bab2fa04-1569-4986-851b-9e0255650363-0060d07e",
+      "Description": "Select a model element from the document.",
+      "SelectedIndex": 0
+    },
+    {
+      "Id": "f688e0f729b946d0b8ac25514f4531da",
+      "Name": "String",
+      "Type": "string",
+      "Type2": "string",
+      "Value": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671,\r\n  \"site_latitude_deg\": 35.6812,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"true_solar_start_time\": \"08:00\",\r\n  \"true_solar_end_time\": \"16:00\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\"\r\n}",
+      "Description": "Creates a string",
+      "SelectedIndex": 0
     }
   ],
   "Outputs": [
@@ -316,7 +343,7 @@
       {
         "Id": "3daad2f0de954b2a971f92fd9f671601",
         "Name": "Levels",
-        "IsSetAsInput": false,
+        "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
@@ -326,17 +353,17 @@
       {
         "Id": "af2519f73dff436c8aba2f16c3788bf3",
         "Name": "Select Model Element",
-        "IsSetAsInput": false,
+        "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
         "X": -258.004212107366,
-        "Y": 145.22554925369064
+        "Y": 147.25752257839571
       },
       {
         "Id": "f688e0f729b946d0b8ac25514f4531da",
         "Name": "String",
-        "IsSetAsInput": false,
+        "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
@@ -345,8 +372,8 @@
       }
     ],
     "Annotations": [],
-    "X": -625.37361087103841,
-    "Y": -60.2035587619838,
-    "Zoom": 1.3964144917982126
+    "X": 485.41490452476592,
+    "Y": 207.19987142805599,
+    "Zoom": 0.65617659303023324
   }
 }
