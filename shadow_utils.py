@@ -63,7 +63,7 @@ def _is_native_revit_element_like(value):
     # Narrow fallback for non-Revit unit tests only. Wrapper-like objects are
     # deliberately excluded even when they expose Category and Id properties.
     wrapper_namespace = type_module.startswith(("Revit.Elements", "Dynamo."))
-    return Element is None and not wrapper_namespace and hasattr(value, "Category") and hasattr(value, "Id") and hasattr(value, "get_Geometry") and not (hasattr(value, "InternalElement") or hasattr(value, "InternalElementId"))
+    return Element is None and not wrapper_namespace and callable(getattr(value, "get_Geometry", None)) and not (hasattr(value, "InternalElement") or hasattr(value, "InternalElementId"))
 
 def _document_manager_document():
     try:
@@ -83,8 +83,176 @@ def _try_document_get_element(element_id):
     except Exception:
         return None
 
+def _error_details(exc):
+    return type(exc).__name__, _safe_text(exc)
+
+def _safe_clr_property(value, property_name):
+    """Read a CLR property through reflection without exposing object reprs."""
+    diagnostics = {"reflection_attempted": True, "reflection_property_found": False,
+                   "reflection_succeeded": False, "error_type": None, "error": None}
+    if value is None:
+        diagnostics.update({"error_type": "ValueError", "error": "value is None"})
+        return None, diagnostics
+    try:
+        get_type = getattr(value, "GetType")
+        if not callable(get_type):
+            raise TypeError("GetType is not callable")
+        clr_type = get_type()
+        get_property = getattr(clr_type, "GetProperty")
+        flags = None
+        try:
+            from System.Reflection import BindingFlags
+            flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy
+        except Exception:
+            pass
+        try:
+            property_info = get_property(property_name, flags) if flags is not None else get_property(property_name)
+        except TypeError:
+            property_info = get_property(property_name)
+        diagnostics["reflection_property_found"] = property_info is not None
+        if property_info is None:
+            diagnostics.update({"error_type": "AttributeError", "error": "CLR property was not found"})
+            return None, diagnostics
+        try:
+            result = property_info.GetValue(value, None)
+        except TypeError:
+            result = property_info.GetValue(value)
+        diagnostics["reflection_succeeded"] = True
+        return result, diagnostics
+    except Exception as exc:
+        diagnostics["error_type"], diagnostics["error"] = _error_details(exc)
+        return None, diagnostics
+
+def _safe_property(value, property_name, allow_reflection=True):
+    diagnostics = {
+        "property_name": property_name, "direct_getattr_attempted": True,
+        "direct_getattr_succeeded": False, "direct_value_type": None,
+        "direct_value_type_module": None, "direct_value_callable": None,
+        "reflection_attempted": False, "reflection_property_found": False,
+        "reflection_succeeded": False, "read_method": None,
+        "error_type": None, "error": None,
+    }
+    try:
+        result = getattr(value, property_name)
+        diagnostics.update({"direct_getattr_succeeded": True,
+                            "direct_value_type": _type_name(result),
+                            "direct_value_type_module": _type_module(result),
+                            "direct_value_callable": callable(result),
+                            "read_method": "direct_getattr"})
+        return result, diagnostics
+    except Exception as exc:
+        diagnostics["error_type"], diagnostics["error"] = _error_details(exc)
+    if not allow_reflection:
+        return None, diagnostics
+    result, reflection = _safe_clr_property(value, property_name)
+    diagnostics.update(reflection)
+    if reflection.get("reflection_succeeded"):
+        diagnostics.update({"read_method": "clr_reflection", "error_type": None, "error": None})
+    return result, diagnostics
+
+def _safe_method_call(value, method_name, *args):
+    return _safe_call(value, method_name, *args)
+
+def _safe_zero_arg_method_call(value, method_name):
+    return _safe_method_call(value, method_name)
+
+def _read_id_object(id_object, prefix="element_id"):
+    diagnostics = {prefix + "_available": False, prefix: None,
+                   prefix + "_object_type": _type_name(id_object),
+                   prefix + "_object_module": _type_module(id_object),
+                   prefix + "_value_read_method": None,
+                   prefix + "_error_type": None, prefix + "_error": None}
+    if id_object is None:
+        return None, diagnostics
+    for property_name in ("Value", "IntegerValue"):
+        raw, prop_diag = _safe_property(id_object, property_name)
+        if prop_diag.get("read_method") and raw is not None:
+            try:
+                result = int(raw)
+                diagnostics.update({prefix + "_available": True, prefix: result,
+                                    prefix + "_value_read_method": property_name})
+                return result, diagnostics
+            except Exception as exc:
+                diagnostics[prefix + "_error_type"], diagnostics[prefix + "_error"] = _error_details(exc)
+    try:
+        result = int(id_object)
+        diagnostics.update({prefix + "_available": True, prefix: result,
+                            prefix + "_value_read_method": "int_conversion"})
+        return result, diagnostics
+    except Exception as exc:
+        diagnostics[prefix + "_error_type"], diagnostics[prefix + "_error"] = _error_details(exc)
+        return None, diagnostics
+
+def _read_element_id(element):
+    id_object, prop_diag = _safe_property(element, "Id")
+    result, diagnostics = _read_id_object(id_object)
+    diagnostics["element_id_property_read_method"] = prop_diag.get("read_method")
+    diagnostics["property_diagnostics"] = prop_diag
+    if result is None and prop_diag.get("error_type"):
+        diagnostics["element_id_error_type"] = prop_diag.get("error_type")
+        diagnostics["element_id_error"] = prop_diag.get("error")
+    return result, diagnostics
+
+def _read_element_category(element):
+    diagnostics = {"category_available": False, "category_source": None,
+                   "category_object_type": None, "category_object_module": None,
+                   "category_property_read_method": None, "category_fallback_attempts": [],
+                   "category_error_type": None, "category_error": None,
+                   "property_diagnostics": {}}
+    category, prop_diag = _safe_property(element, "Category")
+    diagnostics["property_diagnostics"]["Category"] = prop_diag
+    source = "element.Category"
+    if category is None:
+        symbol, symbol_diag = _safe_property(element, "Symbol")
+        diagnostics["property_diagnostics"]["Symbol"] = symbol_diag
+        diagnostics["category_fallback_attempts"].append("element.Symbol.Category")
+        if symbol is not None:
+            category, prop_diag = _safe_property(symbol, "Category")
+            diagnostics["property_diagnostics"]["Symbol.Category"] = prop_diag
+            source = "element.Symbol.Category"
+    if category is None:
+        diagnostics["category_fallback_attempts"].append("element.GetTypeId -> CurrentDBDocument.GetElement -> Category")
+        type_id, method_error = _safe_zero_arg_method_call(element, "GetTypeId")
+        type_element = _try_document_get_element(type_id) if type_id is not None else None
+        if type_element is not None:
+            category, prop_diag = _safe_property(type_element, "Category")
+            diagnostics["property_diagnostics"]["TypeElement.Category"] = prop_diag
+            source = "type element Category"
+        elif method_error:
+            diagnostics.update({"category_error_type": "MethodAccessError", "category_error": method_error})
+    if category is not None:
+        diagnostics.update({"category_available": True, "category_source": source,
+                            "category_object_type": _type_name(category),
+                            "category_object_module": _type_module(category),
+                            "category_property_read_method": prop_diag.get("read_method")})
+    elif diagnostics["category_error_type"] is None:
+        diagnostics.update({"category_error_type": prop_diag.get("error_type"),
+                            "category_error": prop_diag.get("error")})
+    return category, diagnostics
+
+def _probe_native_candidate(candidate, strategy):
+    native = _is_native_revit_element_like(candidate)
+    valid, valid_diag = _safe_property(candidate, "IsValidObject")
+    valid_status = "false" if valid is False else ("true" if valid is True else "unknown")
+    element_id, id_diag = _read_element_id(candidate)
+    category, category_diag = _read_element_category(candidate)
+    usable = native and valid_status != "false" and (element_id is not None or category is not None)
+    return {"strategy": strategy, "candidate_type": _type_name(candidate),
+            "candidate_type_module": _type_module(candidate),
+            "is_native_revit_element": native, "is_valid_object": valid,
+            "is_valid_object_status": valid_status,
+            "is_valid_object_read_method": valid_diag.get("read_method"),
+            "element_id_readable": element_id is not None,
+            "category_readable": category is not None, "candidate_usable": usable,
+            "element_id_diagnostics": id_diag, "category_diagnostics": category_diag,
+            "property_access_diagnostics": {"Id": id_diag.get("property_diagnostics"),
+                                             "Category": category_diag.get("property_diagnostics", {}).get("Category"),
+                                             "IsValidObject": valid_diag,
+                                             "Symbol": category_diag.get("property_diagnostics", {}).get("Symbol")}}
+
 def _try_unwrap_with_diagnostics(value):
-    diagnostics = {"wrapper_type": _type_name(value), "wrapper_type_module": _type_module(value), "candidate_type": None, "candidate_type_module": None, "native_type": None, "native_type_module": None, "unwrap_strategy": "none", "unwrapped": False, "unwrap_attempts": [], "unwrap_failure_reasons": []}
+    diagnostics = {"wrapper_type": _type_name(value), "wrapper_type_module": _type_module(value), "candidate_type": None, "candidate_type_module": None, "native_type": None, "native_type_module": None, "unwrap_strategy": "none", "unwrapped": False, "unwrap_attempts": [], "unwrap_failure_reasons": [], "candidate_probes": [], "native_candidate_usable": False, "document_reacquire_attempted": False, "document_reacquire_attempts": [], "document_reacquire_succeeded": False, "document_reacquire_strategy": None, "document_reacquired_type": None, "document_reacquired_type_module": None, "document_reacquire_error_type": None, "document_reacquire_error": None}
+    first_native = [None]
     def adopt(candidate, strategy):
         diagnostics["unwrap_attempts"].append(strategy)
         diagnostics["candidate_type"] = _type_name(candidate)
@@ -92,13 +260,21 @@ def _try_unwrap_with_diagnostics(value):
         if candidate is None:
             diagnostics["unwrap_failure_reasons"].append("{0}: candidate is None".format(strategy))
             return None
-        if not _is_native_revit_element_like(candidate):
+        probe = _probe_native_candidate(candidate, strategy)
+        diagnostics["candidate_probes"].append(probe)
+        if not probe["is_native_revit_element"]:
             diagnostics["unwrap_failure_reasons"].append("{0}: candidate is not a native Autodesk.Revit.DB.Element".format(strategy))
+            return None
+        if first_native[0] is None:
+            first_native[0] = candidate
+        if not probe["candidate_usable"]:
+            diagnostics["unwrap_failure_reasons"].append("{0}: native candidate properties are unusable or IsValidObject is false".format(strategy))
             return None
         diagnostics["unwrap_strategy"] = strategy
         diagnostics["unwrapped"] = candidate is not value
         diagnostics["native_type"] = _type_name(candidate)
         diagnostics["native_type_module"] = _type_module(candidate)
+        diagnostics["native_candidate_usable"] = True
         return candidate
 
     native = adopt(value, "original_native_element")
@@ -123,17 +299,36 @@ def _try_unwrap_with_diagnostics(value):
     native = adopt(_safe_attr(unwrap_candidate, "InternalElement"), "UnwrapElement.InternalElement")
     if native is not None: return native, diagnostics
 
-    for owner, strategy in ((value, "InternalElementId.CurrentDBDocument.GetElement"), (unwrap_candidate, "UnwrapElement.InternalElementId.CurrentDBDocument.GetElement")):
-        internal_id = _safe_attr(owner, "InternalElementId")
-        candidate = _try_document_get_element(internal_id) if internal_id is not None else None
+    seen_ids = set()
+    for owner, source in ((value, "wrapper.InternalElementId"), (value, "wrapper.Id"), (unwrap_candidate, "unwrapped.InternalElementId"), (unwrap_candidate, "unwrapped.Id")):
+        property_name = source.rsplit(".", 1)[-1]
+        id_object, id_prop_diag = _safe_property(owner, property_name)
+        id_value, _id_diag = _read_id_object(id_object, "id")
+        dedupe_key = id_value if id_value is not None else (property_name, _type_name(id_object))
+        if id_object is None or dedupe_key in seen_ids:
+            continue
+        seen_ids.add(dedupe_key)
+        diagnostics["document_reacquire_attempted"] = True
+        get_id = id_object
+        if isinstance(id_object, (int, float)) and ElementId is not None:
+            try: get_id = ElementId(int(id_object))
+            except Exception: pass
+        candidate = _try_document_get_element(get_id)
+        attempt = {"source": source, "id_object_type": _type_name(id_object), "id_value": id_value,
+                   "id_property_read_method": id_prop_diag.get("read_method"), "get_element_attempted": True,
+                   "get_element_succeeded": candidate is not None, "result_type": _type_name(candidate),
+                   "result_type_module": _type_module(candidate)}
+        diagnostics["document_reacquire_attempts"].append(attempt)
+        strategy = ("InternalElementId.CurrentDBDocument.GetElement" if source == "wrapper.InternalElementId" else source + ".CurrentDBDocument.GetElement")
         native = adopt(candidate, strategy)
-        if native is not None: return native, diagnostics
-
-    for owner, label in ((value, "wrapper"), (unwrap_candidate, "unwrapped_candidate")):
-        readable_id = _safe_attr(owner, "Id")
-        if readable_id is not None:
-            native = adopt(_try_document_get_element(readable_id), "{0}.Id.CurrentDBDocument.GetElement".format(label))
-            if native is not None: return native, diagnostics
+        if native is not None:
+            diagnostics.update({"document_reacquire_succeeded": True, "document_reacquire_strategy": source,
+                                "document_reacquired_type": _type_name(native),
+                                "document_reacquired_type_module": _type_module(native)})
+            return native, diagnostics
+    if first_native[0] is not None:
+        diagnostics["first_native_candidate_type"] = _type_name(first_native[0])
+        diagnostics["first_native_candidate_type_module"] = _type_module(first_native[0])
     return None, diagnostics
 
 def _try_unwrap(value):
@@ -182,16 +377,8 @@ def _safe_text(value):
     return text
 
 def _safe_attr(value, attr):
-    try:
-        attr_value = getattr(value, attr)
-    except Exception:
-        return None
-    try:
-        if callable(attr_value):
-            return attr_value()
-    except Exception:
-        return None
-    return attr_value
+    result, _diagnostics = _safe_property(value, attr)
+    return result
 
 def _safe_call(value, method_name, *args):
     try:
@@ -206,19 +393,8 @@ def _safe_call(value, method_name, *args):
         return None, _safe_text(exc)
 
 def _revit_id_to_int(value):
-    if value is None:
-        return None
-    for attr in ("Value", "IntegerValue"):
-        raw = _safe_attr(value, attr)
-        if raw is not None:
-            try:
-                return int(raw)
-            except Exception:
-                pass
-    try:
-        return int(value)
-    except Exception:
-        return None
+    result, _diagnostics = _read_id_object(value, "id")
+    return result
 
 def _id_read_method(value):
     if value is None:
@@ -245,16 +421,12 @@ def _built_in_category_value(value):
         return None
 
 def _element_id(value):
-    element_id = _safe_attr(value, "Id")
-    if element_id is None:
-        return None
-    integer_id = _revit_id_to_int(element_id)
-    if integer_id is not None:
-        return integer_id
-    return _safe_text(element_id)
+    element_id, _diagnostics = _read_element_id(value)
+    return element_id
 
 def _category(value):
-    return _safe_attr(value, "Category")
+    category, _diagnostics = _read_element_category(value)
+    return category
 
 def _category_id_from_category(category):
     if category is None:
@@ -290,7 +462,7 @@ def _type_label(value):
     symbol_name = _safe_attr(symbol, "Name") if symbol is not None else None
     if symbol_name:
         return _safe_text(symbol_name)
-    type_id = _safe_attr(value, "GetTypeId")
+    type_id, _error = _safe_zero_arg_method_call(value, "GetTypeId")
     if type_id is not None:
         return _safe_text(type_id)
     return None
