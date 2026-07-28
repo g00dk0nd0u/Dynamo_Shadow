@@ -174,7 +174,8 @@ def _safe_property(value, property_name, allow_reflection=True):
         "direct_getattr_succeeded": False, "direct_value_type": None,
         "direct_value_type_module": None, "direct_value_callable": None,
         "reflection_attempted": False, "reflection_property_found": False,
-        "reflection_succeeded": False, "read_method": None,
+        "reflection_succeeded": False, "reflection_skipped_reason": None,
+        "reflection_enabled_by_policy": bool(CLR_REFLECTION_ENABLED), "read_method": None,
         "error_type": None, "error": None,
     }
     direct_before_stage = {
@@ -206,7 +207,7 @@ def _safe_property(value, property_name, allow_reflection=True):
             _runtime_checkpoint(direct_after_stage, "failed")
         diagnostics["error_type"], diagnostics["error"] = _error_details(exc)
     if not allow_reflection:
-        diagnostics["reflection_skipped_reason"] = "property_not_whitelisted"
+        diagnostics["reflection_skipped_reason"] = "disabled_by_caller"
         return None, diagnostics
     if property_name not in ("Id", "Category", "Value", "IntegerValue", "Name"):
         diagnostics["reflection_skipped_reason"] = "property_not_whitelisted"

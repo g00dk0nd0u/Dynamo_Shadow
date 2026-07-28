@@ -689,7 +689,8 @@ def test_callable_clr_property_values_are_not_invoked():
     assert item['category_name_read_method'] == 'direct_getattr'
 
 
-def test_safe_property_reflection_success_and_failure():
+def test_safe_property_reflection_success_and_failure(monkeypatch):
+    monkeypatch.setattr(shadow_utils, 'CLR_REFLECTION_ENABLED', True)
     class PropertyInfo:
         def GetValue(self, value, *args): return 42
     class ClrType:

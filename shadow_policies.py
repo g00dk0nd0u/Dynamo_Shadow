@@ -1,10 +1,12 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-28-non-native-reflection-guard-v1"
+CODE_BUILD_ID = "2026-07-28-reflection-disabled-by-default-v1"
 
-# Emergency production switch for pythonnet CLR property reflection. Direct
-# attribute access remains available when this is disabled.
-CLR_REFLECTION_ENABLED = True
+# Disabled by default because pythonnet CLR GetProperty caused a node-level
+# External component exception in Revit 2024.3 + Dynamo CPython3. Direct
+# attribute access remains enabled. Tests or limited diagnostics may enable
+# reflection explicitly after its production safety has been verified.
+CLR_REFLECTION_ENABLED = False
 
 TOOL_NAME = "Dynamo_Shadow"
 STAGE_NAME = "v1_formal_footprint_stabilization"

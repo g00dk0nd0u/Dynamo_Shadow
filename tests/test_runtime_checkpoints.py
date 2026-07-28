@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import shadow_policies
 import shadow_utils
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -114,6 +115,7 @@ def test_non_native_probe_type_check_precedes_reflection(monkeypatch):
 
 def test_clr_reflection_before_after_order(monkeypatch):
     events = []
+    monkeypatch.setattr(shadow_utils, "CLR_REFLECTION_ENABLED", True)
     monkeypatch.setattr(shadow_utils, "RUNTIME_CHECKPOINT", lambda stage, detail=None: events.append((stage, detail)))
 
     class Property:
@@ -203,7 +205,8 @@ def test_unwrap_advances_from_wrapper_to_usable_native(monkeypatch):
     assert diagnostics["native_candidate_usable"] is True
 
 
-def test_reflection_guards_namespace_whitelist_and_single_argument():
+def test_reflection_guards_namespace_whitelist_and_single_argument(monkeypatch):
+    monkeypatch.setattr(shadow_utils, "CLR_REFLECTION_ENABLED", True)
     calls = []
     class Property:
         def GetValue(self, value, optional=None): return 7
@@ -230,3 +233,59 @@ def test_reflection_guards_namespace_whitelist_and_single_argument():
     value, diagnostics = shadow_utils._safe_property(RevitDbMock(), "Symbol")
     assert value is None
     assert diagnostics["reflection_skipped_reason"] == "property_not_whitelisted"
+
+
+def test_clr_reflection_is_disabled_by_default():
+    assert shadow_policies.CLR_REFLECTION_ENABLED is False
+
+
+def test_disabled_policy_never_calls_getproperty():
+    calls = []
+    class ClrType:
+        Namespace = "Autodesk.Revit.DB"
+        def GetProperty(self, *args):
+            calls.append(args)
+            raise AssertionError("GetProperty must not be called")
+    class RevitDbMock:
+        def __getattribute__(self, name):
+            if name == "Category": raise RuntimeError("direct blocked")
+            return object.__getattribute__(self, name)
+        def GetType(self): return ClrType()
+
+    value, diagnostics = shadow_utils._safe_property(RevitDbMock(), "Category")
+    assert value is None
+    assert diagnostics["reflection_attempted"] is False
+    assert diagnostics["reflection_skipped_reason"] == "disabled_by_policy"
+    assert diagnostics["reflection_enabled_by_policy"] is False
+    assert calls == []
+
+
+def test_reflection_skip_reasons_and_direct_success(monkeypatch):
+    class Blocked:
+        def __getattribute__(self, name):
+            if name in ("Category", "Symbol"): raise RuntimeError("direct blocked")
+            return object.__getattribute__(self, name)
+
+    value, diagnostics = shadow_utils._safe_property(Blocked(), "Category", allow_reflection=False)
+    assert value is None
+    assert diagnostics["reflection_attempted"] is False
+    assert diagnostics["reflection_skipped_reason"] == "disabled_by_caller"
+
+    value, diagnostics = shadow_utils._safe_property(Blocked(), "Symbol")
+    assert value is None
+    assert diagnostics["reflection_attempted"] is False
+    assert diagnostics["reflection_skipped_reason"] == "property_not_whitelisted"
+
+    monkeypatch.setattr(shadow_utils, "CLR_REFLECTION_ENABLED", True)
+    value, diagnostics = shadow_utils._safe_property(object(), "Category")
+    assert value is None
+    assert diagnostics["reflection_attempted"] is False
+    assert diagnostics["reflection_skipped_reason"] == "non_revit_db_object"
+
+    monkeypatch.setattr(shadow_utils, "CLR_REFLECTION_ENABLED", False)
+    value, diagnostics = shadow_utils._safe_property(type("Direct", (), {"Id": 17})(), "Id")
+    assert value == 17
+    assert diagnostics["read_method"] == "direct_getattr"
+    assert diagnostics["reflection_attempted"] is False
+    assert diagnostics["reflection_skipped_reason"] is None
+    assert diagnostics["reflection_enabled_by_policy"] is False
