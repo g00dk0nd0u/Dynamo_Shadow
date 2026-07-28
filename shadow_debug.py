@@ -131,6 +131,27 @@ def _unit_conversion_summary(out_payload):
     ]
     return _sanitize_for_debug({key: diagnostics.get(key) for key in keys if key in diagnostics})
 
+
+def _runtime_code_summary(out_payload):
+    diagnostics = (out_payload or {}).get("runtime_code_diagnostics") or {}
+    keys = [
+        "code_build_id", "loader_build_id", "loader_bootstrap_received",
+        "workspace_resolved", "workspace_inserted_at_sys_path_zero",
+        "import_caches_invalidated", "cached_module_count_removed",
+        "removed_cached_modules", "script_directory_resolved",
+        "script_directory_at_sys_path_zero", "all_local_modules_from_workspace",
+    ]
+    result = {key: diagnostics.get(key) for key in keys if key in diagnostics}
+    allowed_module_keys = (
+        "module_name", "module_filename", "loaded_from_workspace", "module_file_available"
+    )
+    result["modules"] = [
+        {key: item.get(key) for key in allowed_module_keys if key in item}
+        for item in (diagnostics.get("modules") or [])[:20]
+        if isinstance(item, dict)
+    ]
+    return _sanitize_for_debug(result)
+
 def _summarize_out_for_debug(out_payload):
     out_payload = out_payload or {}
     settings = out_payload.get("settings_normalized") or {}
@@ -156,6 +177,7 @@ def _summarize_out_for_debug(out_payload):
         "footprint_extraction_summary": _summary_counts(out_payload.get("footprint_extraction")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
         "unit_conversion_summary": _unit_conversion_summary(out_payload),
+        "runtime_code_diagnostics": _runtime_code_summary(out_payload),
         "warnings": _sanitize_for_debug(out_payload.get("warnings") or []),
         "warnings_count": len(out_payload.get("warnings") or []),
         "error_summary": _sanitize_for_debug(out_payload.get("error")),
@@ -184,6 +206,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "footprint_extraction_summary": summary["footprint_extraction_summary"],
         "pipeline_readiness": summary["pipeline_readiness"],
         "unit_conversion_summary": summary["unit_conversion_summary"],
+        "runtime_code_diagnostics": summary["runtime_code_diagnostics"],
         "warnings": summary["warnings"],
         "warnings_count": summary["warnings_count"],
         "error_summary": summary["error_summary"],
