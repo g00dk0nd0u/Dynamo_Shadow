@@ -3,6 +3,7 @@ import importlib
 import os
 
 import shadow_utils
+from shadow_settings import _normalize_settings
 from shadow_inputs import _diagnose_shadow_casters, _diagnose_site_boundary
 from shadow_geometry import _diagnose_shadow_caster_geometry
 from shadow_debug import _build_debug_log_payload
@@ -17,13 +18,21 @@ class IdLegacy:
 class Category:
     def __init__(self, id_obj, name=''): self.Id=id_obj; self.Name=name
 class NativeFamilyInstance:
-    def __init__(self, category_id=GENERIC_ID, id_obj=None, geometry=None, fail=False):
-        self.Id=IdLegacy(101); self.Category=Category(id_obj or IdLegacy(category_id), 'Generic Models'); self._geometry=geometry or []; self.fail=fail
+    def __init__(self, category_id=GENERIC_ID, id_obj=None, element_id_obj=None, geometry=None, fail=False):
+        self.Id=element_id_obj or IdLegacy(101); self.Category=Category(id_obj or IdLegacy(category_id), 'Generic Models'); self._geometry=geometry or []; self.fail=fail
     def get_Geometry(self, options):
         if self.fail: raise RuntimeError('C:/Users/alice/secret/model.rvt failed')
         return self._geometry
 class Wrapper:
     def __init__(self, native): self.InternalElement=native
+class MisleadingWrapper:
+    __module__ = 'Revit.Elements'
+    def __init__(self, native=None, internal_id=None):
+        self.Category=Category(IdLegacy(GENERIC_ID), 'Generic Models')
+        self.Id=IdLegacy(999)
+        if native is not None: self.InternalElement=native
+        if internal_id is not None: self.InternalElementId=internal_id
+    def get_Geometry(self, options): return []
 class Solid:
     def __init__(self, volume=1, faces=None, edges=None): self.Volume=volume; self.Faces=faces or []; self.Edges=edges or []
 class Face:
@@ -40,6 +49,10 @@ class Curve:
 class GeometryInstance:
     def __init__(self, geom): self.geom=geom
     def GetInstanceGeometry(self): return self.geom
+class SymbolGeometryInstance:
+    def __init__(self, geom): self.geom=geom
+    def GetInstanceGeometry(self): return []
+    def GetSymbolGeometry(self): return self.geom
 
 def setup_module(module):
     class BIC:
@@ -65,9 +78,57 @@ def test_unwrap_element_native_family_instance(monkeypatch):
     finally:
         del builtins.UnwrapElement
 
+def test_wrapper_category_and_id_do_not_make_native_element():
+    wrapper = MisleadingWrapper()
+    assert shadow_utils._is_native_revit_element_like(wrapper) is False
+    assert _diagnose_shadow_casters([wrapper])['rejected_count'] == 1
+
+def test_unwrap_returning_wrapper_then_internal_element(monkeypatch):
+    native = NativeFamilyInstance()
+    wrapper = MisleadingWrapper(native=native)
+    monkeypatch.setattr(builtins, 'UnwrapElement', lambda value: wrapper, raising=False)
+    diagnostics = _diagnose_shadow_casters([object()])
+    assert diagnostics['accepted_count'] == 1
+    assert diagnostics['items'][0]['unwrap_strategy'] == 'UnwrapElement.InternalElement'
+
+def test_internal_element_id_document_fallback(monkeypatch):
+    native = NativeFamilyInstance()
+    wrapper = MisleadingWrapper(internal_id=Id2024(101))
+    monkeypatch.setattr(shadow_utils, '_try_document_get_element', lambda element_id: native)
+    diagnostics = _diagnose_shadow_casters([wrapper])
+    assert diagnostics['accepted_count'] == 1
+    assert diagnostics['items'][0]['unwrap_strategy'] == 'InternalElementId.CurrentDBDocument.GetElement'
+
 def test_category_id_value_and_integer_value():
-    assert _diagnose_shadow_casters([NativeFamilyInstance(id_obj=Id2024(GENERIC_ID))])['accepted_count']==1
-    assert _diagnose_shadow_casters([NativeFamilyInstance(id_obj=IdLegacy(GENERIC_ID))])['accepted_count']==1
+    modern = _diagnose_shadow_casters([NativeFamilyInstance(id_obj=Id2024(GENERIC_ID))])
+    legacy = _diagnose_shadow_casters([NativeFamilyInstance(id_obj=IdLegacy(GENERIC_ID))])
+    assert modern['accepted_count']==1 and modern['items'][0]['category_id_raw_type'] == 'Id2024'
+    assert legacy['accepted_count']==1 and legacy['items'][0]['category_id_raw_type'] == 'IdLegacy'
+
+def test_element_id_value_and_integer_value_read_methods():
+    modern = _diagnose_shadow_casters([NativeFamilyInstance(element_id_obj=Id2024(2024))])['items'][0]
+    legacy = _diagnose_shadow_casters([NativeFamilyInstance(element_id_obj=IdLegacy(2023))])['items'][0]
+    assert modern['element_id'] == 2024 and modern['element_id_read_method'] == 'Value'
+    assert legacy['element_id'] == 2023 and legacy['element_id_read_method'] == 'IntegerValue'
+
+def test_true_solar_time_aliases_fill_missing_canonical_keys():
+    result = _normalize_settings({'true_solar_start_time':'08:00', 'true_solar_end_time':'16:00'})
+    assert result['normalized']['analysis_start_time'] == '08:00'
+    assert result['normalized']['analysis_end_time'] == '16:00'
+    assert len([line for line in result['info'] if 'compatibility alias' in line]) == 2
+
+def test_canonical_times_take_precedence_over_aliases():
+    result = _normalize_settings({'analysis_start_time':'09:00', 'analysis_end_time':'15:00', 'true_solar_start_time':'08:00', 'true_solar_end_time':'16:00'})
+    assert result['normalized']['analysis_start_time'] == '09:00'
+    assert result['normalized']['analysis_end_time'] == '15:00'
+    assert not [line for line in result['info'] if 'compatibility alias' in line]
+
+def test_unwrap_is_found_in_exec_script_globals():
+    native = NativeFamilyInstance()
+    script_globals = {'UnwrapElement': lambda value: native, 'value': object()}
+    exec('result = _try_unwrap_with_diagnostics(value)', dict(shadow_utils.__dict__, **script_globals), script_globals)
+    assert script_globals['result'][0] is native
+    assert script_globals['result'][1]['unwrap_strategy'] == 'UnwrapElement'
 
 def test_geometry_instance_positive_solid_counted_and_site_none_continues():
     solid=Solid(2, faces=[Face(-1)], edges=[Edge()])
@@ -79,6 +140,16 @@ def test_geometry_instance_positive_solid_counted_and_site_none_continues():
     assert g['solid_count']>=1 and g['positive_solid_count']>=1
     assert g['bottom_face_candidate_count']>=1
     assert g['geometry_readable_caster_count']>=1
+
+def test_symbol_geometry_fallback_and_non_positive_solid_exclusion():
+    positive = Solid(2, faces=[Face(-1)])
+    zero = Solid(0, faces=[Face(-1)])
+    native = NativeFamilyInstance(geometry=[SymbolGeometryInstance([positive, zero])])
+    casters = _diagnose_shadow_casters([native])
+    geometry = _diagnose_shadow_caster_geometry([native], casters, {'normalized':{}}, {})
+    assert geometry['solid_count'] == 1
+    assert geometry['positive_solid_count'] == 1
+    assert geometry['bottom_face_candidate_count'] == 1
 
 def test_unsupported_category_rejected():
     assert _diagnose_shadow_casters([NativeFamilyInstance(category_id=WALL_ID)])['rejected_count']==1

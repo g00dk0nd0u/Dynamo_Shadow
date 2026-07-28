@@ -1,12 +1,25 @@
 # Safe helpers and Revit-like type checks.
 import sys
-from shadow_revit_api import BuiltInCategory, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, Mesh
+from shadow_revit_api import BuiltInCategory, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, Mesh, Element, ElementId
 
 
 def _get_global(name, default=None):
     try:
         if name in globals():
             return globals().get(name, default)
+    except Exception:
+        pass
+    # Dynamo's loader executes script.py with a dedicated globals dictionary.
+    # Imported helper functions retain this module's globals, so inspect only
+    # caller global dictionaries for Dynamo-provided names such as UnwrapElement.
+    try:
+        frame = sys._getframe(1)
+        for _index in range(8):
+            if frame is None:
+                break
+            if name in frame.f_globals:
+                return frame.f_globals.get(name, default)
+            frame = frame.f_back
     except Exception:
         pass
     try:
@@ -35,10 +48,22 @@ def _fallback_in(index, default=None):
 def _is_native_revit_element_like(value):
     if value is None:
         return False
-    type_module = _safe_text(getattr(type(value), "__module__", "")) or ""
-    if type_module.startswith("Autodesk.Revit.DB"):
+    if _is_instance_of_optional(value, Element):
         return True
-    return hasattr(value, "Category") and hasattr(value, "Id") and not (hasattr(value, "InternalElement") or hasattr(value, "InternalElementId"))
+    value_type = type(value)
+    type_module = _safe_text(getattr(value_type, "__module__", "")) or ""
+    namespace = _safe_text(getattr(value_type, "Namespace", None)) or ""
+    try:
+        clr_type = value.GetType()
+        namespace = _safe_text(getattr(clr_type, "Namespace", None)) or namespace
+    except Exception:
+        pass
+    if type_module == "Autodesk.Revit.DB" or namespace == "Autodesk.Revit.DB":
+        return True
+    # Narrow fallback for non-Revit unit tests only. Wrapper-like objects are
+    # deliberately excluded even when they expose Category and Id properties.
+    wrapper_namespace = type_module.startswith(("Revit.Elements", "Dynamo."))
+    return Element is None and not wrapper_namespace and hasattr(value, "Category") and hasattr(value, "Id") and hasattr(value, "get_Geometry") and not (hasattr(value, "InternalElement") or hasattr(value, "InternalElementId"))
 
 def _document_manager_document():
     try:
@@ -59,44 +84,57 @@ def _try_document_get_element(element_id):
         return None
 
 def _try_unwrap_with_diagnostics(value):
-    diagnostics = {"wrapper_type": _type_name(value), "native_type": _type_name(value), "unwrap_strategy": "original", "unwrapped": False}
-    current = value
+    diagnostics = {"wrapper_type": _type_name(value), "wrapper_type_module": _type_module(value), "candidate_type": None, "candidate_type_module": None, "native_type": None, "native_type_module": None, "unwrap_strategy": "none", "unwrapped": False, "unwrap_attempts": [], "unwrap_failure_reasons": []}
+    def adopt(candidate, strategy):
+        diagnostics["unwrap_attempts"].append(strategy)
+        diagnostics["candidate_type"] = _type_name(candidate)
+        diagnostics["candidate_type_module"] = _type_module(candidate)
+        if candidate is None:
+            diagnostics["unwrap_failure_reasons"].append("{0}: candidate is None".format(strategy))
+            return None
+        if not _is_native_revit_element_like(candidate):
+            diagnostics["unwrap_failure_reasons"].append("{0}: candidate is not a native Autodesk.Revit.DB.Element".format(strategy))
+            return None
+        diagnostics["unwrap_strategy"] = strategy
+        diagnostics["unwrapped"] = candidate is not value
+        diagnostics["native_type"] = _type_name(candidate)
+        diagnostics["native_type_module"] = _type_module(candidate)
+        return candidate
+
+    native = adopt(value, "original_native_element")
+    if native is not None:
+        return native, diagnostics
+
     unwrap = _get_global("UnwrapElement", None)
+    unwrap_candidate = None
     if unwrap is not None:
         try:
-            candidate = unwrap(value)
-            if candidate is not None:
-                current = candidate
-                diagnostics["unwrap_strategy"] = "UnwrapElement"
-                diagnostics["unwrapped"] = current is not value
-                if _is_native_revit_element_like(current):
-                    diagnostics["native_type"] = _type_name(current)
-                    return current, diagnostics
-        except Exception:
-            diagnostics["unwrap_strategy"] = "UnwrapElement_failed"
-    if _is_native_revit_element_like(current):
-        diagnostics["native_type"] = _type_name(current)
-        return current, diagnostics
-    internal = _safe_attr(current, "InternalElement")
-    if internal is not None:
-        current = internal
-        diagnostics["unwrap_strategy"] = "InternalElement"
-        diagnostics["unwrapped"] = True
-        if _is_native_revit_element_like(current):
-            diagnostics["native_type"] = _type_name(current)
-            return current, diagnostics
-    internal_id = _safe_attr(value, "InternalElementId")
-    if internal_id is not None:
-        native = _try_document_get_element(internal_id)
-        if native is not None:
-            current = native
-            diagnostics["unwrap_strategy"] = "InternalElementId.CurrentDBDocument.GetElement"
-            diagnostics["unwrapped"] = True
-            if _is_native_revit_element_like(current):
-                diagnostics["native_type"] = _type_name(current)
-                return current, diagnostics
-    diagnostics["native_type"] = _type_name(current)
-    return current, diagnostics
+            unwrap_candidate = unwrap(value)
+            native = adopt(unwrap_candidate, "UnwrapElement")
+            if native is not None: return native, diagnostics
+        except Exception as exc:
+            diagnostics["unwrap_attempts"].append("UnwrapElement")
+            diagnostics["unwrap_failure_reasons"].append("UnwrapElement failed: {0}".format(_safe_text(exc)))
+    else:
+        diagnostics["unwrap_failure_reasons"].append("UnwrapElement is unavailable")
+
+    native = adopt(_safe_attr(value, "InternalElement"), "InternalElement")
+    if native is not None: return native, diagnostics
+    native = adopt(_safe_attr(unwrap_candidate, "InternalElement"), "UnwrapElement.InternalElement")
+    if native is not None: return native, diagnostics
+
+    for owner, strategy in ((value, "InternalElementId.CurrentDBDocument.GetElement"), (unwrap_candidate, "UnwrapElement.InternalElementId.CurrentDBDocument.GetElement")):
+        internal_id = _safe_attr(owner, "InternalElementId")
+        candidate = _try_document_get_element(internal_id) if internal_id is not None else None
+        native = adopt(candidate, strategy)
+        if native is not None: return native, diagnostics
+
+    for owner, label in ((value, "wrapper"), (unwrap_candidate, "unwrapped_candidate")):
+        readable_id = _safe_attr(owner, "Id")
+        if readable_id is not None:
+            native = adopt(_try_document_get_element(readable_id), "{0}.Id.CurrentDBDocument.GetElement".format(label))
+            if native is not None: return native, diagnostics
+    return None, diagnostics
 
 def _try_unwrap(value):
     unwrapped, _diagnostics = _try_unwrap_with_diagnostics(value)
@@ -170,7 +208,7 @@ def _safe_call(value, method_name, *args):
 def _revit_id_to_int(value):
     if value is None:
         return None
-    for attr in ("IntegerValue", "Value"):
+    for attr in ("Value", "IntegerValue"):
         raw = _safe_attr(value, attr)
         if raw is not None:
             try:
@@ -179,6 +217,18 @@ def _revit_id_to_int(value):
                 pass
     try:
         return int(value)
+    except Exception:
+        return None
+
+def _id_read_method(value):
+    if value is None:
+        return None
+    for attr in ("Value", "IntegerValue"):
+        if _safe_attr(value, attr) is not None:
+            return attr
+    try:
+        int(value)
+        return "int_conversion"
     except Exception:
         return None
 
@@ -250,6 +300,12 @@ def _type_name(value):
         return type(value).__name__
     except Exception:
         return "unknown"
+
+def _type_module(value):
+    try:
+        return _safe_text(getattr(type(value), "__module__", "")) or None
+    except Exception:
+        return None
 
 def _lookup_parameter_text(value, parameter_name):
     parameter, error = _safe_call(value, "LookupParameter", parameter_name)
@@ -392,7 +448,12 @@ def _collect_geometry_objects(element, max_depth=4):
                     warnings.append("GeometryInstance.GetInstanceGeometry unavailable: {0}".format(inst_error))
                 elif inst is not None:
                     add_many(inst, depth + 1, "geometry_instance_instance")
-                # SymbolGeometry is intentionally not traversed for projection-source geometry.
+                if inst_error or inst is None or not _safe_iter(inst):
+                    symbol, symbol_error = _safe_call(val, "GetSymbolGeometry")
+                    if symbol_error:
+                        warnings.append("GeometryInstance.GetSymbolGeometry fallback unavailable: {0}".format(symbol_error))
+                    elif symbol is not None:
+                        add_many(symbol, depth + 1, "geometry_instance_symbol")
             elif not (_is_solid_like(val) or _is_face_like(val) or _is_edge_like(val) or _is_curve_like(val) or _is_mesh_like(val)):
                 nested = _safe_iter(val)
                 if nested:

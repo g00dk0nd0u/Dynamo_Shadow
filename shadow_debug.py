@@ -102,7 +102,7 @@ def _summary_counts(section):
         if key in section:
             result[key] = _sanitize_for_debug(section.get(key))
     if "items" in section:
-        wanted = ["wrapper_type", "native_type", "unwrap_strategy", "element_id", "category_id", "official_revit_api_category", "accepted", "accepted_shadow_caster", "geometry_access_method", "geometry_readable", "geometry_instance_count", "solid_count", "positive_solid_count", "face_count", "edge_count", "bottom_face_candidate_count", "closed_footprint_loop_candidate_count", "warnings"]
+        wanted = ["wrapper_type", "wrapper_type_module", "candidate_type", "candidate_type_module", "native_type", "native_type_module", "unwrapped", "unwrap_strategy", "unwrap_attempts", "unwrap_failure_reasons", "element_id", "element_id_read_method", "category_id", "category_read_method", "category_id_raw_type", "official_revit_api_category", "accepted", "accepted_shadow_caster", "geometry_access_method", "geometry_readable", "geometry_instance_count", "solid_count", "positive_solid_count", "face_count", "edge_count", "bottom_face_candidate_count", "closed_footprint_loop_candidate_count", "warnings"]
         result["items"] = _sanitize_for_debug([{k: item.get(k) for k in wanted if k in item} for item in (section.get("items") or [])[:20]])
     for key in ("readiness", "summary", "totals", "warnings", "blockers_for_equal_time_shadow", "blockers_for_footprint_extraction", "blockers_for_measurement_plane"):
         if key in section:
