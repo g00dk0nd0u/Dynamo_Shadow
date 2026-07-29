@@ -97,6 +97,28 @@ def test_l_shape_convexity_is_winding_independent():
     assert forward["concave_vertex_count"] >= 1
 
 
+def test_polygon_with_more_concave_than_convex_vertices_uses_winding():
+    # Angle-ordered radial vertices form a simple polygon with four reflex
+    # vertices and three convex vertices. The old minority-sign heuristic
+    # incorrectly reported three concave vertices for this case.
+    polygon = [
+        {"x": 1.023, "y": 0.0},
+        {"x": 1.385, "y": 1.737},
+        {"x": -0.288, "y": 1.263},
+        {"x": -2.458, "y": 1.184},
+        {"x": -0.575, "y": -0.277},
+        {"x": -0.141, "y": -0.616},
+        {"x": 1.958, "y": -2.455},
+    ]
+    from shadow_footprint import _has_self_intersection
+
+    assert _has_self_intersection(polygon) is False
+    forward = _polygon_convexity_summary(polygon)
+    reverse = _polygon_convexity_summary(list(reversed(polygon)))
+    assert forward == {"is_convex": False, "concave_vertex_count": 4}
+    assert reverse == forward
+
+
 def test_debug_payload_adds_summary_without_geometry_or_private_fields():
     payload = _build_debug_log_payload({
         "success": True,

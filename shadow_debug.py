@@ -125,22 +125,35 @@ def _polygon_convexity_summary(points):
     except (KeyError, TypeError, ValueError, OverflowError):
         return {"is_convex": None, "concave_vertex_count": None}
 
-    signs = []
+    tolerance = 1e-12
+    signed_area = 0.0
+    for index in range(len(xy)):
+        current = xy[index]
+        following = xy[(index + 1) % len(xy)]
+        signed_area += current[0] * following[1] - following[0] * current[1]
+    signed_area *= 0.5
+    if abs(signed_area) <= tolerance:
+        return {"is_convex": None, "concave_vertex_count": None}
+
+    expected_sign = 1 if signed_area > 0.0 else -1
+    concave_vertex_count = 0
+    non_collinear_turn_count = 0
     for index in range(len(xy)):
         previous = xy[index - 1]
         current = xy[index]
         following = xy[(index + 1) % len(xy)]
         cross = ((current[0] - previous[0]) * (following[1] - current[1])
                  - (current[1] - previous[1]) * (following[0] - current[0]))
-        if abs(cross) > 1e-12:
-            signs.append(1 if cross > 0.0 else -1)
-    if not signs:
+        if abs(cross) <= tolerance:
+            continue
+        non_collinear_turn_count += 1
+        if cross * expected_sign < 0.0:
+            concave_vertex_count += 1
+    if non_collinear_turn_count == 0:
         return {"is_convex": None, "concave_vertex_count": None}
-    positive_count = signs.count(1)
-    negative_count = signs.count(-1)
     return {
-        "is_convex": not (positive_count and negative_count),
-        "concave_vertex_count": min(positive_count, negative_count),
+        "is_convex": concave_vertex_count == 0,
+        "concave_vertex_count": concave_vertex_count,
     }
 
 
