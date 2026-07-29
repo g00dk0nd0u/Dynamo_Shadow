@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-29-formal-footprint-debug-summary-v1"
+CODE_BUILD_ID = "2026-07-29-date-derived-solar-parameters-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -169,6 +169,15 @@ SUN_POSITION_POLICY = {
     "purpose": "diagnostic_solar_time_conversion_and_sun_position_table",
     "diagnostic_only": True,
     "supported_time_basis": ["true_solar_time", "japan_standard_time"],
+    "supported_solar_parameter_modes": ["explicit", "date_derived_noaa_v1"],
+    "date_derived_noaa_v1": {
+        "source": "NOAA General Solar Position Calculations",
+        "reference_hour_local_standard": 12.0,
+        "same_parameters_used_for_all_daily_slices": True,
+        "fractional_year_denominator": "365 or 366 for leap year",
+        "atmospheric_refraction_applied": False,
+        "permit_ready_certified": False,
+    },
     "requires_explicit_settings": ["time_basis", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes", "site_latitude_deg", "solar_declination_deg", "true_north_deg"],
     "true_solar_time_requires": SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR,
     "japan_standard_time_requires": SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD,
@@ -185,13 +194,15 @@ SUN_POSITION_POLICY = {
     "azimuth_convention": "degrees clockwise from true north: 0=N, 90=E, 180=S, 270=W",
     "true_north_convention": "true_north_deg is measured clockwise from model +Y to true north; 0 means model +Y is true north, 90 means model +X is true north, -90 means model -X is true north.",
     "atmospheric_refraction_applied": False,
-    "date_based_declination_calculated": False,
-    "date_based_equation_of_time_calculated": False,
+    "date_based_declination_calculated": True,
+    "date_based_equation_of_time_calculated": True,
     "permit_ready_certified": False,
     "not_implemented_in_this_pr": [
         "date-based winter solstice selection",
-        "date-based solar declination calculation",
-        "date-based equation-of-time calculation",
+        "automatic winter-solstice date selection",
+        "astronomical solstice instant calculation",
+        "permit-ready certification",
+        "atmospheric refraction",
         "Revit ProjectLocation true-north extraction",
         "formal shadow polygons",
         "Boolean union",

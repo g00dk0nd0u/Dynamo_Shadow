@@ -171,6 +171,23 @@ def _debug_float(value):
         return None
 
 
+def _solar_calculation_debug_summary(solar_calculation):
+    """Return an allowlisted summary without retaining the full slice table."""
+    solar = solar_calculation if isinstance(solar_calculation, dict) else {}
+    keys = [
+        "available", "complete", "solar_parameter_mode", "solar_parameter_source",
+        "calculation_date", "day_of_year", "days_in_year",
+        "parameter_reference_hour_local_standard", "equation_of_time_minutes",
+        "solar_declination_deg", "input_time_basis", "standard_meridian_deg",
+        "site_latitude_deg", "site_longitude_deg", "true_north_deg",
+        "longitude_correction_minutes", "equation_of_time_applied",
+        "longitude_correction_applied", "slice_count",
+        "date_based_declination_calculated", "date_based_equation_of_time_calculated",
+        "permit_ready_certified", "blockers", "warnings",
+    ]
+    return _sanitize_for_debug({key: solar.get(key) for key in keys})
+
+
 def _formal_footprint_debug_summary(footprint_extraction):
     """Return an allowlisted, coordinate-free formal-footprint summary."""
     extraction = footprint_extraction if isinstance(footprint_extraction, dict) else {}
@@ -300,6 +317,7 @@ def _summarize_out_for_debug(out_payload):
         "shadow_caster_geometry_summary": _summary_counts(out_payload.get("shadow_caster_geometry")),
         "footprint_extraction_summary": _summary_counts(out_payload.get("footprint_extraction")),
         "formal_footprint_summary": _formal_footprint_debug_summary(out_payload.get("footprint_extraction")),
+        "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
         "unit_conversion_summary": _unit_conversion_summary(out_payload),
         "runtime_code_diagnostics": _runtime_code_summary(out_payload),
@@ -330,6 +348,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "shadow_caster_geometry_summary": summary["shadow_caster_geometry_summary"],
         "footprint_extraction_summary": summary["footprint_extraction_summary"],
         "formal_footprint_summary": summary["formal_footprint_summary"],
+        "solar_calculation_summary": summary["solar_calculation_summary"],
         "pipeline_readiness": summary["pipeline_readiness"],
         "unit_conversion_summary": summary["unit_conversion_summary"],
         "runtime_code_diagnostics": summary["runtime_code_diagnostics"],

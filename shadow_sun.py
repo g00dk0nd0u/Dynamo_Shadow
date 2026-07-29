@@ -1,9 +1,12 @@
 # Diagnostic-only solar-time conversion and sun position table.
 import math
+import calendar
+from datetime import date
 
 from shadow_policies import LEGAL_CONSTANTS, SUN_POSITION_POLICY
 
 VALID_TIME_BASES = ("true_solar_time", "japan_standard_time")
+VALID_SOLAR_PARAMETER_MODES = ("explicit", "date_derived_noaa_v1")
 TRUE_NORTH_CONVENTION = "true_north_deg is measured clockwise from the model +Y axis to true north; model_azimuth_deg=(true_north_azimuth_deg+true_north_deg)%360."
 
 
@@ -47,6 +50,53 @@ def _round(value, digits=6):
     if value is None:
         return None
     return round(value, digits)
+
+
+def _derive_noaa_daily_solar_parameters(calculation_date):
+    """Derive one reproducible daily parameter pair at local-standard noon."""
+    blockers = []
+    parsed = None
+    try:
+        text = str(calculation_date).strip()
+        if len(text) != 10 or text[4] != "-" or text[7] != "-":
+            raise ValueError("expected YYYY-MM-DD")
+        parsed = date(int(text[0:4]), int(text[5:7]), int(text[8:10]))
+        if parsed.isoformat() != text:
+            raise ValueError("expected zero-padded YYYY-MM-DD")
+    except Exception:
+        blockers.append("settings.calculation_date must be a valid YYYY-MM-DD date.")
+    result = {
+        "available": parsed is not None,
+        "source": "noaa_general_solar_position_calculations_v1",
+        "calculation_date": parsed.isoformat() if parsed else None,
+        "day_of_year": parsed.timetuple().tm_yday if parsed else None,
+        "days_in_year": (366 if calendar.isleap(parsed.year) else 365) if parsed else None,
+        "reference_hour_local_standard": 12.0,
+        "fractional_year_rad": None,
+        "solar_declination_deg": None,
+        "equation_of_time_minutes": None,
+        "blockers": blockers,
+        "warnings": [],
+    }
+    if not parsed:
+        return result
+    gamma = (2.0 * math.pi / result["days_in_year"] *
+             (result["day_of_year"] - 1 +
+              (result["reference_hour_local_standard"] - 12.0) / 24.0))
+    equation = 229.18 * (0.000075 + 0.001868 * math.cos(gamma)
+                         - 0.032077 * math.sin(gamma)
+                         - 0.014615 * math.cos(2.0 * gamma)
+                         - 0.040849 * math.sin(2.0 * gamma))
+    declination = (0.006918 - 0.399912 * math.cos(gamma)
+                   + 0.070257 * math.sin(gamma)
+                   - 0.006758 * math.cos(2.0 * gamma)
+                   + 0.000907 * math.sin(2.0 * gamma)
+                   - 0.002697 * math.cos(3.0 * gamma)
+                   + 0.001480 * math.sin(3.0 * gamma))
+    result.update({"fractional_year_rad": gamma,
+                   "solar_declination_deg": math.degrees(declination),
+                   "equation_of_time_minutes": equation})
+    return result
 
 
 def _normalize_minutes_with_day_offset(minutes):
@@ -161,17 +211,31 @@ def _build_solar_calculation_v1(settings_normalized):
     if time_basis not in VALID_TIME_BASES:
         blockers.append("settings.time_basis is required and must be one of: true_solar_time, japan_standard_time.")
     latitude_deg = normalized.get("site_latitude_deg")
+    requested_mode = normalized.get("solar_parameter_mode")
+    mode_inferred = requested_mode is None
+    parameter_mode = requested_mode or "explicit"
+    if parameter_mode not in VALID_SOLAR_PARAMETER_MODES:
+        blockers.append("settings.solar_parameter_mode must be one of: explicit, date_derived_noaa_v1.")
     declination_deg = normalized.get("solar_declination_deg")
     true_north_deg = normalized.get("true_north_deg")
     standard_meridian_deg = normalized.get("standard_meridian_deg")
     site_longitude_deg = normalized.get("site_longitude_deg")
     equation = normalized.get("equation_of_time_minutes")
+    derived = None
+    if parameter_mode == "date_derived_noaa_v1":
+        if declination_deg is not None or equation is not None:
+            blockers.append("explicit solar parameters must not be supplied when solar_parameter_mode is date_derived_noaa_v1")
+        derived = _derive_noaa_daily_solar_parameters(normalized.get("calculation_date"))
+        blockers.extend(derived["blockers"])
+        if derived["available"]:
+            declination_deg = derived["solar_declination_deg"]
+            equation = derived["equation_of_time_minutes"]
     if latitude_deg is None: blockers.append("settings.site_latitude_deg is required.")
-    if declination_deg is None: blockers.append("settings.solar_declination_deg is required; date-based calculation is not implemented.")
+    if parameter_mode == "explicit" and declination_deg is None: blockers.append("settings.solar_declination_deg is required when solar_parameter_mode is explicit.")
     if true_north_deg is None: blockers.append("settings.true_north_deg is required.")
     if time_basis == "japan_standard_time":
         if site_longitude_deg is None: blockers.append("settings.site_longitude_deg is required when settings.time_basis is japan_standard_time.")
-        if equation is None: blockers.append("settings.equation_of_time_minutes is required when settings.time_basis is japan_standard_time.")
+        if parameter_mode == "explicit" and equation is None: blockers.append("settings.equation_of_time_minutes is required when settings.time_basis is japan_standard_time and solar_parameter_mode is explicit.")
     start_key = "analysis_start_time"
     end_key = "analysis_end_time"
     start_text = normalized.get(start_key)
@@ -209,7 +273,15 @@ def _build_solar_calculation_v1(settings_normalized):
     return {
         "available": available,
         "complete": available,
-        "calculation_mode": "explicit_declination_and_equation_of_time_v1",
+        "calculation_mode": "date_derived_noaa_v1" if parameter_mode == "date_derived_noaa_v1" else "explicit_declination_and_equation_of_time_v1",
+        "solar_parameter_mode": parameter_mode,
+        "solar_parameter_mode_inferred_for_backward_compatibility": mode_inferred,
+        "solar_parameter_source": derived["source"] if derived and derived["available"] else "explicit_settings",
+        "calculation_date": derived["calculation_date"] if derived else normalized.get("calculation_date"),
+        "day_of_year": derived["day_of_year"] if derived else None,
+        "days_in_year": derived["days_in_year"] if derived else None,
+        "parameter_reference_hour_local_standard": derived["reference_hour_local_standard"] if derived else None,
+        "fractional_year_rad": derived["fractional_year_rad"] if derived else None,
         "input_time_basis": time_basis,
         "output_time_basis": "true_solar_time",
         "standard_meridian_deg": standard_meridian_deg,
@@ -229,8 +301,8 @@ def _build_solar_calculation_v1(settings_normalized):
         "blockers": blockers,
         "warnings": warnings,
         "atmospheric_refraction_applied": False,
-        "date_based_declination_calculated": False,
-        "date_based_equation_of_time_calculated": False,
+        "date_based_declination_calculated": bool(derived and derived["available"]),
+        "date_based_equation_of_time_calculated": bool(derived and derived["available"]),
         "permit_ready_certified": False,
     }
 
