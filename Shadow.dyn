@@ -13,8 +13,7 @@
       "Type": "selection",
       "Type2": "hostSelection",
       "Value": "",
-      "Description": "Select multiple elements from the Revit document.",
-      "SelectedIndex": 0
+      "Description": "Revit ドキュメントから複数の要素を選択します。"
     },
     {
       "Id": "3daad2f0de954b2a971f92fd9f671601",
@@ -22,7 +21,7 @@
       "Type": "selection",
       "Type2": "dropdownSelection",
       "Value": "1FL",
-      "Description": "Select a level in the active document",
+      "Description": "アクティブなドキュメントでレベルを選択",
       "SelectedIndex": 0
     },
     {
@@ -30,9 +29,8 @@
       "Name": "Select Model Element",
       "Type": "selection",
       "Type2": "hostSelection",
-      "Value": "bab2fa04-1569-4986-851b-9e0255650363-0060d07e",
-      "Description": "Select a model element from the document.",
-      "SelectedIndex": 0
+      "Value": "bb22dfe1-e330-43c5-8837-ba31a4d21c8b-00650c73",
+      "Description": "ドキュメントからモデル要素を選択します。"
     },
     {
       "Id": "f688e0f729b946d0b8ac25514f4531da",
@@ -40,8 +38,7 @@
       "Type": "string",
       "Type2": "string",
       "Value": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671,\r\n  \"site_latitude_deg\": 35.6812,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"true_solar_start_time\": \"08:00\",\r\n  \"true_solar_end_time\": \"16:00\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\"\r\n}",
-      "Description": "Creates a string",
-      "SelectedIndex": 0
+      "Description": "文字列を作成します。"
     }
   ],
   "Outputs": [
@@ -50,7 +47,7 @@
       "Name": "Watch",
       "Type": "unknown",
       "InitialValue": "",
-      "Description": "Visualizes a node's output"
+      "Description": "ノードの出力を可視化"
     }
   ],
   "Nodes": [
@@ -58,7 +55,6 @@
       "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
       "Code": "# Dynamo Python Node / CPython3\n# Emergency checkpoint bootstrap for node-level crash diagnosis.\n\nimport os\n\nLOADER_NAME = \"dynamo_loader.py\"\nNODE_BUILD_ID = \"2026-07-28-python-node-checkpoint-v1\"\n_CHECKPOINT_RELATIVE_PATH = \"debug_logs/runtime_checkpoint.txt\"\ncheckpoint_path = None\nlast_checkpoint = None\n_pending_checkpoints = []\n\n\ndef _safe_checkpoint_text(value):\n    try:\n        text = str(value)\n    except BaseException:\n        text = \"<unavailable>\"\n    text = text.replace(\"\\r\", \" \").replace(\"\\n\", \" \")\n    return text[:160]\n\n\ndef checkpoint(stage, detail=None, reset=False):\n    global last_checkpoint\n    try:\n        safe_stage = _safe_checkpoint_text(stage)\n        safe_detail = None if detail is None else _safe_checkpoint_text(detail)\n        last_checkpoint = safe_stage\n        if checkpoint_path is None:\n            _pending_checkpoints.append((safe_stage, safe_detail, reset))\n            return\n        mode = \"w\" if reset else \"a\"\n        with open(checkpoint_path, mode, encoding=\"utf-8\") as stream:\n            line = safe_stage\n            if safe_detail is not None:\n                line += \" | \" + safe_detail\n            stream.write(line + \"\\n\")\n            stream.flush()\n            os.fsync(stream.fileno())\n    except BaseException:\n        pass\n\n\ndef _flush_pending_checkpoints():\n    global _pending_checkpoints\n    try:\n        pending = list(_pending_checkpoints)\n        _pending_checkpoints = []\n        for stage, detail, reset in pending:\n            checkpoint(stage, detail, reset)\n    except BaseException:\n        pass\n\n\ndef _safe_error_text(exc):\n    try:\n        return _safe_checkpoint_text(exc)\n    except BaseException:\n        return \"<unavailable>\"\n\n\ncheckpoint(\"NODE_ENTER\", reset=True)\ncheckpoint(\"WORKSPACE_RESOLVE_BEFORE\")\n\ntry:\n    import clr\n    clr.AddReference(\"DynamoServices\")\n    from Dynamo.Applications import DynamoRevit\n\n    try:\n        workspace_file = DynamoRevit.RevitDynamoModel.CurrentWorkspace.FileName\n    except BaseException:\n        workspace_file = None\n    workspace_dir = os.path.dirname(workspace_file) if workspace_file else None\n    if workspace_dir:\n        checkpoint_path = os.path.join(workspace_dir, _CHECKPOINT_RELATIVE_PATH)\n        try:\n            os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)\n        except BaseException:\n            pass\n    _flush_pending_checkpoints()\n    checkpoint(\"WORKSPACE_RESOLVE_AFTER\", \"ok\" if workspace_dir else \"none\")\n    checkpoint(\"NODE_BUILD_ID\", NODE_BUILD_ID)\n    checkpoint(\"CHECKPOINT_FILE_READY\", \"ok\" if checkpoint_path else \"none\")\n\n    checkpoint(\"LOADER_PATH_CHECK_BEFORE\")\n    loader_path = os.path.join(workspace_dir, LOADER_NAME) if workspace_dir else None\n    loader_ready = bool(loader_path and os.path.isfile(loader_path))\n    checkpoint(\"LOADER_PATH_CHECK_AFTER\", \"ok\" if loader_ready else \"failure\")\n\n    if not loader_ready:\n        final_out = {\n            \"success\": False,\n            \"error_code\": \"python_node_bootstrap_failure\",\n            \"error_type\": \"FileNotFoundError\",\n            \"error\": \"dynamo_loader.py not found in the same folder as the .dyn file.\",\n            \"last_checkpoint\": last_checkpoint,\n            \"runtime_checkpoint_file\": _CHECKPOINT_RELATIVE_PATH,\n        }\n    else:\n        checkpoint(\"LOADER_READ_BEFORE\")\n        with open(loader_path, \"r\", encoding=\"utf-8-sig\") as stream:\n            loader_code = stream.read()\n        checkpoint(\"LOADER_READ_AFTER\", \"ok\")\n\n        checkpoint(\"LOADER_COMPILE_BEFORE\")\n        compiled_loader = compile(loader_code, loader_path, \"exec\")\n        checkpoint(\"LOADER_COMPILE_AFTER\", \"ok\")\n        loader_globals = {\n            \"__file__\": loader_path,\n            \"__name__\": \"__dynamo_loader__\",\n            \"IN\": IN,\n            \"OUT\": None,\n            \"WORKSPACE_FILE\": workspace_file,\n            \"WORKSPACE_DIR\": workspace_dir,\n            \"LOADER_PATH\": loader_path,\n            \"RUNTIME_CHECKPOINT\": checkpoint,\n        }\n        try:\n            loader_globals[\"UnwrapElement\"] = UnwrapElement\n        except BaseException:\n            pass\n\n        checkpoint(\"LOADER_EXEC_BEFORE\")\n        exec(compiled_loader, loader_globals)\n        checkpoint(\"LOADER_EXEC_AFTER\", \"ok\")\n        checkpoint(\"LOADER_OUT_READ_BEFORE\")\n        final_out = loader_globals.get(\"OUT\", None)\n        checkpoint(\"LOADER_OUT_READ_AFTER\", \"none\" if final_out is None else (\"dict\" if isinstance(final_out, dict) else \"ok\"))\n\nexcept BaseException as exc:\n    checkpoint(\"NODE_EXCEPTION\", type(exc).__name__)\n    final_out = {\n        \"success\": False,\n        \"error_code\": \"python_node_bootstrap_failure\",\n        \"error_type\": type(exc).__name__,\n        \"error\": _safe_error_text(exc),\n        \"last_checkpoint\": last_checkpoint,\n        \"runtime_checkpoint_file\": _CHECKPOINT_RELATIVE_PATH,\n    }\n\ncheckpoint(\"NODE_OUT_ASSIGN_BEFORE\")\nOUT = final_out\ncheckpoint(\"NODE_RETURN_READY\")\n",
       "Engine": "CPython3",
-      "EngineName": "CPython3",
       "VariableInputPorts": true,
       "Id": "ea8bb68cb9d54950a6aead55fe300741",
       "NodeType": "PythonScriptNode",
@@ -112,12 +108,12 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Runs an embedded Python script."
+      "Description": "埋め込み Python スクリプトを実行します。"
     },
     {
       "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
-      "WatchWidth": 49.777777777777779,
-      "WatchHeight": 38.222222222222221,
+      "WatchWidth": 49.77777777777778,
+      "WatchHeight": 38.22222222222222,
       "Id": "9ae7238e884c43319c3ae62f6db853ca",
       "NodeType": "ExtensionNode",
       "Inputs": [
@@ -143,7 +139,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Visualizes a node's output"
+      "Description": "ノードの出力を可視化"
     },
     {
       "ConcreteType": "Dynamo.Nodes.DSModelElementsSelection, DSRevitNodesUI",
@@ -163,7 +159,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select multiple elements from the Revit document."
+      "Description": "Revit ドキュメントから複数の要素を選択します。"
     },
     {
       "ConcreteType": "DSRevitNodesUI.Levels, DSRevitNodesUI",
@@ -184,13 +180,13 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select a level in the active document"
+      "Description": "アクティブなドキュメントでレベルを選択"
     },
     {
       "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
       "NodeType": "ExtensionNode",
       "InstanceId": [
-        "bab2fa04-1569-4986-851b-9e0255650363-0060d07e"
+        "bb22dfe1-e330-43c5-8837-ba31a4d21c8b-00650c73"
       ],
       "Id": "af2519f73dff436c8aba2f16c3788bf3",
       "Inputs": [],
@@ -206,7 +202,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select a model element from the document."
+      "Description": "ドキュメントからモデル要素を選択します。"
     },
     {
       "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
@@ -225,7 +221,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Creates a string",
+      "Description": "文字列を作成します。",
       "InputValue": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671,\r\n  \"site_latitude_deg\": 35.6812,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"true_solar_start_time\": \"08:00\",\r\n  \"true_solar_end_time\": \"16:00\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\"\r\n}"
     }
   ],
@@ -263,6 +259,7 @@
   ],
   "Dependencies": [],
   "NodeLibraryDependencies": [],
+  "EnableLegacyPolyCurveBehavior": true,
   "Thumbnail": "",
   "GraphDocumentationURL": null,
   "ExtensionWorkspaceData": [
@@ -281,7 +278,7 @@
   ],
   "Author": "",
   "Linting": {
-    "activeLinter": "None",
+    "activeLinter": "なし",
     "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
     "warningCount": 0,
     "errorCount": 0
@@ -292,12 +289,12 @@
       "ScaleFactor": 1.0,
       "HasRunWithoutCrash": true,
       "IsVisibleInDynamoLibrary": true,
-      "Version": "2.19.3.6394",
+      "Version": "3.3.0.6316",
       "RunType": "Manual",
       "RunPeriod": "1000"
     },
     "Camera": {
-      "Name": "_Background Preview",
+      "Name": "背景プレビュー(_B)",
       "EyeX": -17.0,
       "EyeY": 24.0,
       "EyeZ": 50.0,
@@ -317,7 +314,7 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": 409.71774486337313,
+        "X": 409.7177448633731,
         "Y": 253.6228118487943
       },
       {
@@ -328,7 +325,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": 884.1897989600634,
-        "Y": 349.55027993568979
+        "Y": 349.5502799356898
       },
       {
         "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
@@ -358,7 +355,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -258.004212107366,
-        "Y": 147.25752257839571
+        "Y": 147.2575225783957
       },
       {
         "Id": "f688e0f729b946d0b8ac25514f4531da",
@@ -368,12 +365,12 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -278.49552496288686,
-        "Y": 618.18118108754072
+        "Y": 618.1811810875407
       }
     ],
     "Annotations": [],
-    "X": 485.41490452476592,
+    "X": 485.4149045247659,
     "Y": 207.19987142805599,
-    "Zoom": 0.65617659303023324
+    "Zoom": 0.6561765930302332
   }
 }

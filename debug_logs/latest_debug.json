@@ -2,14 +2,11 @@
   "debug_schema_version": "v1",
   "error_summary": null,
   "footprint_extraction_summary": {
-    "closed_loop_candidate_count": 0,
+    "closed_loop_candidate_count": 1,
     "count": 1,
-    "provided": false,
+    "provided": true,
     "readiness": {
-      "blockers_for_future_footprint_polygon_generation": [
-        "No accepted shadow caster proxy elements are available.",
-        "No closed footprint loop candidate was verified by raw endpoint comparison."
-      ],
+      "blockers_for_future_footprint_polygon_generation": [],
       "blockers_for_future_legal_judgement_masks": [
         "site boundary loop extraction is not implemented",
         "own-site exclusion mask is not implemented",
@@ -17,14 +14,11 @@
         "ordinance profile / beyond-5m legal range are not implemented",
         "site_boundary is missing or not usable; future legal judgement masks are blocked, but footprint diagnostics continue."
       ],
-      "blockers_for_future_shadow_projection": [
-        "No accepted shadow caster proxy elements are available.",
-        "No closed footprint loop candidate was verified by raw endpoint comparison."
-      ],
+      "blockers_for_future_shadow_projection": [],
       "footprint_diagnostics_ready": true,
-      "ready_for_future_footprint_polygon_generation": false,
+      "ready_for_future_footprint_polygon_generation": true,
       "ready_for_future_legal_judgement_masks": false,
-      "ready_for_future_shadow_projection": false
+      "ready_for_future_shadow_projection": true
     },
     "warnings": []
   },
@@ -37,6 +31,7 @@
       "provided": true,
       "sample": [
         {
+          "element_id": 6622323,
           "is_none": false,
           "type": "FamilyInstance"
         }
@@ -53,6 +48,7 @@
       "provided": true,
       "sample": [
         {
+          "element_id": 1492,
           "is_none": false,
           "type": "Level"
         }
@@ -69,13 +65,13 @@
       "provided": true,
       "sample": [
         {
-          "is_none": true,
-          "type": "NoneType",
-          "value": null
+          "is_none": false,
+          "type": "str",
+          "value": "{ \"profile\": \"standard_8_16\", \"average_ground_level_elevation_m\": 0.0, \"measurement_height_m\": 4.0, \"latitude\": 35.6812, \"longitude\": 139.7671..."
         }
       ],
       "sample_limit": 5,
-      "sample_type": "NoneType",
+      "sample_type": "str",
       "truncated_count": 0,
       "type": "str"
     },
@@ -140,25 +136,13 @@
   },
   "pipeline_readiness": {
     "blockers_for_boundary_dependent_steps": [
-      "Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.",
       "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
     ],
-    "blockers_for_equal_time_shadow": [
-      "No accepted shadow caster proxy elements are available."
-    ],
-    "blockers_for_footprint_extraction": [
-      "No accepted shadow caster proxy elements are available.",
-      "No closed footprint loop candidate was verified by raw endpoint comparison."
-    ],
-    "blockers_for_future_footprint_polygon_generation": [
-      "No accepted shadow caster proxy elements are available.",
-      "No closed footprint loop candidate was verified by raw endpoint comparison."
-    ],
+    "blockers_for_equal_time_shadow": [],
+    "blockers_for_footprint_extraction": [],
+    "blockers_for_future_footprint_polygon_generation": [],
     "blockers_for_future_projection_context": [],
-    "blockers_for_future_shadow_projection": [
-      "No accepted shadow caster proxy elements are available.",
-      "No closed footprint loop candidate was verified by raw endpoint comparison."
-    ],
+    "blockers_for_future_shadow_projection": [],
     "blockers_for_legal_judgement_masks": [
       "legal judgement masks not implemented",
       "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
@@ -166,13 +150,13 @@
     ],
     "blockers_for_measurement_plane": [],
     "boundary_dependent_steps_ready": false,
-    "equal_time_shadow_calculation_ready": false,
+    "equal_time_shadow_calculation_ready": true,
     "footprint_diagnostics_ready": true,
-    "footprint_extraction_ready": false,
-    "footprint_loop_candidates_ready": false,
-    "future_footprint_polygon_generation_ready": false,
+    "footprint_extraction_ready": true,
+    "footprint_loop_candidates_ready": true,
+    "future_footprint_polygon_generation_ready": true,
     "future_projection_context_ready": true,
-    "future_shadow_projection_ready": false,
+    "future_shadow_projection_ready": true,
     "info": [
       "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generat..."
     ],
@@ -194,14 +178,14 @@
     ],
     "settings_ready_for_equal_time_shadow": true,
     "shadow_caster_geometry_ready": true,
-    "shadow_caster_ready": false,
+    "shadow_caster_ready": true,
     "site_boundary_ready_for_boundary_dependent_steps": false,
     "site_boundary_required_for_equal_time_shadow": false
   },
   "runtime_code_diagnostics": {
     "all_local_modules_from_workspace": true,
-    "cached_module_count_removed": 13,
-    "code_build_id": "2026-07-28-module-isolation-v1",
+    "cached_module_count_removed": 0,
+    "code_build_id": "2026-07-28-reflection-disabled-by-default-v1",
     "import_caches_invalidated": true,
     "loader_bootstrap_received": true,
     "loader_build_id": "2026-07-28-loader-module-isolation-v1",
@@ -285,21 +269,7 @@
         "module_name": "shadow_utils"
       }
     ],
-    "removed_cached_modules": [
-      "shadow_debug",
-      "shadow_footprint",
-      "shadow_geometry",
-      "shadow_inputs",
-      "shadow_measurement_plane",
-      "shadow_policies",
-      "shadow_projection",
-      "shadow_readiness",
-      "shadow_revit_api",
-      "shadow_settings",
-      "shadow_sun",
-      "shadow_units",
-      "shadow_utils"
-    ],
+    "removed_cached_modules": [],
     "script_directory_at_sys_path_zero": true,
     "script_directory_resolved": true,
     "workspace_inserted_at_sys_path_zero": true,
@@ -361,73 +331,269 @@
     "warnings": []
   },
   "shadow_caster_geometry_summary": {
-    "bottom_face_candidate_count": 0,
-    "closed_footprint_loop_candidate_count": 0,
+    "bottom_face_candidate_count": 1,
+    "closed_footprint_loop_candidate_count": 1,
     "count": 1,
-    "edge_count": 0,
-    "face_count": 0,
-    "footprint_loop_candidate_count": 0,
-    "geometry_readable_caster_count": 0,
+    "edge_count": 24,
+    "face_count": 10,
+    "footprint_loop_candidate_count": 1,
+    "geometry_readable_caster_count": 1,
     "items": [
       {
-        "accepted_shadow_caster": false,
-        "bottom_face_candidate_count": 0,
-        "closed_footprint_loop_candidate_count": 0,
-        "edge_count": 0,
-        "element_id": null,
-        "face_count": 0,
-        "geometry_access_method": null,
-        "geometry_instance_count": 0,
-        "geometry_readable": false,
-        "positive_solid_count": 0,
-        "solid_count": 0,
+        "accepted_shadow_caster": true,
+        "bottom_face_candidate_count": 1,
+        "closed_footprint_loop_candidate_count": 1,
+        "edge_count": 24,
+        "element_id": 6622323,
+        "face_count": 10,
+        "geometry_access_method": "Options",
+        "geometry_instance_count": 1,
+        "geometry_probe_attempted": true,
+        "geometry_readable": true,
+        "positive_solid_count": 1,
+        "solid_count": 1,
         "warnings": [
-          "shadow caster category is not accepted; geometry diagnostics skipped for this item."
+          "zero/unknown-volume Solid was retained as a geometry object but excluded from formal Solid and face counts."
         ]
       }
     ],
     "mesh_count": 0,
-    "positive_solid_count": 0,
+    "positive_solid_count": 1,
     "provided": true,
     "readiness": {
-      "blockers_for_future_footprint_extraction": [
-        "No accepted shadow caster proxy elements are available.",
-        "No bottom face candidate was found.",
-        "No edge loop candidate was found from bottom face candidates.",
-        "No closed footprint loop candidate was verified."
-      ],
-      "blockers_for_future_shadow_projection": [
-        "No accepted shadow caster proxy elements are available.",
-        "No bottom face candidate was found.",
-        "No edge loop candidate was found from bottom face candidates.",
-        "No closed footprint loop candidate was verified."
-      ],
+      "blockers_for_future_footprint_extraction": [],
+      "blockers_for_future_shadow_projection": [],
       "geometry_diagnostics_ready": true,
-      "ready_for_future_footprint_extraction": false,
-      "ready_for_future_footprint_polygon_generation": false,
-      "ready_for_future_shadow_projection": false
+      "ready_for_future_footprint_extraction": true,
+      "ready_for_future_footprint_polygon_generation": true,
+      "ready_for_future_shadow_projection": true
     },
-    "solid_count": 0,
+    "solid_count": 1,
     "warnings": [
-      "shadow caster category is not accepted; geometry diagnostics skipped for this item."
+      "zero/unknown-volume Solid was retained as a geometry object but excluded from formal Solid and face counts."
     ]
   },
   "shadow_caster_summary": {
-    "accepted_count": 0,
+    "accepted_count": 1,
     "count": 1,
     "items": [
       {
-        "accepted": false,
+        "accepted": true,
+        "candidate_probes": [
+          {
+            "candidate_type": "FamilyInstance",
+            "candidate_type_module": "Revit.Elements",
+            "candidate_usable": false,
+            "category_diagnostics": null,
+            "category_readable": false,
+            "element_id_diagnostics": null,
+            "element_id_readable": false,
+            "is_native_revit_element": false,
+            "is_valid_object": null,
+            "is_valid_object_read_method": null,
+            "is_valid_object_status": "not_checked_non_native",
+            "property_access_diagnostics": {},
+            "strategy": "original_native_element"
+          },
+          {
+            "candidate_type": "FamilyInstance",
+            "candidate_type_module": "Autodesk.Revit.DB",
+            "candidate_usable": true,
+            "category_diagnostics": {
+              "category_available": true,
+              "category_error": null,
+              "category_error_type": null,
+              "category_fallback_attempts": [],
+              "category_object_module": "Autodesk.Revit.DB",
+              "category_object_type": "Category",
+              "category_property_read_method": "direct_getattr",
+              "category_source": "element.Category",
+              "property_diagnostics": {
+                "Category": {
+                  "direct_getattr_attempted": "<max_depth_reached>",
+                  "direct_getattr_succeeded": "<max_depth_reached>",
+                  "direct_value_callable": "<max_depth_reached>",
+                  "direct_value_type": "<max_depth_reached>",
+                  "direct_value_type_module": "<max_depth_reached>",
+                  "error": "<max_depth_reached>",
+                  "error_type": "<max_depth_reached>",
+                  "property_name": "<max_depth_reached>",
+                  "read_method": "<max_depth_reached>",
+                  "reflection_attempted": "<max_depth_reached>",
+                  "reflection_enabled_by_policy": "<max_depth_reached>",
+                  "reflection_property_found": "<max_depth_reached>",
+                  "reflection_skipped_reason": "<max_depth_reached>",
+                  "reflection_succeeded": "<max_depth_reached>"
+                }
+              }
+            },
+            "category_readable": true,
+            "element_id_diagnostics": {
+              "element_id": 6622323,
+              "element_id_available": true,
+              "element_id_error": null,
+              "element_id_error_type": null,
+              "element_id_object_module": "Autodesk.Revit.DB",
+              "element_id_object_type": "ElementId",
+              "element_id_property_read_method": "direct_getattr",
+              "element_id_value_read_method": "Value",
+              "property_diagnostics": {
+                "direct_getattr_attempted": true,
+                "direct_getattr_succeeded": true,
+                "direct_value_callable": true,
+                "direct_value_type": "ElementId",
+                "direct_value_type_module": "Autodesk.Revit.DB",
+                "error": null,
+                "error_type": null,
+                "property_name": "Id",
+                "read_method": "direct_getattr",
+                "reflection_attempted": false,
+                "reflection_enabled_by_policy": false,
+                "reflection_property_found": false,
+                "reflection_skipped_reason": null,
+                "reflection_succeeded": false
+              }
+            },
+            "element_id_readable": true,
+            "is_native_revit_element": true,
+            "is_valid_object": true,
+            "is_valid_object_read_method": "direct_getattr",
+            "is_valid_object_status": "true",
+            "property_access_diagnostics": {
+              "Category": {
+                "direct_getattr_attempted": true,
+                "direct_getattr_succeeded": true,
+                "direct_value_callable": true,
+                "direct_value_type": "Category",
+                "direct_value_type_module": "Autodesk.Revit.DB",
+                "error": null,
+                "error_type": null,
+                "property_name": "Category",
+                "read_method": "direct_getattr",
+                "reflection_attempted": false,
+                "reflection_enabled_by_policy": false,
+                "reflection_property_found": false,
+                "reflection_skipped_reason": null,
+                "reflection_succeeded": false
+              },
+              "Id": {
+                "direct_getattr_attempted": true,
+                "direct_getattr_succeeded": true,
+                "direct_value_callable": true,
+                "direct_value_type": "ElementId",
+                "direct_value_type_module": "Autodesk.Revit.DB",
+                "error": null,
+                "error_type": null,
+                "property_name": "Id",
+                "read_method": "direct_getattr",
+                "reflection_attempted": false,
+                "reflection_enabled_by_policy": false,
+                "reflection_property_found": false,
+                "reflection_skipped_reason": null,
+                "reflection_succeeded": false
+              },
+              "IsValidObject": {
+                "direct_getattr_attempted": true,
+                "direct_getattr_succeeded": true,
+                "direct_value_callable": false,
+                "direct_value_type": "bool",
+                "direct_value_type_module": "builtins",
+                "error": null,
+                "error_type": null,
+                "property_name": "IsValidObject",
+                "read_method": "direct_getattr",
+                "reflection_attempted": false,
+                "reflection_enabled_by_policy": false,
+                "reflection_property_found": false,
+                "reflection_skipped_reason": null,
+                "reflection_succeeded": false
+              },
+              "Symbol": null
+            },
+            "strategy": "UnwrapElement"
+          }
+        ],
         "candidate_type": "FamilyInstance",
         "candidate_type_module": "Autodesk.Revit.DB",
-        "category_id": null,
-        "category_id_raw_type": null,
-        "category_read_method": "none",
-        "element_id": null,
-        "element_id_read_method": null,
+        "category_access_error": null,
+        "category_access_error_type": null,
+        "category_available": true,
+        "category_id": -2000151,
+        "category_id_raw_type": "ElementId",
+        "category_id_read_method": "Value",
+        "category_name_read_method": "direct_getattr",
+        "category_object_type": "Category",
+        "category_property_read_method": "direct_getattr",
+        "category_read_method": "built_in_category",
+        "category_source": "element.Category",
+        "document_reacquire_attempted": false,
+        "document_reacquire_strategy": null,
+        "document_reacquire_succeeded": false,
+        "element_id": 6622323,
+        "element_id_access_error": null,
+        "element_id_access_error_type": null,
+        "element_id_object_type": "ElementId",
+        "element_id_property_read_method": "direct_getattr",
+        "element_id_read_method": "Value",
+        "element_id_value_read_method": "Value",
+        "geometry_probe_attempted": true,
+        "is_valid_object_status": "true",
+        "native_candidate_usable": true,
+        "native_property_access_ready": true,
         "native_type": "FamilyInstance",
         "native_type_module": "Autodesk.Revit.DB",
-        "official_revit_api_category": null,
+        "official_revit_api_category": "OST_GenericModel",
+        "property_access_diagnostics": {
+          "Category": {
+            "direct_getattr_attempted": true,
+            "direct_getattr_succeeded": true,
+            "direct_value_callable": true,
+            "direct_value_type": "Category",
+            "direct_value_type_module": "Autodesk.Revit.DB",
+            "error": null,
+            "error_type": null,
+            "property_name": "Category",
+            "read_method": "direct_getattr",
+            "reflection_attempted": false,
+            "reflection_enabled_by_policy": false,
+            "reflection_property_found": false,
+            "reflection_skipped_reason": null,
+            "reflection_succeeded": false
+          },
+          "Id": {
+            "direct_getattr_attempted": true,
+            "direct_getattr_succeeded": true,
+            "direct_value_callable": true,
+            "direct_value_type": "ElementId",
+            "direct_value_type_module": "Autodesk.Revit.DB",
+            "error": null,
+            "error_type": null,
+            "property_name": "Id",
+            "read_method": "direct_getattr",
+            "reflection_attempted": false,
+            "reflection_enabled_by_policy": false,
+            "reflection_property_found": false,
+            "reflection_skipped_reason": null,
+            "reflection_succeeded": false
+          },
+          "IsValidObject": {
+            "direct_getattr_attempted": true,
+            "direct_getattr_succeeded": true,
+            "direct_value_callable": false,
+            "direct_value_type": "bool",
+            "direct_value_type_module": "builtins",
+            "error": null,
+            "error_type": null,
+            "property_name": "IsValidObject",
+            "read_method": "direct_getattr",
+            "reflection_attempted": false,
+            "reflection_enabled_by_policy": false,
+            "reflection_property_found": false,
+            "reflection_skipped_reason": null,
+            "reflection_succeeded": false
+          },
+          "Symbol": null
+        },
         "unwrap_attempts": [
           "original_native_element",
           "UnwrapElement"
@@ -438,16 +604,14 @@
         "unwrap_strategy": "UnwrapElement",
         "unwrapped": true,
         "warnings": [
-          "category could not be read from BuiltInCategory or localized display name; accepted is False until it can be identified as OST_Mass or OST_GenericModel.",
           "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics."
         ],
         "wrapper_type": "FamilyInstance",
         "wrapper_type_module": "Revit.Elements"
       }
     ],
-    "rejected_count": 1,
+    "rejected_count": 0,
     "warnings": [
-      "category could not be read from BuiltInCategory or localized display name; accepted is False until it can be identified as OST_Mass or OST_GenericModel.",
       "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics."
     ]
   },
@@ -492,22 +656,14 @@
     "warnings": []
   },
   "warnings": [
-    "category could not be read from BuiltInCategory or localized display name; accepted is False until it can be identified as OST_Mass or OST_GenericModel.",
     "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics.",
     "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
     "Level reference is present but is not used as average ground level or measurement plane.",
-    "shadow caster category is not accepted; geometry diagnostics skipped for this item.",
-    "No meter-based diagnostic geometry points are available; diagnostic shadow projection point cloud is skipped non-fatally.",
-    "No accepted shadow caster proxy elements are available.",
-    "No accepted shadow caster proxy elements are available.",
-    "No closed footprint loop candidate was verified by raw endpoint comparison.",
-    "No accepted shadow caster proxy elements are available.",
-    "No closed footprint loop candidate was verified by raw endpoint comparison.",
+    "zero/unknown-volume Solid was retained as a geometry object but excluded from formal Solid and face counts.",
     "legal judgement masks not implemented",
     "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
     "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.",
-    "Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.",
     "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
   ],
-  "warnings_count": 16
+  "warnings_count": 8
 }
