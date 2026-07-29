@@ -112,6 +112,117 @@ def _summary_counts(section):
     return result
 
 
+def _polygon_convexity_summary(points):
+    """Summarize XY convexity without retaining footprint coordinates."""
+    if not isinstance(points, (list, tuple)) or len(points) < 3:
+        return {"is_convex": None, "concave_vertex_count": None}
+    xy = []
+    try:
+        for point in points:
+            if not isinstance(point, dict):
+                raise TypeError("point is not a mapping")
+            xy.append((float(point["x"]), float(point["y"])))
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return {"is_convex": None, "concave_vertex_count": None}
+
+    signs = []
+    for index in range(len(xy)):
+        previous = xy[index - 1]
+        current = xy[index]
+        following = xy[(index + 1) % len(xy)]
+        cross = ((current[0] - previous[0]) * (following[1] - current[1])
+                 - (current[1] - previous[1]) * (following[0] - current[0]))
+        if abs(cross) > 1e-12:
+            signs.append(1 if cross > 0.0 else -1)
+    if not signs:
+        return {"is_convex": None, "concave_vertex_count": None}
+    positive_count = signs.count(1)
+    negative_count = signs.count(-1)
+    return {
+        "is_convex": not (positive_count and negative_count),
+        "concave_vertex_count": min(positive_count, negative_count),
+    }
+
+
+def _debug_int(value, default=None):
+    try:
+        return int(value) if value is not None else default
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
+def _debug_float(value):
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _formal_footprint_debug_summary(footprint_extraction):
+    """Return an allowlisted, coordinate-free formal-footprint summary."""
+    extraction = footprint_extraction if isinstance(footprint_extraction, dict) else {}
+    formal = extraction.get("formal_footprints") or {}
+    if not isinstance(formal, dict):
+        formal = {}
+
+    items = []
+    for item in (formal.get("items") or [])[:20]:
+        if not isinstance(item, dict):
+            continue
+        points = item.get("points_m")
+        summary = {
+            "polygon_index": _debug_int(item.get("polygon_index")),
+            "source_caster_index": _debug_int(item.get("source_caster_index")),
+            "source_candidate_index": _debug_int(item.get("source_candidate_index")),
+            "source_face_index": _debug_int(item.get("source_face_index")),
+            "source_loop_index": _debug_int(item.get("source_loop_index")),
+            "point_count": _debug_int(item.get("point_count"), len(points) if isinstance(points, (list, tuple)) else 0),
+            "area_m2": _debug_float(item.get("area_m2")),
+            "area_m2_signed": _debug_float(item.get("area_m2_signed")),
+            "orientation": _sanitize_for_debug(item.get("orientation")),
+            "role": _sanitize_for_debug(item.get("role")),
+            "containment_depth": _debug_int(item.get("containment_depth")),
+            "classification_group_key": _sanitize_for_debug(item.get("classification_group_key")) if isinstance(item.get("classification_group_key"), (list, tuple)) else None,
+            "closed": bool(item.get("closed", False)),
+            "units": _sanitize_for_debug(item.get("units")),
+        }
+        summary.update(_polygon_convexity_summary(points))
+        items.append(summary)
+
+    invalid_loops = []
+    for item in (formal.get("invalid_loops") or [])[:20]:
+        if isinstance(item, dict):
+            reasons = item.get("reasons") if isinstance(item.get("reasons"), (list, tuple)) else []
+            invalid_loops.append({
+                "caster_index": _debug_int(item.get("caster_index")),
+                "candidate_index": _debug_int(item.get("candidate_index")),
+                "source_face_index": _debug_int(item.get("source_face_index")),
+                "source_loop_index": _debug_int(item.get("source_loop_index")),
+                "reasons": [_sanitize_text_for_debug(reason) for reason in reasons[:20]],
+            })
+
+    return {
+        "available": bool(formal.get("available", False)),
+        "complete": bool(formal.get("complete", False)),
+        "partial_success": bool(formal.get("partial_success", False)),
+        "ready_for_shadow_projection_input": bool(formal.get("ready_for_shadow_projection_input", False)),
+        "tolerance_m_used": _debug_float(formal.get("tolerance_m_used")),
+        "caster_count": _debug_int(formal.get("caster_count"), 0),
+        "successful_caster_count": _debug_int(formal.get("successful_caster_count"), 0),
+        "failed_caster_count": _debug_int(formal.get("failed_caster_count"), 0),
+        "polygon_count": _debug_int(formal.get("polygon_count"), 0),
+        "outer_loop_count": _debug_int(formal.get("outer_loop_count"), 0),
+        "inner_loop_count": _debug_int(formal.get("inner_loop_count"), 0),
+        "unknown_role_count": _debug_int(formal.get("unknown_role_count"), 0),
+        "invalid_loop_count": _debug_int(formal.get("invalid_loop_count"), 0),
+        "boolean_union_performed": bool(formal.get("boolean_union_performed", False)),
+        "items": items,
+        "invalid_loops": invalid_loops,
+        "blockers": _sanitize_for_debug(formal.get("blockers") or []),
+        "warnings": _sanitize_for_debug(formal.get("warnings") or []),
+    }
+
+
 
 def _unit_conversion_summary(out_payload):
     diagnostics = (out_payload or {}).get("unit_conversion_diagnostics") or {}
@@ -175,6 +286,7 @@ def _summarize_out_for_debug(out_payload):
         "measurement_plane_summary": _summary_counts(out_payload.get("measurement_plane")),
         "shadow_caster_geometry_summary": _summary_counts(out_payload.get("shadow_caster_geometry")),
         "footprint_extraction_summary": _summary_counts(out_payload.get("footprint_extraction")),
+        "formal_footprint_summary": _formal_footprint_debug_summary(out_payload.get("footprint_extraction")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
         "unit_conversion_summary": _unit_conversion_summary(out_payload),
         "runtime_code_diagnostics": _runtime_code_summary(out_payload),
@@ -204,6 +316,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "measurement_plane_summary": summary["measurement_plane_summary"],
         "shadow_caster_geometry_summary": summary["shadow_caster_geometry_summary"],
         "footprint_extraction_summary": summary["footprint_extraction_summary"],
+        "formal_footprint_summary": summary["formal_footprint_summary"],
         "pipeline_readiness": summary["pipeline_readiness"],
         "unit_conversion_summary": summary["unit_conversion_summary"],
         "runtime_code_diagnostics": summary["runtime_code_diagnostics"],
