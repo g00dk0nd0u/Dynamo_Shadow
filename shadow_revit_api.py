@@ -13,3 +13,57 @@ try:
         DisplayUnitType = None
 except Exception:
     BuiltInCategory = Options = Solid = GeometryInstance = Face = PlanarFace = Edge = Curve = Mesh = UnitUtils = Element = ElementId = UnitTypeId = DisplayUnitType = None
+
+# APIs used by planned native-first paths are deliberately isolated. A class
+# missing from a particular Revit release must not disable the core imports.
+try:
+    from Autodesk.Revit.DB import CurveLoop
+except Exception:
+    CurveLoop = None
+
+try:
+    from Autodesk.Revit.DB import Plane, XYZ
+except Exception:
+    Plane = XYZ = None
+
+try:
+    from Autodesk.Revit.DB import SolidUtils
+except Exception:
+    SolidUtils = None
+
+try:
+    from Autodesk.Revit.DB import ExtrusionAnalyzer
+except Exception:
+    ExtrusionAnalyzer = None
+
+try:
+    from Autodesk.Revit.DB import BooleanOperationsUtils, BooleanOperationsType
+except Exception:
+    BooleanOperationsUtils = BooleanOperationsType = None
+
+try:
+    from Autodesk.Revit.DB import ProjectLocation, SiteLocation
+except Exception:
+    ProjectLocation = SiteLocation = None
+
+try:
+    from Autodesk.Revit.DB import SunAndShadowSettings
+except Exception:
+    SunAndShadowSettings = None
+
+
+REVIT_API_CAPABILITIES = {
+    "revit_api_loaded": BuiltInCategory is not None,
+    "curve_loop_available": CurveLoop is not None,
+    "plane_xyz_available": Plane is not None and XYZ is not None,
+    "face_get_edges_as_curve_loops_expected": Face is not None and hasattr(Face, "GetEdgesAsCurveLoops"),
+    "solid_utils_available": SolidUtils is not None,
+    "solid_utils_split_volumes_expected": SolidUtils is not None and hasattr(SolidUtils, "SplitVolumes"),
+    "extrusion_analyzer_available": ExtrusionAnalyzer is not None,
+    "boolean_operations_available": BooleanOperationsUtils is not None and BooleanOperationsType is not None,
+    "project_location_available": ProjectLocation is not None and SiteLocation is not None,
+    "sun_and_shadow_settings_available": SunAndShadowSettings is not None,
+    "unit_utils_available": UnitUtils is not None,
+    "unit_type_id_available": UnitTypeId is not None,
+    "legacy_display_unit_type_available": DisplayUnitType is not None,
+}
