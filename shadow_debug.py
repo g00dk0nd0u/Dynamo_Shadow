@@ -175,7 +175,9 @@ def _solar_calculation_debug_summary(solar_calculation):
     """Return an allowlisted summary without retaining the full slice table."""
     solar = solar_calculation if isinstance(solar_calculation, dict) else {}
     keys = [
-        "available", "complete", "solar_parameter_mode", "solar_parameter_source",
+        "available", "complete", "calculation_mode", "solar_parameter_mode",
+        "solar_parameter_mode_inferred_for_backward_compatibility", "solar_parameter_source",
+        "solar_parameter_source_available", "solar_parameters_resolved",
         "calculation_date", "day_of_year", "days_in_year",
         "parameter_reference_hour_local_standard", "equation_of_time_minutes",
         "solar_declination_deg", "input_time_basis", "standard_meridian_deg",
@@ -185,7 +187,15 @@ def _solar_calculation_debug_summary(solar_calculation):
         "date_based_declination_calculated", "date_based_equation_of_time_calculated",
         "permit_ready_certified", "blockers", "warnings",
     ]
-    return _sanitize_for_debug({key: solar.get(key) for key in keys})
+    defaults = {
+        "available": False, "complete": False,
+        "solar_parameter_mode_inferred_for_backward_compatibility": False,
+        "solar_parameter_source_available": False, "solar_parameters_resolved": False,
+        "slice_count": 0, "date_based_declination_calculated": False,
+        "date_based_equation_of_time_calculated": False,
+        "permit_ready_certified": False, "blockers": [], "warnings": [],
+    }
+    return _sanitize_for_debug({key: solar.get(key, defaults.get(key)) for key in keys})
 
 
 def _formal_footprint_debug_summary(footprint_extraction):

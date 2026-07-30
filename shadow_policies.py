@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-29-date-derived-solar-parameters-v1"
+CODE_BUILD_ID = "2026-07-30-date-derived-solar-validation-v2"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -170,6 +170,16 @@ SUN_POSITION_POLICY = {
     "diagnostic_only": True,
     "supported_time_basis": ["true_solar_time", "japan_standard_time"],
     "supported_solar_parameter_modes": ["explicit", "date_derived_noaa_v1"],
+    "requirements_by_mode": {
+        "explicit": {
+            "true_solar_time": ["time_basis", "site_latitude_deg", "solar_declination_deg", "true_north_deg", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes"],
+            "japan_standard_time": ["time_basis", "site_latitude_deg", "site_longitude_deg", "standard_meridian_deg", "solar_declination_deg", "equation_of_time_minutes", "true_north_deg", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes"],
+        },
+        "date_derived_noaa_v1": {
+            "true_solar_time": ["solar_parameter_mode", "calculation_date", "time_basis", "site_latitude_deg", "true_north_deg", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes"],
+            "japan_standard_time": ["solar_parameter_mode", "calculation_date", "time_basis", "site_latitude_deg", "site_longitude_deg", "standard_meridian_deg", "true_north_deg", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes"],
+        },
+    },
     "date_derived_noaa_v1": {
         "source": "NOAA General Solar Position Calculations",
         "reference_hour_local_standard": 12.0,
@@ -179,9 +189,9 @@ SUN_POSITION_POLICY = {
         "permit_ready_certified": False,
     },
     "requires_explicit_settings": ["time_basis", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes", "site_latitude_deg", "solar_declination_deg", "true_north_deg"],
-    "true_solar_time_requires": SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR,
-    "japan_standard_time_requires": SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD,
-    "jst_conversion_requires": ["site_longitude_deg", "standard_meridian_deg", "equation_of_time_minutes"],
+    "explicit_true_solar_time_requires": SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR,
+    "explicit_japan_standard_time_requires": SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD,
+    "explicit_jst_conversion_requires": ["site_longitude_deg", "standard_meridian_deg", "equation_of_time_minutes"],
     "formula": {
         "longitude_correction_minutes": "4.0 * (site_longitude_deg - standard_meridian_deg)",
         "true_solar_time_minutes": "japan_standard_time_minutes + longitude_correction_minutes + equation_of_time_minutes",
@@ -194,8 +204,8 @@ SUN_POSITION_POLICY = {
     "azimuth_convention": "degrees clockwise from true north: 0=N, 90=E, 180=S, 270=W",
     "true_north_convention": "true_north_deg is measured clockwise from model +Y to true north; 0 means model +Y is true north, 90 means model +X is true north, -90 means model -X is true north.",
     "atmospheric_refraction_applied": False,
-    "date_based_declination_calculated": True,
-    "date_based_equation_of_time_calculated": True,
+    "date_based_declination_calculation_supported": True,
+    "date_based_equation_of_time_calculation_supported": True,
     "permit_ready_certified": False,
     "not_implemented_in_this_pr": [
         "date-based winter solstice selection",

@@ -1,6 +1,7 @@
 # Settings coercion and normalization.
 import json
 import math
+from datetime import date
 from shadow_policies import SETTINGS_SCHEMA_VERSION, SETTINGS_REQUIRED_FOR_MEASUREMENT_PLANE, SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR, SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD, SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_utils import *
 
@@ -91,6 +92,19 @@ def _parse_text(value, key):
     if not text:
         return None, None
     return text, None
+
+def _parse_calculation_date(value):
+    if not isinstance(value, str) or not value:
+        return None, "settings.calculation_date must be a valid YYYY-MM-DD date."
+    try:
+        if len(value) != 10 or value[4] != "-" or value[7] != "-":
+            raise ValueError("invalid format")
+        parsed = date(int(value[0:4]), int(value[5:7]), int(value[8:10]))
+        if parsed.isoformat() != value:
+            raise ValueError("not canonical ISO date")
+        return parsed.isoformat(), None
+    except Exception:
+        return None, "settings.calculation_date must be a valid YYYY-MM-DD date."
 
 def _parse_bool(value, key):
     if value is None:
@@ -254,10 +268,22 @@ def _normalize_settings(settings, level=None):
         warnings.append("settings.solar_parameter_mode must be explicit or date_derived_noaa_v1.")
         invalid_keys.append("solar_parameter_mode")
     normalized["solar_parameter_mode"] = solar_parameter_mode
-    calculation_date, warn = _parse_text(settings_dict.get("calculation_date"), "calculation_date")
-    if warn:
-        warnings.append(warn); invalid_keys.append("calculation_date")
+    calculation_date = None
+    if settings_dict.get("calculation_date") is not None:
+        calculation_date, warn = _parse_calculation_date(settings_dict.get("calculation_date"))
+        if warn:
+            warnings.append(warn); invalid_keys.append("calculation_date")
     normalized["calculation_date"] = calculation_date
+
+    if solar_parameter_mode == "date_derived_noaa_v1":
+        conflicts = []
+        for key in ("solar_declination_deg", "equation_of_time_minutes"):
+            raw_value = settings_dict.get(key)
+            if raw_value is not None and (not _is_string(raw_value) or raw_value.strip()):
+                invalid_keys.append(key)
+                conflicts.append(key)
+        if conflicts:
+            warnings.append("explicit solar parameters must not be supplied when solar_parameter_mode is date_derived_noaa_v1: {0}.".format(", ".join(conflicts)))
 
     for key in ["analysis_start_time", "analysis_end_time", "true_solar_start_time", "true_solar_end_time"]:
         text, warn = _parse_text(settings_dict.get(key), key)
@@ -303,7 +329,8 @@ def _normalize_settings(settings, level=None):
     missing_solar_time = [k for k in solar_time_required if normalized.get(k) is None]
     missing_required = missing_measurement_plane + [k for k in missing_solar_time if k not in missing_measurement_plane]
     invalid_for_measurement_plane = [k for k in invalid_keys if k in measurement_plane_required]
-    invalid_for_solar_time = [k for k in invalid_keys if k in solar_time_required or k == "time_basis"]
+    solar_validation_keys = set(solar_time_required + ["time_basis", "solar_parameter_mode", "calculation_date", "solar_declination_deg", "equation_of_time_minutes"])
+    invalid_for_solar_time = [k for k in invalid_keys if k in solar_validation_keys]
     invalid_for_equal = sorted(set(invalid_for_measurement_plane + invalid_for_solar_time))
     if settings is None:
         info.append("settings is optional for input diagnostics; missing settings is not fatal.")
