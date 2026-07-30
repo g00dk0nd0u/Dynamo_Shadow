@@ -101,7 +101,7 @@ def test_invalid_solar_numeric_ranges_are_reported(key, value):
 
 
 def test_external_solar_fixture_is_loaded_and_matches_implementation():
-    fixture_path = Path(__file__).parent / "fixtures" / "solar_time_external_check_cases.json"
+    fixture_path = Path(__file__).parent / "fixtures" / "solar_formula_regression_cases.json"
     cases = json.loads(fixture_path.read_text())
     assert cases
     for case in cases:
@@ -110,9 +110,46 @@ def test_external_solar_fixture_is_loaded_and_matches_implementation():
         assert warnings == []
         conversion = _build_solar_time_conversion(input_minutes, case["input_time_basis"], case["longitude"], case["standard_meridian"], case["equation_of_time"])
         solar = _sun_position_for_true_solar_minutes(conversion["true_solar_minutes"], case["latitude"], case["declination"], 0.0)
+        legacy_settings = {
+            "time_basis": case["input_time_basis"],
+            "site_latitude_deg": case["latitude"],
+            "site_longitude_deg": case["longitude"],
+            "standard_meridian_deg": case["standard_meridian"],
+            "solar_declination_deg": case["declination"],
+            "equation_of_time_minutes": case["equation_of_time"],
+            "true_north_deg": 0.0,
+            "analysis_start_time": case["input_time"],
+            "analysis_end_time": case["input_time"],
+            "sun_time_step_minutes": 30,
+            "average_ground_level_elevation_m": 0.0,
+            "measurement_height_m": 4.0,
+        }
+        calculation = _build_solar_calculation_v1(_normalize_settings(legacy_settings))
+        assert calculation["available"] is True
+        assert calculation["solar_parameter_mode"] == "explicit"
+        assert calculation["solar_parameter_mode_inferred_for_backward_compatibility"] is True
+        slice_result = calculation["slices"][0]
+        expected_fields = {
+            "input_time_basis": case["input_time_basis"],
+            "true_solar_time": conversion["true_solar_time"],
+            "true_solar_minutes": conversion["true_solar_minutes"],
+            "hour_angle_deg": solar["hour_angle_deg"],
+            "solar_altitude_deg": solar["solar_altitude_deg"],
+            "solar_azimuth_deg": solar["solar_azimuth_deg"],
+            "shadow_azimuth_true_north_deg": solar["shadow_azimuth_true_north_deg"],
+            "shadow_direction_vector": solar["shadow_direction_vector"],
+            "shadow_azimuth_model_deg": solar["shadow_azimuth_model_deg"],
+            "shadow_direction_model": solar["shadow_direction_model"],
+            "longitude_correction_minutes": conversion["longitude_correction_minutes"],
+            "equation_of_time_applied": conversion["equation_of_time_applied"],
+            "longitude_correction_applied": conversion["longitude_correction_applied"],
+        }
+        assert {key: slice_result[key] for key in expected_fields} == expected_fields
         assert abs(_time_seconds(conversion["true_solar_time"]) - _time_seconds(case["expected_true_solar_time"])) <= case["tolerance"]["time_seconds"]
         assert abs(solar["solar_altitude_deg"] - case["expected_altitude"]) <= case["tolerance"]["angle_deg"]
         assert abs(solar["solar_azimuth_deg"] - case["expected_azimuth"]) <= case["tolerance"]["angle_deg"]
         assert case["permit_ready_certified"] is False
         assert case["atmospheric_refraction_applied"] is False
         assert case["reference_source_name_or_url"]
+        assert case["independent_external_reference"] is False
+        assert case["purpose"] == "internal_formula_regression"

@@ -269,7 +269,7 @@ def _build_success():
         "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow v1 diagnostics; formal diagnostic footprint polygons are generated from eligible bottom-face Line edge loops. No formal shadow polygon generation, Revit element creation, date-based declination/equation-of-time calculation, legal judgement, 5m/10m measurement line generation, Boolean union, or equal-time contours are implemented. Diagnostic-only true-solar-time sun position and shadow projection point-cloud outputs are included when explicit site_latitude_deg and solar_declination_deg are provided.",
+        "message": "Dynamo_Shadow v1 diagnostics; explicit or date-derived NOAA v1 solar parameters support diagnostic sun tables. No formal shadow polygon generation, Revit element creation, legal judgement, 5m/10m measurement line generation, Boolean union, or equal-time contours are implemented.",
         "legal_constants": LEGAL_CONSTANTS,
         "unit_conversion_diagnostics": unit_conversion_diagnostics,
         "unit_conversion_policy": UNIT_CONVERSION_POLICY,

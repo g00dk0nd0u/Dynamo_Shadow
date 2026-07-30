@@ -235,7 +235,19 @@ The hour angle is always derived from converted or directly supplied true solar 
 hour_angle_deg = 15.0 * (true_solar_hour - 12.0)
 ```
 
-Date-based calculation of `solar_declination_deg` and `equation_of_time_minutes` is not implemented. Both values must be explicit when needed by the selected time basis. Atmospheric refraction correction is not applied.
+Solar parameters use one unambiguous source selected by `solar_parameter_mode`. `explicit` preserves the existing contract: declination is explicit, and equation of time is also explicit for Japan Standard Time. Omitting the mode while supplying the legacy explicit settings infers `explicit` and records that backward-compatibility inference. `date_derived_noaa_v1` instead requires a user-supplied, strictly validated `calculation_date` in `YYYY-MM-DD` form and rejects simultaneous explicit solar parameters.
+
+`calculation_date` must be a real, zero-padded calendar date; invalid dates such as `2026-02-30` are rejected during settings normalization as well as defensively by the solar calculation. Explicit declination or equation-of-time values must never be mixed with the date-derived source. These failures make both settings readiness and solar-calculation availability false.
+
+The date-derived diagnostic implements the published NOAA General Solar Position Calculations fractional-year Fourier equations. It uses day-of-year with a denominator of 365 or 366, and fixes `reference_hour_local_standard` at 12.0. The resulting daily declination and equation-of-time pair is reused for every slice on that date; it is not recalculated per slice. In true-solar-time mode the derived equation of time is reported but not applied. In Japan Standard Time mode it is added together with the existing longitude correction.
+
+The per-result `date_based_*_calculated` flags only report whether the pure derivation function produced those values. They do not imply that the overall input contract was valid; callers must use `available` and `solar_parameters_resolved` to determine whether the result is usable.
+
+No date is inferred. In particular, this implementation does not select December 21 or 22, calculate the astronomical solstice instant, or determine a permit-oriented winter-solstice date. Atmospheric refraction correction is not applied, and the result remains diagnostic rather than permit-ready certified.
+
+The seven Japan-location records in `tests/fixtures/solar_provisional_cross_check_cases.json` retain the intended NREL SPA input and output field schema, including uncorrected topocentric elevation and north-clockwise azimuth. However, the calculator's actual `delta_t_seconds` input and generation provenance could not be reproduced. The records are therefore explicitly marked `provisional_cross_check`, `independent_external_reference = false`, and `provenance_verified = false`; they must not be cited as completed independent validation. Reproducible independent NREL SPA validation remains pending.
+
+The NOAA calculation remains the auditable Python calculation path for this diagnostic. A Revit `SunAndShadowSettings` cross-check, project-location inspection, and any Revit-driven override are separate future tasks and are not performed here.
 
 `true_north_deg` is defined as the angle measured clockwise from the model coordinate +Y axis to the true-north direction:
 
