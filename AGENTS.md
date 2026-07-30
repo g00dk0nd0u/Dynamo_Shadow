@@ -26,8 +26,9 @@ The project is still in an early development stage. The current files must not b
 
 ### script.py
 
-- Main Python logic for shadow calculation.
-- Future implementation work should usually happen here.
+- Dynamo-facing orchestration layer.
+- Keep it focused on input orchestration, calls to focused `shadow_*.py` modules, failure handling, and top-level `OUT` construction.
+- Calculation and Revit API implementation details must normally live in focused `shadow_*.py` modules.
 - Keep compatibility with both `IN` and `INPUTS`.
 
 ### README.md
@@ -50,6 +51,43 @@ The project is still in an early development stage. The current files must not b
 - Do not change Dynamo input ports unless the task explicitly asks for it.
 - Do not change Select nodes, Watch nodes, Level nodes, or connectors unless the task explicitly asks for it.
 - Do not restore `Shadow - Copy.json`.
+
+## Native API first
+
+### Standard API audit
+
+- Before implementing a geometry algorithm, investigate `Autodesk.Revit.DB`, Dynamo standard nodes, and the existing repository implementation, in that order.
+- When Revit or Dynamo provides a suitable standard facility, use it as the first candidate rather than reimplementing it in Python.
+- A PR that adopts custom geometry must document: **Standard API considered**, **Reason it was not sufficient**, **Custom fallback scope**, **Supported Revit version**, and **Known limitations**.
+- The repository-wide priority is: (1) Revit native API, (2) Dynamo standard nodes, and (3) custom Python. Python remains responsible for Japanese shadow-regulation rules, auditable true-solar-time/equation-of-time calculations, normalized settings and contracts, ordinance profiles, validation, readiness, diagnostics, debug JSON, logic absent from the API, and narrowly scoped fallback behavior.
+
+### Preserve native geometry
+
+- Formal calculation paths should preserve `Autodesk.Revit.DB.Solid`, `Face`, `Curve`, `CurveLoop`, `Plane`, and `XYZ` for as long as practical.
+- Convert native geometry to dictionaries or meter coordinates only at a pure-Python test boundary, debug JSON boundary, `OUT` serialization boundary, or an explicit legal-calculation data-model boundary.
+- Never put raw Revit objects in `OUT` or debug JSON.
+
+### Dynamo responsibilities
+
+- Preserve the current standard selection, Level, String, and Watch nodes. Dynamo owns user selection, UI values, execution flow, result inspection, and optional lightweight preview.
+- `Element.Geometry` and other Revit-to-Dynamo/libG conversion paths are limited to preview, lightweight diagnostics, user display, or an explicitly labelled fallback experiment when the native API is unavailable. Do not make unconditional libG conversion the primary formal-shadow path.
+- Do not expand the graph into a large geometry-node network. Put complex branching, validation, logging, and legal logic in focused Python modules.
+
+### Revit version compatibility
+
+- The primary target is Revit 2024.3 with Dynamo CPython3. Documentation for Revit 2025/2026 is not evidence that an API exists in 2024.3.
+- New Revit APIs require optional imports, runtime capability checks, an explicit blocker or fallback when unavailable, and continued import/`py_compile` support in normal Python.
+- Isolate optional API imports so one missing class never sets the established core Revit imports to `None`.
+
+### Native geometry candidates by stage
+
+- **Footprint:** use `PlanarFace` -> `Face.GetEdgesAsCurveLoops()` -> `CurveLoop` as the first formal candidate. Evaluate `CurveLoop.IsOpen`, `HasPlane`, `GetPlane`, `IsCounterclockwise`, `Flip`, `GetExactLength`, `NumberOfCurves`, and `Application.ShortCurveTolerance`. Preserve arcs and other supported Revit curves rather than rejecting a loop merely because it is not line-only. Existing endpoint clustering, segment graphs, and manual stitching remain fallback, a pure-Python unit-test model, and diagnostics when native loops cannot be obtained; they must not run before the native formal path.
+- **Solid processing:** for the primary Revit 2024.3 target, prefer `SolidUtils.SplitVolumes` for independent volumes instead of first creating a custom connected-component algorithm. Do not assume `SolidUtils.ComputeIsGeometricallyClosed` or `ComputeIsTopologicallyClosed` exists: these closure checks are Revit 2026.4+ future-version candidates, not Revit 2024.3 target APIs. Newer documentation is not evidence of availability in Revit 2024.3, and the 2024.3 formal path must not call these methods.
+- **Formal time-slice shadow candidate (Issue #34, not yet implemented):** positive-volume `Solid` -> `SolidUtils.SplitVolumes` -> measurement `Plane` -> `ExtrusionAnalyzer.Create` -> `GetExtrusionBase` -> `Face.GetEdgesAsCurveLoops`. `ExtrusionAnalyzer` is most reliable for a single extrusion-like solid; split independent volumes first, do not assume all complex shapes succeed, do not infer direction-vector sign only from an example, and validate the sign in Revit with a simple box before adoption. Report failures and never substitute a convex hull as a formal result. Point-cloud projection and convex hull remain diagnostic/comparison-only over-approximations. `ExtrusionAnalyzer` implements `IDisposable`; release every analyzer deterministically with `try/finally` and `Dispose()` unless a Python context-manager contract has been verified in Revit 2024.3 with Dynamo CPython3. Never rely on Python garbage collection for cleanup.
+- **Solar position:** retain the custom NOAA calculation as the auditable, reproducible legal-calculation candidate, including explicit true solar time and independence from view state. Use `View.SunAndShadowSettings` and `SunAndShadowSettings.GetFrameAltitude`, `GetFrameAzimuth`, and `GetFrameTime` only as an independent cross-check unless a later task explicitly changes the source. Do not modify Revit sun/view settings unless requested. Never compare raw Revit values directly with NOAA output or compare Revit radians with Dynamo_Shadow degrees. Before comparison, record the raw value, raw unit, raw coordinate convention, normalized degree value, normalized convention, conversion formula or method, whether true-north adjustment was applied, and comparison tolerance. The Dynamo_Shadow canonical convention is degrees, azimuth measured clockwise from true north, normalized to `0 <= azimuth < 360`, where north/east/south/west are `0/90/180/270` respectively.
+- **Project location and true north:** diagnostic candidates are `Document.ActiveProjectLocation`, `ProjectLocation.GetSiteLocation`, `ProjectLocation.GetProjectPosition(XYZ.Zero)`, `SiteLocation.Latitude`, `Longitude`, `TimeZone`, and `ProjectPosition.Angle`. Source priority is (1) explicit settings, (2) an explicitly selected Revit project-location source, and (3) Revit values for diagnostic comparison. Never silently overwrite settings; report differences as warnings or diagnostics. Convert the API angle `ProjectPosition.Angle` explicitly from radians before reporting or comparing it in degrees. Verify its sign and rotation convention in Revit 2024.3 with controlled project-north/true-north test cases rather than inferring it.
+- **Units:** prefer `UnitUtils.ConvertFromInternalUnits` and `ConvertToInternalUnits` with `UnitTypeId.Meters`, `SquareMeters`, and `CubicMeters`. Fixed factors `0.3048`, `0.09290304`, and `0.028316846592` are limited to normal-Python tests or fallback after API unavailability/failure.
+- **Booleans:** `BooleanOperationsUtils` may be evaluated for 3D Solid preprocessing. It must not be assumed to solve future 2D time-slice polygon union. The 2D union engine requires a separate architecture decision and controlled tests.
 
 ## Development rules for Codex
 
@@ -142,6 +180,19 @@ Before opening a PR, confirm:
 - [ ] `Shadow - Copy.json` was not created.
 - [ ] Generated files and logs were not committed.
 - [ ] README or docs were updated when the project structure changed.
+
+For PRs containing geometry processing, also confirm:
+
+- [ ] Existing Autodesk Revit API capabilities were investigated.
+- [ ] Applicable Dynamo standard nodes were investigated.
+- [ ] The selected standard API was named in the PR body.
+- [ ] The reason for any custom algorithm was documented.
+- [ ] Native and fallback paths were distinguished.
+- [ ] Formal and diagnostic results were distinguished.
+- [ ] Availability in Revit 2024.3 was checked.
+- [ ] Behavior when an API is unavailable was defined.
+- [ ] No raw Revit object was included in `OUT` or debug output.
+- [ ] Pure-Python tests and `py_compile` compatibility were preserved.
 
 ## Measurement plane / law56_2 awareness rules
 

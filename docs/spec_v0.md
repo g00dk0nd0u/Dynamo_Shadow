@@ -112,6 +112,8 @@ error
 
 ## planned_pipeline
 
+The API names below identify **planned, not yet implemented** primary candidates. Each native path requires Revit 2024.3 runtime validation before it can be treated as available or formal.
+
 BoundingBox summary 抽出を日影計算ロードマップの主工程にしない。将来の主工程は以下とする。
 
 1. input diagnostics
@@ -130,17 +132,26 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 14. measurement plane readiness check
 15. measurement plane construction diagnostics
 16. pipeline readiness diagnostics
-17. formal footprint polygon generation
+17. formal footprint polygon generation — `Face.GetEdgesAsCurveLoops` / `CurveLoop` first (planned; not yet implemented; requires Revit 2024.3 runtime validation)
 18. optional site boundary loop extraction
 19. legal judgement mask preparation
 20. optional 5m / 10m measurement line generation when site_boundary is available
 21. true solar time diagnostics
-22. sun vector calculation
-23. time-slice shadow projection per caster
-24. logical union of shadows per time slice
-25. shadow duration accumulation without double counting
-26. equal-time contour generation
-27. legal judgement report
+22. project location diagnostics — `Document.ActiveProjectLocation` / `SiteLocation` / `ProjectPosition` (planned; not yet implemented; requires Revit 2024.3 runtime validation)
+23. sun vector calculation — NOAA primary calculation with `SunAndShadowSettings` as an independent cross-check (cross-check planned; not yet implemented; requires Revit 2024.3 runtime validation)
+24. time-slice shadow projection per caster — `SolidUtils.SplitVolumes` then `ExtrusionAnalyzer` candidate engine; retain diagnostic point-cloud projection separately (planned; not yet implemented; requires Revit 2024.3 runtime validation)
+25. logical union of shadows per time slice
+26. shadow duration accumulation without double counting
+27. equal-time contour generation
+28. legal judgement report
+
+## Engine strategy
+
+The engine strategy is Revit-native geometry first, Dynamo standard nodes for UI and preview, and focused Python modules for Japanese legal logic, orchestration, validation, serialization, and limited fallback behavior. Formal paths should retain native `Solid`, `Face`, `Curve`, `CurveLoop`, `Plane`, and `XYZ` values until an explicit test, serialization, or legal data-model boundary. Dynamo/libG conversion is not the unconditional formal geometry path.
+
+The existing NOAA calculation remains the primary auditable solar candidate because it makes true solar time explicit and does not depend on view state. Revit `SunAndShadowSettings` is planned only as an independent comparison. Existing point projection and convex hull output remains diagnostic-only, comparison-only, and potentially an over-approximation; it is not a formal shadow polygon.
+
+Formal footprint extraction is planned to use `Face.GetEdgesAsCurveLoops` and native `CurveLoop` validation before manual stitching. Formal time-slice shadow prototyping is planned to split independent volumes with `SolidUtils.SplitVolumes` and evaluate `ExtrusionAnalyzer` on simple boxes first. These paths are not implemented by this specification update and require Revit 2024.3 runtime validation. Future 2D time-slice union remains a separate, undecided architecture; `BooleanOperationsUtils` must not be assumed to provide it.
 
 ## 非スコープ
 
