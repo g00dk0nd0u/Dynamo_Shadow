@@ -32,6 +32,11 @@ CAPABILITY_KEYS = {
     "unit_utils_available",
     "unit_type_id_available",
     "legacy_display_unit_type_available",
+    "native_curve_loop_path_expected",
+    "native_shadow_analyzer_path_expected",
+    "project_location_read_path_expected",
+    "sun_frame_read_path_expected",
+    "unit_type_si_ids_expected",
 }
 
 
@@ -64,3 +69,9 @@ def test_planned_optional_apis_are_not_in_the_core_import_statement():
     assert revit_imports
     assert not any(optional <= imported_names for imported_names in revit_imports)
     assert max(len(optional & imported_names) for imported_names in revit_imports) <= 2
+
+
+def test_revit_2024_capabilities_do_not_require_future_closure_methods():
+    source = SOURCE_PATH.read_text(encoding="utf-8")
+    assert "ComputeIsGeometricallyClosed" not in source
+    assert "ComputeIsTopologicallyClosed" not in source

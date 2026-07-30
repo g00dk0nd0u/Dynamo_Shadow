@@ -32,9 +32,13 @@ Revit owns native element and geometry access, unit conversion, project-location
 
 The Issue #34 candidate pipeline is positive-volume `Solid` -> `SolidUtils.SplitVolumes` -> measurement `Plane` -> `ExtrusionAnalyzer.Create` -> `GetExtrusionBase` -> `Face.GetEdgesAsCurveLoops`. It is only planned. The analyzer is expected to be most stable with a single extrusion-like solid. Independent volumes must be split, complex shapes must be allowed to fail with an explicit reason, and the direction sign must be checked in Revit 2024.3 with a simple box rather than copied uncritically from an example. A diagnostic convex hull is not an acceptable formal substitute.
 
+`ExtrusionAnalyzer` implements `IDisposable`. Every analyzer must be released deterministically using `try/finally` and `Dispose()` unless context-manager behavior has been explicitly verified in Revit 2024.3 with Dynamo CPython3. The future implementation must not rely on Python garbage collection.
+
 ## Compatibility and source rules
 
 Optional APIs are imported independently and exposed through boolean runtime capabilities. Missing APIs must produce a documented fallback or blocker without breaking normal-Python imports or `py_compile`. Revit 2025/2026 documentation alone is insufficient evidence of Revit 2024.3 availability.
+
+Version note: `SolidUtils.SplitVolumes` is part of the Revit 2024.3 target path. `SolidUtils.ComputeIsGeometricallyClosed` and `ComputeIsTopologicallyClosed` are Revit 2026.4+ future-version-only candidates, not Revit 2024.3 target APIs. They may be evaluated only in a separately versioned future path.
 
 Explicit settings have priority over Revit location values. An explicitly selected Revit project-location source is second, and automatic Revit values are comparison-only. Differences must be reported; Revit values must not silently overwrite settings. Revit solar settings are read-only comparison data unless a future requirement explicitly changes that policy.
 
@@ -46,7 +50,7 @@ Use `Face.GetEdgesAsCurveLoops` first, validate native `CurveLoop` objects, reta
 
 ### Follow-up B — Project location and solar cross-check (#33)
 
-Add read-only `ProjectLocation` diagnostics, differences from explicit settings, and altitude/azimuth comparison with `SunAndShadowSettings`. Do not mutate project or view state.
+Add read-only `ProjectLocation` diagnostics, differences from explicit settings, and altitude/azimuth comparison with `SunAndShadowSettings`. Do not mutate project or view state. Before comparison, normalize Revit solar altitude, Revit solar azimuth, and `ProjectPosition.Angle` into the Dynamo_Shadow canonical convention: degrees, clockwise from true north, `0 <= azimuth < 360`, with north/east/south/west at `0/90/180/270`. Identify the raw Revit convention rather than guessing it, convert radians explicitly, and state whether true-north rotation was applied. Test north, east, south, west, and `true_north_deg` values `0`, `90`, and `-90`. The first Revit validation must plan to emit both raw and normalized values to sanitized debug output.
 
 ### Follow-up C — ExtrusionAnalyzer shadow prototype (#34)
 
