@@ -245,7 +245,9 @@ The per-result `date_based_*_calculated` flags only report whether the pure deri
 
 No date is inferred. In particular, this implementation does not select December 21 or 22, calculate the astronomical solstice instant, or determine a permit-oriented winter-solstice date. Atmospheric refraction correction is not applied, and the result remains diagnostic rather than permit-ready certified.
 
-The seven Japan-location records in `tests/fixtures/solar_external_reference_cases.json` retain the intended NREL SPA input and output field schema, including uncorrected topocentric elevation and north-clockwise azimuth. However, the calculator's actual `delta_t_seconds` input and manual transcription provenance could not be reproduced. The records are therefore explicitly marked `provisional_cross_check`, `independent_external_reference = false`, and `reference_calculator_input_complete = false`; they must not be cited as completed independent validation. Reproducible independent NREL SPA validation remains pending.
+The seven Japan-location records in `tests/fixtures/solar_provisional_cross_check_cases.json` retain the intended NREL SPA input and output field schema, including uncorrected topocentric elevation and north-clockwise azimuth. However, the calculator's actual `delta_t_seconds` input and generation provenance could not be reproduced. The records are therefore explicitly marked `provisional_cross_check`, `independent_external_reference = false`, and `provenance_verified = false`; they must not be cited as completed independent validation. Reproducible independent NREL SPA validation remains pending.
+
+The NOAA calculation remains the auditable Python calculation path for this diagnostic. A Revit `SunAndShadowSettings` cross-check, project-location inspection, and any Revit-driven override are separate future tasks and are not performed here.
 
 `true_north_deg` is defined as the angle measured clockwise from the model coordinate +Y axis to the true-north direction:
 

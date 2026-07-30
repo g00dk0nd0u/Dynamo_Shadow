@@ -41,10 +41,10 @@
       "altitude": "Topocentric elevation angle (uncorrected)",
       "azimuth": "Topocentric azimuth angle (eastward from north)"
     },
-    "reference_recorded_manually": false,
-    "reference_generated_by_repository_code": true,
-    "reference_calculator_input_complete": false,
-    "azimuth_convention_matches_dynamo_shadow": true
+    "azimuth_convention_matches_dynamo_shadow": true,
+    "provenance_verified": false,
+    "reference_generation_provenance": "unverified",
+    "permit_ready_validation": false
   },
   {
     "location": "Tokyo",
@@ -88,10 +88,10 @@
       "altitude": "Topocentric elevation angle (uncorrected)",
       "azimuth": "Topocentric azimuth angle (eastward from north)"
     },
-    "reference_recorded_manually": false,
-    "reference_generated_by_repository_code": true,
-    "reference_calculator_input_complete": false,
-    "azimuth_convention_matches_dynamo_shadow": true
+    "azimuth_convention_matches_dynamo_shadow": true,
+    "provenance_verified": false,
+    "reference_generation_provenance": "unverified",
+    "permit_ready_validation": false
   },
   {
     "location": "Tokyo",
@@ -135,10 +135,10 @@
       "altitude": "Topocentric elevation angle (uncorrected)",
       "azimuth": "Topocentric azimuth angle (eastward from north)"
     },
-    "reference_recorded_manually": false,
-    "reference_generated_by_repository_code": true,
-    "reference_calculator_input_complete": false,
-    "azimuth_convention_matches_dynamo_shadow": true
+    "azimuth_convention_matches_dynamo_shadow": true,
+    "provenance_verified": false,
+    "reference_generation_provenance": "unverified",
+    "permit_ready_validation": false
   },
   {
     "location": "Kagoshima",
@@ -182,10 +182,10 @@
       "altitude": "Topocentric elevation angle (uncorrected)",
       "azimuth": "Topocentric azimuth angle (eastward from north)"
     },
-    "reference_recorded_manually": false,
-    "reference_generated_by_repository_code": true,
-    "reference_calculator_input_complete": false,
-    "azimuth_convention_matches_dynamo_shadow": true
+    "azimuth_convention_matches_dynamo_shadow": true,
+    "provenance_verified": false,
+    "reference_generation_provenance": "unverified",
+    "permit_ready_validation": false
   },
   {
     "location": "Sapporo",
@@ -229,10 +229,10 @@
       "altitude": "Topocentric elevation angle (uncorrected)",
       "azimuth": "Topocentric azimuth angle (eastward from north)"
     },
-    "reference_recorded_manually": false,
-    "reference_generated_by_repository_code": true,
-    "reference_calculator_input_complete": false,
-    "azimuth_convention_matches_dynamo_shadow": true
+    "azimuth_convention_matches_dynamo_shadow": true,
+    "provenance_verified": false,
+    "reference_generation_provenance": "unverified",
+    "permit_ready_validation": false
   },
   {
     "location": "Sapporo",
@@ -276,10 +276,10 @@
       "altitude": "Topocentric elevation angle (uncorrected)",
       "azimuth": "Topocentric azimuth angle (eastward from north)"
     },
-    "reference_recorded_manually": false,
-    "reference_generated_by_repository_code": true,
-    "reference_calculator_input_complete": false,
-    "azimuth_convention_matches_dynamo_shadow": true
+    "azimuth_convention_matches_dynamo_shadow": true,
+    "provenance_verified": false,
+    "reference_generation_provenance": "unverified",
+    "permit_ready_validation": false
   },
   {
     "location": "Sapporo",
@@ -323,9 +323,9 @@
       "altitude": "Topocentric elevation angle (uncorrected)",
       "azimuth": "Topocentric azimuth angle (eastward from north)"
     },
-    "reference_recorded_manually": false,
-    "reference_generated_by_repository_code": true,
-    "reference_calculator_input_complete": false,
-    "azimuth_convention_matches_dynamo_shadow": true
+    "azimuth_convention_matches_dynamo_shadow": true,
+    "provenance_verified": false,
+    "reference_generation_provenance": "unverified",
+    "permit_ready_validation": false
   }
 ]

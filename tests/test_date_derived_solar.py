@@ -33,6 +33,21 @@ def explicit_settings(mode=True, basis="true_solar_time"):
     return result
 
 
+def pipeline_for(normalized):
+    return _build_pipeline_readiness(
+        {"accepted_count": 1},
+        {},
+        normalized,
+        measurement_plane={"readiness": {
+            "measurement_plane_constructed": True,
+            "ready_for_future_shadow_projection_context": True,
+        }},
+        footprint_extraction={"readiness": {
+            "ready_for_future_footprint_polygon_generation": True,
+        }},
+    )
+
+
 @pytest.mark.parametrize("value,available,day,days", [
     ("2026-01-01", True, 1, 365), ("2026-12-31", True, 365, 365),
     ("2024-02-29", True, 60, 366), ("2024-12-31", True, 366, 366),
@@ -55,6 +70,9 @@ def test_date_derived_modes_and_readiness_agree(basis):
     assert solar["available"] is True and solar["solar_parameters_resolved"] is True
     assert solar["solar_parameter_source_available"] is True
     assert solar["equation_of_time_applied"] is (basis == "japan_standard_time")
+    pipeline = pipeline_for(normalized)
+    assert pipeline["settings_ready_for_equal_time_shadow"] is True
+    assert pipeline["equal_time_shadow_calculation_ready"] is True
 
 
 @pytest.mark.parametrize("conflicts", [("solar_declination_deg",), ("equation_of_time_minutes",),
@@ -69,7 +87,7 @@ def test_mixed_parameter_sources_block_settings_solar_and_pipeline(conflicts):
     assert normalized["readiness"]["ready_for_equal_time_shadow_calculation"] is False
     assert normalized["readiness"]["settings_ready_for_boundary_dependent_steps"] is False
     assert solar["available"] is False and solar["solar_parameters_resolved"] is False
-    pipeline = _build_pipeline_readiness({"accepted_count": 1}, {}, normalized)
+    pipeline = pipeline_for(normalized)
     assert pipeline["settings_ready_for_equal_time_shadow"] is False
     assert pipeline["equal_time_shadow_calculation_ready"] is False
 
@@ -77,7 +95,7 @@ def test_mixed_parameter_sources_block_settings_solar_and_pipeline(conflicts):
 def test_invalid_date_blocks_settings_solar_and_pipeline():
     normalized = _normalize_settings(dict(settings(), calculation_date="2026-02-30"))
     solar = _build_solar_calculation_v1(normalized)
-    pipeline = _build_pipeline_readiness({"accepted_count": 1}, {}, normalized)
+    pipeline = pipeline_for(normalized)
     assert normalized["readiness"]["ready_for_equal_time_shadow_calculation"] is False
     assert solar["available"] is False and solar["solar_parameter_source"] == "noaa_general_solar_position_calculations_v1"
     assert solar["solar_parameter_source_available"] is False and solar["solar_parameters_resolved"] is False
@@ -113,7 +131,7 @@ def test_policy_contract_is_mode_specific():
 
 
 def test_provisional_fixture_is_nonempty_complete_in_coverage_and_uses_seconds():
-    cases = json.loads((Path(__file__).parent / "fixtures/solar_external_reference_cases.json").read_text())
+    cases = json.loads((Path(__file__).parent / "fixtures/solar_provisional_cross_check_cases.json").read_text())
     required = {("Tokyo", "08:00:00"), ("Tokyo", "12:00:00"), ("Tokyo", "16:00:00"),
                 ("Kagoshima", "12:00:00"), ("Sapporo", "09:00:00"),
                 ("Sapporo", "12:00:00"), ("Sapporo", "15:00:00")}
@@ -126,9 +144,9 @@ def test_provisional_fixture_is_nonempty_complete_in_coverage_and_uses_seconds()
     for case in cases:
         assert case["independent_external_reference"] is False
         assert case["purpose"] == "provisional_cross_check"
-        assert case["reference_generated_by_repository_code"] is True
-        assert case["reference_calculator_input_complete"] is False
-        assert case["reference_recorded_manually"] is False
+        assert case["provenance_verified"] is False
+        assert case["reference_generation_provenance"] == "unverified"
+        assert case["permit_ready_validation"] is False
         assert case["delta_t_seconds"] is None
         assert all(isinstance(case[key], (int, float)) for key in numeric_inputs)
         assert case["reference_output_fields"]["altitude"] == "Topocentric elevation angle (uncorrected)"
