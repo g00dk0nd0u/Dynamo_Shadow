@@ -165,6 +165,7 @@ def _build_unit_conversion_diagnostics():
         "converted_fields_added": True,
         "converted_fields_suffix": UNIT_CONVERSION_POLICY.get("converted_fields_suffix"),
         "used_for_legal_judgement": False,
-        "used_for_shadow_projection": False,
+        "used_for_shadow_projection": True,
+        "used_for_formal_shadow_projection": True,
         "warnings": [],
     }

@@ -183,7 +183,8 @@ def _normalize_settings(settings, level=None):
     defaults_applied = []
     invalid_keys = []
     info = []
-    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "equation_of_time_minutes", "solar_parameter_mode", "calculation_date", "standard_meridian_deg", "time_basis", "analysis_start_time", "analysis_end_time", "true_solar_start_time", "true_solar_end_time", "sun_time_step_minutes", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename", "max_diagnostic_source_points_per_caster", "max_projected_points_output_per_slice", "max_shadow_length_factor", "max_formal_shadow_loop_points"])
+    preview_keys = ["preview_mode", "preview_true_solar_times", "preview_thickness_mm", "preview_vertical_separation_mm", "preview_transparency"]
+    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "equation_of_time_minutes", "solar_parameter_mode", "calculation_date", "standard_meridian_deg", "time_basis", "analysis_start_time", "analysis_end_time", "true_solar_start_time", "true_solar_end_time", "sun_time_step_minutes", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename", "max_diagnostic_source_points_per_caster", "max_projected_points_output_per_slice", "max_shadow_length_factor", "max_formal_shadow_loop_points"] + preview_keys)
     ignored_keys = sorted([_safe_text(k) for k in settings_dict.keys() if k not in known])
     if ignored_keys:
         info.append("Unknown settings keys are ignored by v1 diagnostics: {0}".format(", ".join(ignored_keys)))
@@ -215,6 +216,16 @@ def _normalize_settings(settings, level=None):
     if settings_dict.get("debug_log_filename") is None:
         defaults_applied.append("debug_log_filename")
     normalized["debug_log_filename"] = debug_log_filename
+
+    # Preview validation is intentionally owned by shadow_preview.py. Preserve
+    # these visualization-only values here without making settings fatal.
+    for key in preview_keys:
+        if key in settings_dict:
+            normalized[key] = settings_dict[key]
+        else:
+            value = SETTINGS_DIAGNOSTIC_DEFAULTS[key]
+            normalized[key] = list(value) if isinstance(value, list) else value
+            defaults_applied.append(key)
 
     for key in ["average_ground_level_elevation_m", "measurement_height_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "standard_meridian_deg", "equation_of_time_minutes", "solar_declination_deg", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "max_shadow_length_factor"]:
         value, warn = _parse_float(settings_dict.get(key), key)

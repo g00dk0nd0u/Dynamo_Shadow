@@ -61,6 +61,15 @@ try:
 except Exception:
     SunAndShadowSettings = None
 
+# Preview-only APIs.  Keep these isolated from the formal geometry imports.
+try:
+    from Autodesk.Revit.DB import (DirectShape, GeometryCreationUtilities, Line,
+        FilteredElementCollector, FillPatternElement, OverrideGraphicSettings,
+        Color, SubTransaction)
+except Exception:
+    DirectShape = GeometryCreationUtilities = Line = FilteredElementCollector = None
+    FillPatternElement = OverrideGraphicSettings = Color = SubTransaction = None
+
 
 def _has_methods(value, names):
     return value is not None and all(hasattr(value, name) for name in names)

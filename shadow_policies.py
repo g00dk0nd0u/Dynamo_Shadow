@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-31-revit-extrusion-shadow-prototype-v1"
+CODE_BUILD_ID = "2026-07-31-formal-shadow-revit-preview-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -9,7 +9,7 @@ CODE_BUILD_ID = "2026-07-31-revit-extrusion-shadow-prototype-v1"
 CLR_REFLECTION_ENABLED = False
 
 TOOL_NAME = "Dynamo_Shadow"
-STAGE_NAME = "v1_formal_footprint_stabilization"
+STAGE_NAME = "v1_formal_shadow_visual_validation"
 
 LEGAL_CONSTANTS = {
     "date_basis": "winter_solstice",
@@ -49,7 +49,7 @@ PLANNED_PIPELINE = [
     "optional 5m / 10m measurement line generation when site_boundary is available",
     "true solar time diagnostics",
     "sun vector calculation",
-    "time-slice shadow projection per caster",
+    "formal time-slice shadow projection per caster",
     "logical union of shadows per time slice",
     "shadow duration accumulation without double counting",
     "equal-time contour generation",
@@ -139,6 +139,24 @@ SETTINGS_DIAGNOSTIC_DEFAULTS = {
     "max_projected_points_output_per_slice": 300,
     "max_shadow_length_factor": 100.0,
     "max_formal_shadow_loop_points": 2000,
+    "preview_mode": "off",
+    "preview_true_solar_times": ["08:00:00", "12:00:00", "16:00:00"],
+    "preview_thickness_mm": 10.0,
+    "preview_vertical_separation_mm": 20.0,
+    "preview_transparency": 45,
+}
+
+SHADOW_PREVIEW_POLICY = {
+    "purpose": "optional_revit_visual_qa_for_formal_shadow_polygons",
+    "optional": True, "default_mode": "off", "creates_revit_elements": True,
+    "formal_calculation_input": False, "primary_revit_api": "Autodesk.Revit.DB.DirectShape",
+    "geometry_adapter": "GeometryCreationUtilities.CreateExtrusionGeometry",
+    "target_revit_version": "Revit 2024.3",
+    "cleanup_ownership_method": "DirectShape.ApplicationId exact match",
+    "replaces_previous_owned_preview": True,
+    "graphical_override_scope": "active_view_element_overrides_only",
+    "changes_active_view": False, "changes_global_styles": False,
+    "legal_output": False, "permit_ready_certified": False,
 }
 
 FORMAL_SHADOW_PROJECTION_POLICY = {
@@ -173,15 +191,12 @@ UNIT_CONVERSION_POLICY = {
     "fallback_area_factor": "1 ft2 = 0.09290304 m2",
     "fallback_volume_factor": "1 ft3 = 0.028316846592 m3",
     "reverse_length_factor": "1 m = 3.280839895013123 ft",
-    "formal_geometry_projection_enabled": False,
+    "formal_geometry_projection_enabled": True,
     "legal_judgement_generated": False,
     "create_revit_elements": False,
     "raw_fields_preserved": True,
     "converted_fields_suffix": "_m / _m2 / _m3",
     "not_implemented_in_this_pr": [
-        "formal footprint polygon",
-        "CurveLoop",
-        "shadow projection",
         "equal-time contour",
         "legal judgement",
     ],
@@ -237,7 +252,6 @@ SUN_POSITION_POLICY = {
         "permit-ready certification",
         "atmospheric refraction",
         "Revit ProjectLocation true-north extraction",
-        "formal shadow polygons",
         "Boolean union",
         "time accumulation",
         "equal-time contours",
@@ -268,7 +282,7 @@ SHADOW_PROJECTION_POLICY = {
         "legal_judgement_generated": False,
         "revit_elements_created": False,
     },
-    "formal_shadow_polygons_generated": False,
+    "formal_shadow_polygons_generated": True,
     "equal_time_contours_generated": False,
     "legal_masks_generated": False,
     "site_boundary_clipping_performed": False,
@@ -438,8 +452,9 @@ FOOTPRINT_EXTRACTION_POLICY = {
         "self-intersection check",
     ],
     "not_implemented_in_this_pr": [
-        "CurveLoop creation", "boolean union across casters", "site boundary clipping",
-        "own-site exclusion", "beyond-5m legal range", "formal shadow polygon generation",
+        "boolean union across casters", "split-Solid polygon union", "duration accumulation",
+        "site boundary clipping", "own-site exclusion", "beyond-5m legal range",
+        "5m / 10m legal lines",
         "equal-time contour generation", "legal OK/NG judgement",
     ],
 }

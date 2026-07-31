@@ -70,6 +70,6 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "blockers_for_future_shadow_projection": blockers_projection,
         "blockers_for_legal_judgement_masks": blockers_legal,
         "blockers_for_boundary_dependent_steps": blockers_boundary,
-        "info": ["equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generation and legal masks remain unimplemented."],
-        "next_implementation_steps": ["formal footprint polygon generation", "optional site boundary loop extraction", "legal judgement mask preparation", "true solar time diagnostics", "sun vector calculation", "time-slice shadow projection", "logical union", "shadow duration accumulation", "equal-time contour generation", "legal judgement report"],
+        "info": ["equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; union, accumulation, contours, and legal masks remain unimplemented."],
+        "next_implementation_steps": ["optional site boundary loop extraction", "legal judgement mask preparation", "per-time-slice caster union", "split-Solid polygon union", "shadow duration accumulation", "equal-time contour generation", "site clipping", "own-site exclusion", "5m / 10m legal lines", "legal judgement report"],
     }
