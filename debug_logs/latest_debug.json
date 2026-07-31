@@ -1,6 +1,6 @@
 {
   "debug_schema_version": "v1",
-  "error_summary": "Traceback (most recent call last): File \"<redacted_path> - gensler/_mypython/dynamo_shadow/shadow_inputs.py\", line 353, in _diagnose_curve_access ...",
+  "error_summary": null,
   "footprint_extraction_summary": {
     "closed_loop_candidate_count": 1,
     "count": 1,
@@ -136,41 +136,15 @@
       "type": "str"
     },
     "site_boundary": {
-      "count": 7,
-      "is_list_like": true,
-      "is_none": false,
-      "provided": true,
-      "sample": [
-        {
-          "element_id": 6344914,
-          "is_none": false,
-          "type": "ModelLine"
-        },
-        {
-          "element_id": 6344943,
-          "is_none": false,
-          "type": "ModelLine"
-        },
-        {
-          "element_id": 6344961,
-          "is_none": false,
-          "type": "ModelLine"
-        },
-        {
-          "element_id": 6344982,
-          "is_none": false,
-          "type": "ModelLine"
-        },
-        {
-          "element_id": 6345007,
-          "is_none": false,
-          "type": "ModelLine"
-        }
-      ],
+      "count": 0,
+      "is_list_like": false,
+      "is_none": true,
+      "provided": false,
+      "sample": [],
       "sample_limit": 5,
-      "sample_type": "ModelLine",
-      "truncated_count": 2,
-      "type": "list"
+      "sample_type": null,
+      "truncated_count": 0,
+      "type": "NoneType"
     },
     "source": "INPUTS"
   },
@@ -193,7 +167,7 @@
       "Level reference is present but is not used as average ground level or measurement plane."
     ]
   },
-  "message": "script.py failed while building v1 footprint extraction diagnostics.",
+  "message": "Dynamo_Shadow v1 diagnostics; explicit or date-derived NOAA v1 solar parameters support diagnostic sun tables. No formal shadow polygon generation, Revit ele...",
   "not_implemented_summary": {
     "footprint_extraction": [
       "CurveLoop creation",
@@ -271,7 +245,7 @@
   "runtime_code_diagnostics": {
     "all_local_modules_from_workspace": true,
     "cached_module_count_removed": 13,
-    "code_build_id": "2026-07-31-native-curveloop-footprint-v1",
+    "code_build_id": "2026-07-31-site-boundary-location-curve-v1",
     "import_caches_invalidated": true,
     "loader_bootstrap_received": true,
     "loader_build_id": "2026-07-28-loader-module-isolation-v1",
@@ -717,8 +691,16 @@
       "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics."
     ]
   },
-  "site_boundary_skipped": false,
-  "site_boundary_summary": null,
+  "site_boundary_skipped": true,
+  "site_boundary_summary": {
+    "accepted_count": 0,
+    "boundary_dependent_steps_skipped": true,
+    "count": 0,
+    "items": [],
+    "provided": false,
+    "rejected_count": 0,
+    "warnings": []
+  },
   "solar_calculation_summary": {
     "available": true,
     "blockers": [],
@@ -750,7 +732,7 @@
     "warnings": []
   },
   "stage": "v1_formal_footprint_stabilization",
-  "success": false,
+  "success": true,
   "tool": "Dynamo_Shadow",
   "unit_conversion_summary": {
     "area": {
@@ -779,6 +761,15 @@
     },
     "warnings": []
   },
-  "warnings": [],
-  "warnings_count": 0
+  "warnings": [
+    "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics.",
+    "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
+    "Level reference is present but is not used as average ground level or measurement plane.",
+    "zero/unknown-volume Solid was retained as a geometry object but excluded from formal Solid and face counts.",
+    "legal judgement masks not implemented",
+    "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
+    "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.",
+    "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
+  ],
+  "warnings_count": 8
 }
