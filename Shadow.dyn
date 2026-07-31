@@ -8,14 +8,6 @@
   },
   "Inputs": [
     {
-      "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
-      "Name": "Select Site Boundary Elements",
-      "Type": "selection",
-      "Type2": "hostSelection",
-      "Value": "",
-      "Description": "Revit ドキュメントから複数の要素を選択します。"
-    },
-    {
       "Id": "3daad2f0de954b2a971f92fd9f671601",
       "Name": "Levels",
       "Type": "selection",
@@ -330,7 +322,7 @@
       {
         "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
         "Name": "Select Site Boundary Elements",
-        "IsSetAsInput": true,
+        "IsSetAsInput": false,
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
