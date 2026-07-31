@@ -1,6 +1,6 @@
 {
   "debug_schema_version": "v1",
-  "error_summary": null,
+  "error_summary": "Traceback (most recent call last): File \"<redacted_path> - gensler/_mypython/dynamo_shadow/shadow_inputs.py\", line 353, in _diagnose_curve_access ...",
   "footprint_extraction_summary": {
     "closed_loop_candidate_count": 1,
     "count": 1,
@@ -22,6 +22,66 @@
     },
     "warnings": []
   },
+  "formal_footprint_summary": {
+    "available": true,
+    "blockers": [],
+    "boolean_union_performed": false,
+    "caster_count": 1,
+    "complete": true,
+    "failed_caster_count": 0,
+    "fallback_face_count": 0,
+    "fallback_loop_count": 0,
+    "formal_fallback_polygon_count": 0,
+    "formal_native_polygon_count": 1,
+    "inner_loop_count": 0,
+    "invalid_loop_count": 0,
+    "invalid_loops": [],
+    "invalid_reason_counts": {},
+    "items": [
+      {
+        "area_m2": 185.89832939857536,
+        "area_m2_signed": 185.89832939857536,
+        "classification_group_key": [
+          0,
+          1
+        ],
+        "closed": true,
+        "concave_vertex_count": 4,
+        "containment_depth": 0,
+        "generation_method": "native_curve_loop_line_exact",
+        "is_convex": false,
+        "native_curve_count": 12,
+        "native_flip_performed": true,
+        "native_orientation_method": "curve_loop_is_counterclockwise",
+        "native_source_loop_index": 0,
+        "orientation": "ccw",
+        "point_count": 12,
+        "polygon_index": 0,
+        "role": "outer",
+        "source_candidate_index": 0,
+        "source_caster_index": 0,
+        "source_face_index": 1,
+        "source_loop_index": 0,
+        "units": "meter"
+      }
+    ],
+    "mixed_generation_methods": false,
+    "native_dispose_warning_count": 0,
+    "native_face_attempt_count": 1,
+    "native_face_success_count": 1,
+    "native_line_loop_count": 1,
+    "native_loop_count": 1,
+    "native_non_line_loop_count": 0,
+    "native_primary_path_expected": true,
+    "outer_loop_count": 1,
+    "partial_success": false,
+    "polygon_count": 1,
+    "ready_for_shadow_projection_input": true,
+    "successful_caster_count": 1,
+    "tolerance_m_used": 0.01,
+    "unknown_role_count": 0,
+    "warnings": []
+  },
   "generated_for_review": true,
   "input_summary": {
     "building_elements": {
@@ -31,7 +91,7 @@
       "provided": true,
       "sample": [
         {
-          "element_id": 6622323,
+          "element_id": 6344830,
           "is_none": false,
           "type": "FamilyInstance"
         }
@@ -76,15 +136,41 @@
       "type": "str"
     },
     "site_boundary": {
-      "count": 0,
-      "is_list_like": false,
-      "is_none": true,
-      "provided": false,
-      "sample": [],
+      "count": 8,
+      "is_list_like": true,
+      "is_none": false,
+      "provided": true,
+      "sample": [
+        {
+          "element_id": 6344830,
+          "is_none": false,
+          "type": "FamilyInstance"
+        },
+        {
+          "element_id": 6344914,
+          "is_none": false,
+          "type": "ModelLine"
+        },
+        {
+          "element_id": 6344943,
+          "is_none": false,
+          "type": "ModelLine"
+        },
+        {
+          "element_id": 6344961,
+          "is_none": false,
+          "type": "ModelLine"
+        },
+        {
+          "element_id": 6344982,
+          "is_none": false,
+          "type": "ModelLine"
+        }
+      ],
       "sample_limit": 5,
-      "sample_type": null,
-      "truncated_count": 0,
-      "type": "NoneType"
+      "sample_type": "FamilyInstance",
+      "truncated_count": 3,
+      "type": "list"
     },
     "source": "INPUTS"
   },
@@ -107,7 +193,7 @@
       "Level reference is present but is not used as average ground level or measurement plane."
     ]
   },
-  "message": "Dynamo_Shadow v1 diagnostics; formal diagnostic footprint polygons are generated from eligible bottom-face Line edge loops. No formal shadow polygon generati...",
+  "message": "script.py failed while building v1 footprint extraction diagnostics.",
   "not_implemented_summary": {
     "footprint_extraction": [
       "CurveLoop creation",
@@ -185,7 +271,7 @@
   "runtime_code_diagnostics": {
     "all_local_modules_from_workspace": true,
     "cached_module_count_removed": 0,
-    "code_build_id": "2026-07-28-reflection-disabled-by-default-v1",
+    "code_build_id": "2026-07-31-native-curveloop-footprint-v1",
     "import_caches_invalidated": true,
     "loader_bootstrap_received": true,
     "loader_build_id": "2026-07-28-loader-module-isolation-v1",
@@ -292,6 +378,7 @@
       "analysis_margin_m": 20.0,
       "analysis_start_time": "08:00",
       "average_ground_level_elevation_m": 0.0,
+      "calculation_date": null,
       "closure_tolerance_m": 0.01,
       "debug_log_dir": "debug_logs",
       "debug_log_enabled": true,
@@ -308,6 +395,7 @@
       "site_latitude_deg": 35.6812,
       "site_longitude_deg": 139.7671,
       "solar_declination_deg": -23.439,
+      "solar_parameter_mode": null,
       "standard_meridian_deg": 135.0,
       "sun_time_step_minutes": 30,
       "time_basis": "true_solar_time",
@@ -334,8 +422,8 @@
     "bottom_face_candidate_count": 1,
     "closed_footprint_loop_candidate_count": 1,
     "count": 1,
-    "edge_count": 24,
-    "face_count": 10,
+    "edge_count": 36,
+    "face_count": 14,
     "footprint_loop_candidate_count": 1,
     "geometry_readable_caster_count": 1,
     "items": [
@@ -343,9 +431,9 @@
         "accepted_shadow_caster": true,
         "bottom_face_candidate_count": 1,
         "closed_footprint_loop_candidate_count": 1,
-        "edge_count": 24,
-        "element_id": 6622323,
-        "face_count": 10,
+        "edge_count": 36,
+        "element_id": 6344830,
+        "face_count": 14,
         "geometry_access_method": "Options",
         "geometry_instance_count": 1,
         "geometry_probe_attempted": true,
@@ -429,7 +517,7 @@
             },
             "category_readable": true,
             "element_id_diagnostics": {
-              "element_id": 6622323,
+              "element_id": 6344830,
               "element_id_available": true,
               "element_id_error": null,
               "element_id_error_type": null,
@@ -529,7 +617,7 @@
         "document_reacquire_attempted": false,
         "document_reacquire_strategy": null,
         "document_reacquire_succeeded": false,
-        "element_id": 6622323,
+        "element_id": 6344830,
         "element_id_access_error": null,
         "element_id_access_error_type": null,
         "element_id_object_type": "ElementId",
@@ -615,18 +703,40 @@
       "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics."
     ]
   },
-  "site_boundary_skipped": true,
-  "site_boundary_summary": {
-    "accepted_count": 0,
-    "boundary_dependent_steps_skipped": true,
-    "count": 0,
-    "items": [],
-    "provided": false,
-    "rejected_count": 0,
+  "site_boundary_skipped": false,
+  "site_boundary_summary": null,
+  "solar_calculation_summary": {
+    "available": true,
+    "blockers": [],
+    "calculation_date": null,
+    "calculation_mode": "explicit_declination_and_equation_of_time_v1",
+    "complete": true,
+    "date_based_declination_calculated": false,
+    "date_based_equation_of_time_calculated": false,
+    "day_of_year": null,
+    "days_in_year": null,
+    "equation_of_time_applied": false,
+    "equation_of_time_minutes": null,
+    "input_time_basis": "true_solar_time",
+    "longitude_correction_applied": false,
+    "longitude_correction_minutes": null,
+    "parameter_reference_hour_local_standard": null,
+    "permit_ready_certified": false,
+    "site_latitude_deg": 35.6812,
+    "site_longitude_deg": 139.7671,
+    "slice_count": 17,
+    "solar_declination_deg": -23.439,
+    "solar_parameter_mode": "explicit",
+    "solar_parameter_mode_inferred_for_backward_compatibility": true,
+    "solar_parameter_source": "explicit_settings",
+    "solar_parameter_source_available": true,
+    "solar_parameters_resolved": true,
+    "standard_meridian_deg": 135.0,
+    "true_north_deg": 0.0,
     "warnings": []
   },
   "stage": "v1_formal_footprint_stabilization",
-  "success": true,
+  "success": false,
   "tool": "Dynamo_Shadow",
   "unit_conversion_summary": {
     "area": {
@@ -655,15 +765,6 @@
     },
     "warnings": []
   },
-  "warnings": [
-    "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics.",
-    "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
-    "Level reference is present but is not used as average ground level or measurement plane.",
-    "zero/unknown-volume Solid was retained as a geometry object but excluded from formal Solid and face counts.",
-    "legal judgement masks not implemented",
-    "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
-    "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.",
-    "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
-  ],
-  "warnings_count": 8
+  "warnings": [],
+  "warnings_count": 0
 }
