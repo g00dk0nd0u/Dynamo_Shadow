@@ -2,7 +2,7 @@
 
 Dynamo Shadow is a Dynamo/Revit diagnostic prototype for studying workflows related to Japanese Building Standard Law Article 56-2 shadow regulations.
 
-This repository is for early-stage research and review. The current implementation is diagnostic-only: it does not perform formal shadow projection, equal-time contour generation, permit-ready calculation, or legal OK/NG judgement.
+This repository is for early-stage research and review. It includes a read-only Revit `ExtrusionAnalyzer` prototype for formal per-solid, per-time-slice shadow polygons within a narrow extrusion-like/Line-loop scope. It does not perform shadow union, duration accumulation, equal-time contour generation, permit-ready calculation, or legal OK/NG judgement.
 
 ## Current diagnostics
 

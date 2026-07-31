@@ -84,6 +84,7 @@ try:
         UNIT_CONVERSION_POLICY,
         SUN_POSITION_POLICY,
         SHADOW_PROJECTION_POLICY,
+        FORMAL_SHADOW_PROJECTION_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
     from shadow_settings import _normalize_settings
@@ -95,6 +96,7 @@ try:
     from shadow_units import _build_unit_conversion_diagnostics
     from shadow_sun import _build_sun_position_diagnostics
     from shadow_projection import _build_shadow_projection_diagnostics
+    from shadow_formal_projection import _build_formal_shadow_polygons
 except BaseException:
     _IMPORT_ERROR_TEXT = traceback.format_exc()
 else:
@@ -240,11 +242,15 @@ def _build_success():
     settings_normalized = _normalize_settings(raw_inputs.get("settings"), raw_inputs.get("level"))
     law56_2_awareness = _build_law56_2_awareness_context(settings_normalized, site_boundary)
     measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
-    shadow_caster_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized, measurement_plane)
+    shadow_caster_geometry, runtime_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized, measurement_plane, return_runtime_geometry=True)
     footprint_extraction = _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized, site_boundary)
     sun_time_slices, sun_position_diagnostics, sun_position_policy, solar_calculation_v1 = _build_sun_position_diagnostics(settings_normalized)
     shadow_projection_diagnostics, shadow_projection_policy = _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_plane, sun_time_slices)
-    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction)
+    try:
+        formal_shadow_polygons = _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_slices, settings_normalized, shadow_projection_diagnostics)
+    except BaseException as exc:
+        formal_shadow_polygons = {"available": False, "complete": False, "partial_success": False, "engine": "revit_extrusion_analyzer_v1", "formal_geometry": True, "diagnostic_convex_hull_used_as_fallback": False, "blockers": [{"failure_code": "formal_shadow_engine_unhandled_exception", "failure_type": type(exc).__name__, "failure_message": _sanitize_text_for_debug(exc)}], "warnings": [], "slices": []}
+    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
     warnings.extend(settings_normalized.get("warnings", []))
@@ -254,6 +260,7 @@ def _build_success():
     warnings.extend(footprint_extraction.get("warnings", []))
     warnings.extend(sun_position_diagnostics.get("warnings", []))
     warnings.extend(shadow_projection_diagnostics.get("warnings", []))
+    warnings.extend(formal_shadow_polygons.get("warnings", []))
     warnings.extend(pipeline_readiness.get("blockers_for_equal_time_shadow", []))
     warnings.extend(pipeline_readiness.get("blockers_for_footprint_extraction", []))
     warnings.extend(pipeline_readiness.get("blockers_for_measurement_plane", []))
@@ -274,7 +281,7 @@ def _build_success():
         "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow v1 diagnostics; explicit or date-derived NOAA v1 solar parameters support diagnostic sun tables. No formal shadow polygon generation, Revit element creation, legal judgement, 5m/10m measurement line generation, Boolean union, or equal-time contours are implemented.",
+        "message": "Dynamo_Shadow Revit-native formal time-slice shadow prototype. No caster union, duration accumulation, equal-time contours, legal judgement, or Revit element creation is performed.",
         "legal_constants": LEGAL_CONSTANTS,
         "unit_conversion_diagnostics": unit_conversion_diagnostics,
         "unit_conversion_policy": UNIT_CONVERSION_POLICY,
@@ -296,6 +303,8 @@ def _build_success():
         "sun_position_policy": sun_position_policy,
         "shadow_projection_diagnostics": shadow_projection_diagnostics,
         "shadow_projection_policy": shadow_projection_policy,
+        "formal_shadow_polygons": formal_shadow_polygons,
+        "formal_shadow_projection_policy": FORMAL_SHADOW_PROJECTION_POLICY,
         "law56_2_awareness": law56_2_awareness,
         "measurement_plane": measurement_plane,
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
@@ -369,6 +378,7 @@ def _build_failure(error_text):
     solar_calculation_v1 = None
     shadow_projection_diagnostics = None
     shadow_projection_policy = SHADOW_PROJECTION_POLICY
+    formal_shadow_polygons = None
     try:
         unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
     except Exception:
@@ -398,7 +408,8 @@ def _build_failure(error_text):
         footprint_extraction = _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized or {}, site_boundary or {})
         sun_time_slices, sun_position_diagnostics, sun_position_policy, solar_calculation_v1 = _build_sun_position_diagnostics(settings_normalized or {})
         shadow_projection_diagnostics, shadow_projection_policy = _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_plane, sun_time_slices)
-        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane, footprint_extraction)
+        formal_shadow_polygons = _build_formal_shadow_polygons({"casters": []}, measurement_plane, sun_time_slices, settings_normalized or {}, shadow_projection_diagnostics)
+        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons)
     except Exception:
         pipeline_readiness = None
 
@@ -429,6 +440,8 @@ def _build_failure(error_text):
         "sun_position_policy": sun_position_policy,
         "shadow_projection_diagnostics": shadow_projection_diagnostics,
         "shadow_projection_policy": shadow_projection_policy,
+        "formal_shadow_polygons": formal_shadow_polygons,
+        "formal_shadow_projection_policy": FORMAL_SHADOW_PROJECTION_POLICY,
         "law56_2_awareness": law56_2_awareness,
         "measurement_plane": measurement_plane,
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,

@@ -54,4 +54,26 @@ Add read-only `ProjectLocation` diagnostics, differences from explicit settings,
 
 ### Follow-up C — ExtrusionAnalyzer shadow prototype (#34)
 
-Start with a simple-box spike rather than general shape support. Exercise `SolidUtils.SplitVolumes`, validate direction sign in Revit, obtain `GetExtrusionBase` loops through `Face.GetEdgesAsCurveLoops`, compare against the diagnostic point-cloud hull, and record explicit failure reasons.
+Continue with controlled Revit validation rather than expanding to general shape support. Validate direction sign with a simple box and the current concave prism, compare `GetExtrusionBase` loops against the diagnostic point-cloud hull, and retain explicit failure reasons.
+
+## Formal time-slice shadow polygon prototype (Issue #34)
+
+Formal shadow polygon generation is implemented as a read-only Revit 2024.3
+`ExtrusionAnalyzer` prototype. The supported initial scope is positive-volume,
+extrusion-like `DB.Solid` geometry serialized through exact Line-only native
+`CurveLoop` endpoints. `SolidUtils.SplitVolumes` processes independent volumes
+once per execution; results remain separate and no union is performed.
+
+Native solids travel only through an internal runtime bundle and are never
+included in `OUT` or debug JSON. The measurement plane is constructed in Revit
+internal units from the configured average-ground plus measurement height, and
+the analyzer ray uses the already-rotated model-XY shadow direction. Primary
+direction-sign validation remains a required Revit runtime checkpoint; an
+opposite-sign probe may diagnose a mismatch but must never be adopted silently.
+Every analyzer and acquired curve loop is disposed deterministically.
+
+The existing point-cloud projection and convex hull remain comparison-only
+diagnostics and are never formal fallbacks. Non-Line serialization, arbitrary
+complex-solid support, volume/caster union, duration accumulation, equal-time
+contours, and legal judgement remain unsupported. This prototype is not
+permit-ready or ADS-equivalent.

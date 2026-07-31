@@ -142,9 +142,10 @@ def _summarize_edge_or_curve(value):
     length = _safe_float_attr(curve, "Length") if curve is not None else None
     return {"type": _type_name(value), "curve_type": _type_name(curve) if curve is not None else None, "length_raw": length, "endpoint0_raw": _xyz_to_raw_dict(p0), "endpoint1_raw": _xyz_to_raw_dict(p1), "is_horizontal_candidate": (z0 is not None and z1 is not None and abs(z0 - z1) < 1e-9), "z_min_raw": min([z for z in (z0, z1) if z is not None]) if z0 is not None or z1 is not None else None, "z_max_raw": max([z for z in (z0, z1) if z is not None]) if z0 is not None or z1 is not None else None, "warnings": warnings}
 
-def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings_normalized, measurement_plane=None):
+def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings_normalized, measurement_plane=None, return_runtime_geometry=False):
     items_in = _to_list(building_elements)
     diag = {"policy": GEOMETRY_EXTRACTION_POLICY, "provided": bool(items_in), "count": len(items_in), "accepted_caster_count": (shadow_casters or {}).get("accepted_count", 0), "geometry_readable_caster_count": 0, "solid_count": 0, "positive_solid_count": 0, "face_count": 0, "edge_count": 0, "mesh_count": 0, "diagnostic_source_point_count": 0, "symbol_geometry_source_points_skipped": 0, "geometry_instance_source_strategy": "GetInstanceGeometry preferred; GetSymbolGeometry fallback is diagnostic-only for projection source points", "bottom_face_candidate_count": 0, "top_face_candidate_count": 0, "vertical_face_candidate_count": 0, "footprint_candidate_count": 0, "footprint_loop_candidate_count": 0, "closed_footprint_loop_candidate_count": 0, "best_candidate_count": 0, "casters_with_footprint_candidate_count": 0, "casters_with_closed_footprint_loop_candidate_count": 0, "measurement_plane_relation_available": False, "measurement_plane_elevation_m": ((measurement_plane or {}).get("elevation_m")), "units": {"geometry": "revit_raw_internal_units", "official_unit_conversion": "diagnostic_meter_fields_added"}, "settings_caps": {"max_diagnostic_source_points_per_caster": _diagnostic_point_cap(settings_normalized), "max_projected_points_output_per_slice": (((settings_normalized or {}).get("normalized") or {}).get("max_projected_points_output_per_slice") or 300)}, "items": [], "readiness": {}, "warnings": [], "info": ["Geometry extraction diagnostics are read-only and create no Revit elements.", "Footprint candidates are diagnostic only; no footprint polygon, shadow polygon, projection, grid accumulation, or equal-time contour is generated."]}
+    runtime_geometry = {"casters": []}
     caster_items = (shadow_casters or {}).get("items") or []
     for index, item in enumerate(items_in):
         unwrapped = _try_unwrap(item)
@@ -157,6 +158,7 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
         item_warnings.extend(collected.get("warnings", []))
         objs = collected.get("objects") or []
         solids=[]; faces=[]; face_objects=[]; edges=[]; mesh_count=0
+        runtime_solids=[]
         diagnostic_source_points=[]; diagnostic_source_seen=set()
         skipped_symbol_source_points=[]; skipped_symbol_source_seen=set()
         diagnostic_source_point_cap = _diagnostic_point_cap(settings_normalized)
@@ -170,6 +172,12 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
                     item_warnings.append("zero/unknown-volume Solid was retained as a geometry object but excluded from formal Solid and face counts.")
                     continue
                 solids.append(ss)
+                if accepted and not source_is_symbol_geometry:
+                    runtime_solids.append({
+                        "solid_index": len(solids) - 1,
+                        "native_solid": val,
+                        "geometry_source": "direct_or_instance_geometry",
+                    })
                 for f in _safe_iter(_safe_attr(val, "Faces")):
                     fs, _uw = _face_summary_raw_to_meters(_summarize_face(f)); faces.append(fs); face_objects.append(f)
                 for e in _safe_iter(_safe_attr(val, "Edges")):
@@ -212,6 +220,12 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
         legacy_projection_fallback_allowed = not (len(diagnostic_source_points) == 0 and len(skipped_symbol_source_points) > 0)
         entry={"index": index, "element_id": _element_id(unwrapped), "name": _element_name(unwrapped), "category_name": _category_name(unwrapped), "accepted_shadow_caster": accepted, "geometry_attempted": bool((collected.get("access") or {}).get("attempted")), "geometry_probe_attempted": bool((collected.get("access") or {}).get("attempted")), "geometry_available": len(objs)>0, "geometry_readable": bool((collected.get("access") or {}).get("geometry_readable")), "geometry_access_method": (collected.get("access") or {}).get("geometry_access_method"), "geometry_fallback_used": bool((collected.get("access") or {}).get("geometry_fallback_used")), "geometry_instance_count": sum(1 for o in objs if _is_geometry_instance_like(o.get("object"))), "geometry_object_count": len(objs), "solid_count": len(solids), "positive_solid_count": pos, "face_count": len(faces), "edge_count": len(edges), "mesh_count": mesh_count, "bottom_face_candidate_count": bottom, "top_face_candidate_count": top, "vertical_face_candidate_count": vertical, "footprint_candidate_count": len(footprint.get("candidates") or []), "footprint_loop_candidate_count": footprint.get("loop_candidate_count", 0), "closed_footprint_loop_candidate_count": footprint.get("closed_loop_candidate_count", 0), "best_footprint_candidate": footprint.get("best_candidate"), "footprint_extraction": footprint, "footprint_extraction_warnings": footprint.get("warnings", []), "bounding_box_diagnostic": bbox, "measurement_plane_relation": relation, "diagnostic_source_points_m": diagnostic_source_points, "diagnostic_source_point_count": len(diagnostic_source_points), "diagnostic_source_points_truncated": len(diagnostic_source_points) >= diagnostic_source_point_cap, "symbol_geometry_source_points_skipped": len(skipped_symbol_source_points), "legacy_projection_fallback_allowed": legacy_projection_fallback_allowed, "projection_source_points_safe": len(diagnostic_source_points) > 0 or legacy_projection_fallback_allowed, "geometry_instance_source_strategy": "GetInstanceGeometry preferred; GetSymbolGeometry fallback is diagnostic-only for projection source points", "solids": solids[:20], "faces_summary": faces[:20], "edges_summary_sample": edges[:20], "warnings": item_warnings}
         diag["items"].append(entry); diag["warnings"].extend(item_warnings)
+        if accepted:
+            runtime_geometry["casters"].append({
+                "caster_index": index,
+                "element_id": _element_id(unwrapped),
+                "solids": runtime_solids,
+            })
         if (collected.get("access") or {}).get("geometry_readable") or len(objs)>0: diag["geometry_readable_caster_count"] += 1
         diag["solid_count"] += len(solids); diag["positive_solid_count"] += pos; diag["face_count"] += len(faces); diag["edge_count"] += len(edges); diag["mesh_count"] += mesh_count; diag["diagnostic_source_point_count"] += len(diagnostic_source_points); diag["symbol_geometry_source_points_skipped"] += len(skipped_symbol_source_points); diag["bottom_face_candidate_count"] += bottom; diag["top_face_candidate_count"] += top; diag["vertical_face_candidate_count"] += vertical; diag["footprint_candidate_count"] += len(footprint.get("candidates") or []); diag["footprint_loop_candidate_count"] += footprint.get("loop_candidate_count", 0); diag["closed_footprint_loop_candidate_count"] += footprint.get("closed_loop_candidate_count", 0); diag["best_candidate_count"] += 1 if footprint.get("best_candidate") else 0; diag["casters_with_footprint_candidate_count"] += 1 if footprint.get("loop_candidate_count", 0) > 0 else 0; diag["casters_with_closed_footprint_loop_candidate_count"] += 1 if footprint.get("closed_loop_candidate_count", 0) > 0 else 0
     fp_ready = diag["accepted_caster_count"] > 0 and diag["closed_footprint_loop_candidate_count"] > 0
@@ -227,4 +241,6 @@ def _diagnose_shadow_caster_geometry(building_elements, shadow_casters, settings
     if not mp_ready:
         proj_blockers.append("Measurement plane is not constructed; future shadow projection context is blocked.")
     diag["readiness"]={"geometry_diagnostics_ready": True, "ready_for_future_footprint_extraction": fp_ready, "ready_for_future_footprint_polygon_generation": fp_ready, "ready_for_future_shadow_projection": fp_ready and settings_ready and mp_ready, "blockers_for_future_footprint_extraction": fp_blockers, "blockers_for_future_shadow_projection": proj_blockers}
+    if return_runtime_geometry:
+        return diag, runtime_geometry
     return diag

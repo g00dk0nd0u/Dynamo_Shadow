@@ -336,6 +336,49 @@ def _runtime_code_summary(out_payload):
     ]
     return _sanitize_for_debug(result)
 
+
+def _formal_shadow_polygon_debug_summary(formal_shadow):
+    """Compact, coordinate-free summary; runtime native objects are never visited."""
+    formal = formal_shadow if isinstance(formal_shadow, dict) else {}
+    reason_counts = {}; sign_counts = {}; areas = []; point_counts = []
+    analyzer_ok = analyzer_fail = analyzer_dispose_fail = native_loops = line_loops = non_line_loops = 0
+    outer = inner = failed_slices = failed_caster_slices = comparisons = 0
+    per_slice = []
+    for item in (formal.get("slices") or [])[:17]:
+        polygons = 0; failed_casters = 0
+        for caster in item.get("casters") or []:
+            cps = caster.get("polygons") or []; polygons += len(cps)
+            if not cps: failed_casters += 1; failed_caster_slices += 1
+            for polygon in cps:
+                areas.append(_debug_float(polygon.get("area_m2"))); point_counts.append(_debug_int(polygon.get("point_count"), 0))
+                if polygon.get("role") == "inner": inner += 1
+                else: outer += 1
+                native_loops += 1; line_loops += 0 if polygon.get("contains_non_line_curve") else 1
+                if polygon.get("contains_non_line_curve"): non_line_loops += 1
+                sign = polygon.get("direction_sign_validation") or "unknown"; sign_counts[sign] = sign_counts.get(sign, 0) + 1
+            for blocker in caster.get("blockers") or []:
+                code = blocker.get("failure_code") if isinstance(blocker, dict) else str(blocker); reason_counts[code] = reason_counts.get(code, 0) + 1
+            for analyzer in caster.get("analyzers") or []:
+                if analyzer.get("create_succeeded"): analyzer_ok += 1
+                else: analyzer_fail += 1
+                if analyzer.get("dispose_attempted") and not analyzer.get("dispose_succeeded"): analyzer_dispose_fail += 1
+        if not item.get("complete"): failed_slices += 1
+        if item.get("comparison"): comparisons += 1
+        per_slice.append({"slice_index": _debug_int(item.get("slice_index")), "complete": bool(item.get("complete")), "polygon_count": polygons, "failed_caster_count": failed_casters})
+    areas = [x for x in areas if x is not None]; point_counts = [x for x in point_counts if x is not None]
+    return _sanitize_for_debug({
+        "available": bool(formal.get("available")), "complete": bool(formal.get("complete")), "partial_success": bool(formal.get("partial_success")),
+        "engine": formal.get("engine"), "prototype_scope": formal.get("prototype_scope"), "time_slice_count": formal.get("time_slice_count", 0),
+        "caster_count": formal.get("caster_count", 0), "split_solid_count": formal.get("split_solid_count", 0), "polygon_count": formal.get("polygon_count", 0),
+        "outer_loop_count": outer, "inner_loop_count": inner, "failed_slice_count": failed_slices, "failed_caster_slice_count": failed_caster_slices,
+        "analyzer_create_success_count": analyzer_ok, "analyzer_create_failure_count": analyzer_fail, "analyzer_dispose_failure_count": analyzer_dispose_fail,
+        "native_loop_count": native_loops, "native_line_loop_count": line_loops, "native_non_line_loop_count": non_line_loops,
+        "direction_sign_status_counts": sign_counts, "failure_reason_counts": reason_counts, "per_slice": per_slice,
+        "minimum_area_m2": min(areas) if areas else None, "maximum_area_m2": max(areas) if areas else None,
+        "minimum_point_count": min(point_counts) if point_counts else None, "maximum_point_count": max(point_counts) if point_counts else None,
+        "diagnostic_convex_hull_comparison_count": comparisons,
+    })
+
 def _summarize_out_for_debug(out_payload):
     out_payload = out_payload or {}
     settings = out_payload.get("settings_normalized") or {}
@@ -360,6 +403,7 @@ def _summarize_out_for_debug(out_payload):
         "shadow_caster_geometry_summary": _summary_counts(out_payload.get("shadow_caster_geometry")),
         "footprint_extraction_summary": _summary_counts(out_payload.get("footprint_extraction")),
         "formal_footprint_summary": _formal_footprint_debug_summary(out_payload.get("footprint_extraction")),
+        "formal_shadow_polygon_summary": _formal_shadow_polygon_debug_summary(out_payload.get("formal_shadow_polygons")),
         "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
         "unit_conversion_summary": _unit_conversion_summary(out_payload),
@@ -391,6 +435,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "shadow_caster_geometry_summary": summary["shadow_caster_geometry_summary"],
         "footprint_extraction_summary": summary["footprint_extraction_summary"],
         "formal_footprint_summary": summary["formal_footprint_summary"],
+        "formal_shadow_polygon_summary": summary["formal_shadow_polygon_summary"],
         "solar_calculation_summary": summary["solar_calculation_summary"],
         "pipeline_readiness": summary["pipeline_readiness"],
         "unit_conversion_summary": summary["unit_conversion_summary"],
