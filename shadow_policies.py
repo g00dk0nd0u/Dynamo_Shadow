@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-31-formal-shadow-revit-preview-v1"
+CODE_BUILD_ID = "2026-07-31-preview-cleanup-runtime-fix-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
