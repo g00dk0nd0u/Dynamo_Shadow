@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-31-site-boundary-location-curve-v1"
+CODE_BUILD_ID = "2026-07-31-revit-extrusion-shadow-prototype-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -137,6 +137,29 @@ SETTINGS_DIAGNOSTIC_DEFAULTS = {
     "closure_tolerance_m": 0.01,
     "max_diagnostic_source_points_per_caster": 1000,
     "max_projected_points_output_per_slice": 300,
+    "max_shadow_length_factor": 100.0,
+    "max_formal_shadow_loop_points": 2000,
+}
+
+FORMAL_SHADOW_PROJECTION_POLICY = {
+    "purpose": "revit_native_formal_time_slice_shadow_polygon_prototype",
+    "engine": "revit_extrusion_analyzer_v1",
+    "formal_geometry": True,
+    "read_only": True,
+    "creates_revit_elements": False,
+    "primary_api": "Autodesk.Revit.DB.ExtrusionAnalyzer",
+    "split_api": "Autodesk.Revit.DB.SolidUtils.SplitVolumes",
+    "loop_api": "Autodesk.Revit.DB.Face.GetEdgesAsCurveLoops",
+    "target_revit_version": "2024.3",
+    "supported_initial_scope": "positive-volume extrusion-like solids with exact Line loops",
+    "unsupported_initial_scope": ["non-Line serialization", "arbitrary complex solids", "2D union", "duration accumulation", "equal-time contours", "legal judgement"],
+    "convex_hull_fallback_allowed": False,
+    "bounding_box_used_as_shadow_geometry": False,
+    "union_performed": False,
+    "duration_accumulation_performed": False,
+    "equal_time_contours_generated": False,
+    "legal_judgement_generated": False,
+    "permit_ready_certified": False,
 }
 
 
