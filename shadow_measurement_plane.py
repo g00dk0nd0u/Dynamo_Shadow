@@ -35,7 +35,7 @@ def _build_law56_2_awareness_context(settings_normalized, site_boundary=None):
         "implemented_now": ["awareness diagnostics", "time window profile selection for diagnostics", "measurement plane policy context"],
         "not_implemented_in_this_pr": LAW56_2_AWARENESS_POLICY["not_implemented_in_this_pr"],
         "warnings": warnings,
-        "info": ["Time windows are true-solar-time awareness only; no true solar time calculation, JST clock-time conversion, sun vector calculation, or legal judgement is performed."],
+        "info": ["Measurement-plane diagnostics do not perform solar calculation; the separate formal technical solar specification v1 supplies true-solar conversion and model directions. Legal judgement remains unimplemented."],
     }
 
 def _construct_measurement_plane(settings_normalized, level=None):

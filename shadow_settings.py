@@ -195,6 +195,8 @@ def _normalize_settings(settings, level=None):
     if profile is None:
         profile = SETTINGS_DIAGNOSTIC_DEFAULTS["profile"]; defaults_applied.append("profile")
     normalized["profile"] = profile
+    if profile not in ("standard_8_16", "hokkaido_9_15"):
+        warnings.append("settings.profile must be standard_8_16 or hokkaido_9_15."); invalid_keys.append("profile")
 
     debug_log_enabled, warn = _parse_bool(settings_dict.get("debug_log_enabled"), "debug_log_enabled")
     if warn:
@@ -275,8 +277,8 @@ def _normalize_settings(settings, level=None):
     solar_parameter_mode, warn = _parse_text(settings_dict.get("solar_parameter_mode"), "solar_parameter_mode")
     if warn:
         warnings.append(warn); invalid_keys.append("solar_parameter_mode")
-    if solar_parameter_mode not in (None, "explicit", "date_derived_noaa_v1"):
-        warnings.append("settings.solar_parameter_mode must be explicit or date_derived_noaa_v1.")
+    if solar_parameter_mode not in (None, "regulatory_winter_solstice_v1", "explicit", "date_derived_noaa_v1"):
+        warnings.append("settings.solar_parameter_mode must be regulatory_winter_solstice_v1, explicit, or date_derived_noaa_v1.")
         invalid_keys.append("solar_parameter_mode")
     normalized["solar_parameter_mode"] = solar_parameter_mode
     calculation_date = None
@@ -336,6 +338,11 @@ def _normalize_settings(settings, level=None):
     if normalized.get("solar_parameter_mode") == "date_derived_noaa_v1":
         solar_time_required = [k for k in solar_time_required if k not in ("solar_declination_deg", "equation_of_time_minutes")]
         solar_time_required.extend([k for k in ("solar_parameter_mode", "calculation_date") if k not in solar_time_required])
+    elif normalized.get("solar_parameter_mode") == "regulatory_winter_solstice_v1":
+        solar_time_required = [k for k in solar_time_required if k not in (
+            "solar_declination_deg", "equation_of_time_minutes", "site_longitude_deg",
+            "analysis_start_time", "analysis_end_time", "sun_time_step_minutes")]
+        solar_time_required.extend([k for k in ("solar_parameter_mode", "profile") if k not in solar_time_required])
     missing_measurement_plane = [k for k in measurement_plane_required if normalized.get(k) is None]
     missing_solar_time = [k for k in solar_time_required if normalized.get(k) is None]
     missing_required = missing_measurement_plane + [k for k in missing_solar_time if k not in missing_measurement_plane]

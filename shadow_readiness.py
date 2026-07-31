@@ -1,7 +1,7 @@
 # Pipeline readiness diagnostics.
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None):
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
@@ -40,6 +40,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
     if not boundary_ready:
         blockers_boundary.append("site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped.")
     formal = formal_shadow_polygons or {}
+    solar = solar_calculation or {}
     return {
         "input_diagnostics_ready": True,
         "shadow_caster_ready": shadow_ready,
@@ -54,6 +55,12 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "future_shadow_projection_ready": future_projection_ready,
         "legal_judgement_masks_ready": legal_judgement_masks_ready,
         "settings_ready_for_equal_time_shadow": settings_ready,
+        "formal_solar_calculation_ready": solar.get("formal_solar_calculation_ready") is True,
+        "regulatory_profile_resolved": solar.get("regulatory_profile_resolved") is True,
+        "solar_coordinate_convention_resolved": solar.get("solar_coordinate_convention_resolved") is True,
+        "solar_reference_validation_passed": solar.get("solar_reference_validation_passed") is True,
+        "permit_ready_certified": False,
+        "legal_judgement_ready": False,
         "site_boundary_required_for_equal_time_shadow": False,
         "site_boundary_ready_for_boundary_dependent_steps": boundary_ready,
         "equal_time_shadow_calculation_ready": equal_ready,

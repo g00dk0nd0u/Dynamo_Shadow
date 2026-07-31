@@ -258,7 +258,7 @@ def _build_success():
         shadow_preview = _build_shadow_preview(formal_shadow_polygons, measurement_plane, settings_normalized)
     except BaseException:
         shadow_preview = {"enabled": False, "mode": "off", "attempted": True, "available": False, "complete": False, "partial_success": False, "formal_shadow_source_available": bool(formal_shadow_polygons.get("available")), "created_element_count": 0, "deleted_element_count": 0, "created_element_ids": [], "groups": [], "warnings": ["Preview failed non-fatally; formal shadow output remains available."]}
-    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons)
+    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
     warnings.extend(settings_normalized.get("warnings", []))
@@ -309,6 +309,7 @@ def _build_success():
         "sun_time_slices": sun_time_slices,
         "sun_position_diagnostics": sun_position_diagnostics,
         "solar_calculation_v1": solar_calculation_v1,
+        "solar_specification": (solar_calculation_v1 or {}).get("solar_specification"),
         "sun_position_policy": sun_position_policy,
         "shadow_projection_diagnostics": shadow_projection_diagnostics,
         "shadow_projection_policy": shadow_projection_policy,
@@ -422,7 +423,7 @@ def _build_failure(error_text):
         shadow_projection_diagnostics, shadow_projection_policy = _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_plane, sun_time_slices)
         formal_shadow_polygons = _build_formal_shadow_polygons({"casters": []}, measurement_plane, sun_time_slices, settings_normalized or {}, shadow_projection_diagnostics)
         shadow_preview = _build_shadow_preview(formal_shadow_polygons, measurement_plane, settings_normalized or {})
-        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons)
+        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1)
     except Exception:
         pipeline_readiness = None
 
@@ -450,6 +451,7 @@ def _build_failure(error_text):
         "sun_time_slices": sun_time_slices,
         "sun_position_diagnostics": sun_position_diagnostics,
         "solar_calculation_v1": solar_calculation_v1,
+        "solar_specification": (solar_calculation_v1 or {}).get("solar_specification"),
         "sun_position_policy": sun_position_policy,
         "shadow_projection_diagnostics": shadow_projection_diagnostics,
         "shadow_projection_policy": shadow_projection_policy,
