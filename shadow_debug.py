@@ -225,6 +225,11 @@ def _formal_footprint_debug_summary(footprint_extraction):
             "classification_group_key": _sanitize_for_debug(item.get("classification_group_key")) if isinstance(item.get("classification_group_key"), (list, tuple)) else None,
             "closed": bool(item.get("closed", False)),
             "units": _sanitize_for_debug(item.get("units")),
+            "generation_method": _sanitize_for_debug(item.get("generation_method")),
+            "native_source_loop_index": _debug_int(item.get("native_source_loop_index")),
+            "native_curve_count": _debug_int(item.get("native_curve_count")),
+            "native_orientation_method": _sanitize_for_debug(item.get("native_orientation_method")),
+            "native_flip_performed": bool(item.get("native_flip_performed", False)),
         }
         summary.update(_polygon_convexity_summary(points))
         items.append(summary)
@@ -233,13 +238,28 @@ def _formal_footprint_debug_summary(footprint_extraction):
     for item in (formal.get("invalid_loops") or [])[:20]:
         if isinstance(item, dict):
             reasons = item.get("reasons") if isinstance(item.get("reasons"), (list, tuple)) else []
-            invalid_loops.append({
+            invalid_summary = {
                 "caster_index": _debug_int(item.get("caster_index")),
                 "candidate_index": _debug_int(item.get("candidate_index")),
                 "source_face_index": _debug_int(item.get("source_face_index")),
                 "source_loop_index": _debug_int(item.get("source_loop_index")),
                 "reasons": [_sanitize_text_for_debug(reason) for reason in reasons[:20]],
-            })
+            }
+            if "generation_method" in item:
+                invalid_summary["generation_method"] = _sanitize_for_debug(item.get("generation_method"))
+            if "reason_codes" in item:
+                invalid_summary["reason_codes"] = _sanitize_for_debug(item.get("reason_codes") or [])
+            invalid_loops.append(invalid_summary)
+
+    candidates = []
+    for caster in (footprint_extraction or {}).get("best_candidates") or []:
+        if isinstance(caster, dict): candidates.append(caster)
+    extraction_items = (footprint_extraction or {}).get("items") or []
+    per_face = [item.get("footprint_extraction") or {} for item in extraction_items if isinstance(item, dict)]
+    reason_counts = {}
+    for item in invalid_loops:
+        for code in item.get("reason_codes") or []:
+            reason_counts[code] = reason_counts.get(code, 0) + 1
 
     return {
         "available": bool(formal.get("available", False)),
@@ -256,6 +276,19 @@ def _formal_footprint_debug_summary(footprint_extraction):
         "unknown_role_count": _debug_int(formal.get("unknown_role_count"), 0),
         "invalid_loop_count": _debug_int(formal.get("invalid_loop_count"), 0),
         "boolean_union_performed": bool(formal.get("boolean_union_performed", False)),
+        "native_primary_path_expected": True,
+        "native_face_attempt_count": _debug_int((footprint_extraction or {}).get("native_face_attempt_count"), sum(_debug_int(fp.get("native_face_attempt_count"), 0) for fp in per_face)),
+        "native_face_success_count": _debug_int((footprint_extraction or {}).get("native_face_success_count"), sum(_debug_int(fp.get("native_face_success_count"), 0) for fp in per_face)),
+        "native_loop_count": _debug_int((footprint_extraction or {}).get("native_loop_count"), sum(_debug_int(fp.get("native_loop_count"), 0) for fp in per_face)),
+        "native_line_loop_count": sum(1 for item in items if item.get("generation_method") == "native_curve_loop_line_exact"),
+        "native_non_line_loop_count": _debug_int((footprint_extraction or {}).get("non_line_native_loop_count"), sum(_debug_int(fp.get("non_line_native_loop_count"), 0) for fp in per_face)),
+        "fallback_face_count": _debug_int((footprint_extraction or {}).get("fallback_face_count"), sum(_debug_int(fp.get("fallback_face_count"), 0) for fp in per_face)),
+        "fallback_loop_count": _debug_int((footprint_extraction or {}).get("fallback_loop_count"), sum(_debug_int(fp.get("fallback_loop_count"), 0) for fp in per_face)),
+        "mixed_generation_methods": bool((footprint_extraction or {}).get("mixed_generation_methods")) or any(bool(fp.get("mixed_generation_methods")) for fp in per_face),
+        "native_dispose_warning_count": sum(1 for warning in ((footprint_extraction or {}).get("warnings") or []) if warning == "native_curve_loop_dispose_failed"),
+        "formal_native_polygon_count": sum(1 for item in items if item.get("generation_method") == "native_curve_loop_line_exact"),
+        "formal_fallback_polygon_count": sum(1 for item in items if item.get("generation_method") == "python_endpoint_stitch_fallback"),
+        "invalid_reason_counts": reason_counts,
         "items": items,
         "invalid_loops": invalid_loops,
         "blockers": _sanitize_for_debug(formal.get("blockers") or []),
