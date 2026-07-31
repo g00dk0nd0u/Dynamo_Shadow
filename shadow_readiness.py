@@ -1,7 +1,7 @@
 # Pipeline readiness diagnostics.
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None):
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
@@ -39,6 +39,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         blockers_boundary.append("Boundary-dependent steps require shadow caster, settings, and measurement plane readiness first.")
     if not boundary_ready:
         blockers_boundary.append("site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped.")
+    formal = formal_shadow_polygons or {}
     return {
         "input_diagnostics_ready": True,
         "shadow_caster_ready": shadow_ready,
@@ -57,6 +58,10 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "site_boundary_ready_for_boundary_dependent_steps": boundary_ready,
         "equal_time_shadow_calculation_ready": equal_ready,
         "boundary_dependent_steps_ready": equal_ready and boundary_ready,
+        "formal_shadow_polygon_generation_attempted": formal_shadow_polygons is not None,
+        "formal_shadow_polygon_generation_available": formal.get("available") is True,
+        "formal_shadow_polygon_generation_complete": formal.get("complete") is True,
+        "blockers_for_formal_shadow_polygon_generation": list(formal.get("blockers") or []),
         "blockers_for_equal_time_shadow": blockers_equal,
         "blockers_for_footprint_extraction": blockers_fp,
         "blockers_for_future_footprint_polygon_generation": blockers_fp,
