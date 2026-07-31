@@ -91,7 +91,7 @@ try:
     from shadow_geometry import _diagnose_shadow_caster_geometry
     from shadow_footprint import _build_footprint_extraction_summary
     from shadow_readiness import _build_pipeline_readiness
-    from shadow_debug import _write_debug_log_if_enabled, _build_debug_log_status
+    from shadow_debug import _write_debug_log_if_enabled, _build_debug_log_status, _sanitize_text_for_debug
     from shadow_units import _build_unit_conversion_diagnostics
     from shadow_sun import _build_sun_position_diagnostics
     from shadow_projection import _build_shadow_projection_diagnostics
@@ -236,7 +236,7 @@ def _build_success():
             warnings.append("{0} input is empty.".format(key))
 
     shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
-    site_boundary = _diagnose_site_boundary(raw_inputs.get("site_boundary"))
+    site_boundary = _diagnose_optional_site_boundary(raw_inputs.get("site_boundary"))
     settings_normalized = _normalize_settings(raw_inputs.get("settings"), raw_inputs.get("level"))
     law56_2_awareness = _build_law56_2_awareness_context(settings_normalized, site_boundary)
     measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
@@ -264,8 +264,13 @@ def _build_success():
     if not pipeline_readiness.get("boundary_dependent_steps_ready"):
         warnings.extend(pipeline_readiness.get("blockers_for_boundary_dependent_steps", []))
 
+    site_boundary_degraded = site_boundary.get("diagnostic_failed") is True
     out_payload = {
         "success": True,
+        "partial_success": site_boundary_degraded,
+        "degraded_components": ["site_boundary"] if site_boundary_degraded else [],
+        "shadow_calculation_completed": True,
+        "boundary_dependent_steps_completed": bool(pipeline_readiness.get("boundary_dependent_steps_ready")),
         "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
@@ -314,6 +319,39 @@ def _build_success():
     return out_payload
 
 
+def _diagnose_optional_site_boundary(value):
+    """Keep this optional diagnostic outside the core-pipeline failure path."""
+    try:
+        return _diagnose_site_boundary(value)
+    except BaseException as exc:
+        items = _shadow_utils._to_list(value)
+        error_type = type(exc).__name__
+        message = _sanitize_text_for_debug(exc)
+        warning = (
+            "Optional site_boundary diagnostics failed; boundary-dependent outputs "
+            "are unavailable. The continuing result is an unbounded technical shadow "
+            "result, not a complete legal judgement result."
+        )
+        return {
+            "provided": bool(items),
+            "count": len(items),
+            "available": False,
+            "accepted_count": 0,
+            "rejected_count": len(items),
+            "boundary_dependent_steps_available": False,
+            "boundary_dependent_steps_skipped": True,
+            "equal_time_shadow_available_without_site_boundary": True,
+            "diagnostic_failed": True,
+            "error_code": "optional_site_boundary_diagnostic_failure",
+            "error_type": error_type,
+            "sanitized_error_message": message,
+            "items": [],
+            "loop_diagnostics": {"attempted": False, "appears_closed": None},
+            "warnings": [warning],
+            "info": ["Core footprint, solar, projection, accumulation, and contour stages remain independent of site_boundary."],
+        }
+
+
 def _build_failure(error_text):
     _sync_dynamo_runtime_globals()
     raw_inputs, input_source = _read_inputs()
@@ -340,9 +378,9 @@ def _build_failure(error_text):
     except Exception:
         shadow_casters = None
     try:
-        site_boundary = _diagnose_site_boundary(raw_inputs.get("site_boundary"))
-    except Exception:
-        site_boundary = None
+        site_boundary = _diagnose_optional_site_boundary(raw_inputs.get("site_boundary"))
+    except BaseException:
+        site_boundary = {"available": False, "boundary_dependent_steps_available": False}
     try:
         settings_normalized = _normalize_settings(raw_inputs.get("settings"), raw_inputs.get("level"))
     except Exception:

@@ -1,5 +1,5 @@
 # Dynamo input summaries and source diagnostics.
-from shadow_revit_api import BuiltInCategory
+from shadow_revit_api import BuiltInCategory, CurveElement, ModelCurve, Options
 from shadow_policies import (INPUT_KEYS, SUPPORTED_CATEGORY_NAMES, ACCEPTED_BUILT_IN_CATEGORY_NAMES, SITE_BOUNDARY_FALLBACK_LINE_CATEGORY_NAMES, SITE_BOUNDARY_RELATED_CATEGORY_NAMES, SITE_BOUNDARY_TOPO_CATEGORY_NAMES)
 from shadow_utils import *
 
@@ -320,6 +320,38 @@ def _get_curve_endpoints(curve):
         points.append(tuple(coords))
     return tuple(points)
 
+def _is_curve_element_input(element):
+    if _is_instance_of_optional(element, CurveElement) or _is_instance_of_optional(element, ModelCurve):
+        return True
+    type_name = (_type_name(element) or "").lower().replace(" ", "")
+    return any(name in type_name for name in ("curveelement", "modelcurve", "modelline"))
+
+def _diagnose_geometry_curve_fallback(element):
+    curves = []
+    error = None
+    _runtime_checkpoint("SITE_CURVE_GEOMETRY_FALLBACK_BEFORE")
+    try:
+        if Options is None:
+            return curves, "Autodesk.Revit.DB.Options is unavailable; geometry diagnostic fallback was not run."
+        geometry_method = getattr(element, "get_Geometry", None)
+        if not callable(geometry_method):
+            return curves, "get_Geometry is unavailable; geometry diagnostic fallback was not run."
+        options = Options()
+        try:
+            options.ComputeReferences = False
+            options.IncludeNonVisibleObjects = True
+        except BaseException:
+            pass
+        geometry = geometry_method(options)
+        for item in _safe_iter(geometry):
+            if _is_curve_like(item):
+                curves.append(item)
+    except BaseException as exc:
+        error = "{0}: {1}".format(type(exc).__name__, _safe_text(exc))
+    finally:
+        _runtime_checkpoint("SITE_CURVE_GEOMETRY_FALLBACK_AFTER", "failed" if error else ("ok" if curves else "none"))
+    return curves, error
+
 def _diagnose_curve_access(element):
     result = {
         "attempted": False,
@@ -329,6 +361,11 @@ def _diagnose_curve_access(element):
         "can_read_location_curve": False,
         "can_read_geometry_curve": False,
         "endpoints": [],
+        "curve_access_method": "unavailable",
+        "geometry_fallback_attempted": False,
+        "geometry_fallback_skipped_reason": None,
+        "location_curve_available": False,
+        "endpoint_read_succeeded": False,
         "error": None,
     }
     if element is None:
@@ -336,39 +373,69 @@ def _diagnose_curve_access(element):
         return result
 
     errors = []
-    curves = []
     result["attempted"] = True
+    curve = None
+    _runtime_checkpoint("SITE_CURVE_LOCATION_BEFORE")
     try:
         location = _safe_attr(element, "Location")
         curve = _safe_attr(location, "Curve") if location is not None else None
-        if curve is not None:
-            result["can_read_location_curve"] = True
-            curves.append(curve)
-    except Exception as exc:
+    except BaseException as exc:
         errors.append(_safe_text(exc))
+    finally:
+        _runtime_checkpoint("SITE_CURVE_LOCATION_AFTER", "ok" if curve is not None else "none")
 
-    geometry_method = getattr(element, "get_Geometry", None)
-    if callable(geometry_method):
+    if curve is not None:
+        result["location_curve_available"] = True
+        result["can_read_location_curve"] = True
+        _runtime_checkpoint("SITE_CURVE_ENDPOINTS_BEFORE")
         try:
-            geometry = geometry_method(None)
-            if geometry is not None:
-                for item in geometry:
-                    item_type = _type_name(item).lower()
-                    if "curve" in item_type or "line" in item_type or "arc" in item_type:
-                        result["can_read_geometry_curve"] = True
-                        curves.append(item)
-        except Exception:
-            errors.append(traceback.format_exc())
+            pair = _get_curve_endpoints(curve)
+        except BaseException as exc:
+            pair = None
+            errors.append(_safe_text(exc))
+        finally:
+            _runtime_checkpoint("SITE_CURVE_ENDPOINTS_AFTER", "ok" if pair else "failed")
+        if pair:
+            result.update({
+                "available": True,
+                "curve_count": 1,
+                "endpoint_count": 2,
+                "endpoints": list(pair),
+                "curve_access_method": "location_curve",
+                "geometry_fallback_skipped_reason": "usable_location_curve",
+                "endpoint_read_succeeded": True,
+            })
+            return result
+
+    if _is_curve_element_input(element):
+        result["geometry_fallback_skipped_reason"] = "curve_element_input"
+        curves = []
+    else:
+        result["geometry_fallback_attempted"] = True
+        curves, fallback_error = _diagnose_geometry_curve_fallback(element)
+        if fallback_error:
+            errors.append(fallback_error)
 
     endpoints = []
-    for curve in curves:
-        pair = _get_curve_endpoints(curve)
+    for fallback_curve in curves:
+        _runtime_checkpoint("SITE_CURVE_ENDPOINTS_BEFORE")
+        pair = None
+        try:
+            pair = _get_curve_endpoints(fallback_curve)
+        except BaseException as exc:
+            errors.append(_safe_text(exc))
+        finally:
+            _runtime_checkpoint("SITE_CURVE_ENDPOINTS_AFTER", "ok" if pair else "failed")
         if pair:
             endpoints.extend(pair)
     result["curve_count"] = len(curves)
     result["endpoint_count"] = len(endpoints)
     result["endpoints"] = endpoints
     result["available"] = len(curves) > 0
+    result["endpoint_read_succeeded"] = len(endpoints) > 0
+    if result["available"]:
+        result["curve_access_method"] = "geometry_fallback"
+        result["can_read_geometry_curve"] = True
     if errors:
         result["error"] = "; ".join([e for e in errors if e])
     elif not result["available"]:
@@ -410,7 +477,8 @@ def _diagnose_site_boundary_loop(items):
             "candidate_curve_count": 0,
             "closed_loop_check_available": False,
             "appears_closed": None,
-            "closure_tolerance_m": 0.01,
+            "closure_tolerance_internal": 0.01,
+            "endpoint_units": "revit_internal",
             "reason": "No accepted site_boundary curves are available; boundary-dependent steps will be skipped.",
             "warnings": warnings,
         }
@@ -420,10 +488,13 @@ def _diagnose_site_boundary_loop(items):
             "candidate_curve_count": candidate_curve_count,
             "closed_loop_check_available": False,
             "appears_closed": None,
-            "closure_tolerance_m": 0.01,
+            "closure_tolerance_internal": 0.01,
+            "endpoint_units": "revit_internal",
             "reason": "Curve endpoints could not be read safely; no curve sorting or polygonization is attempted in this PR.",
             "warnings": warnings,
         }
+    # Location.Curve endpoints are Revit internal units, so the bucket
+    # tolerance must use those same units rather than metres.
     tol = 0.01
     buckets = {}
     for pt in endpoints:
@@ -435,12 +506,13 @@ def _diagnose_site_boundary_loop(items):
         "candidate_curve_count": candidate_curve_count,
         "closed_loop_check_available": True,
         "appears_closed": len(odd) == 0,
-        "closure_tolerance_m": tol,
+        "closure_tolerance_internal": tol,
+        "endpoint_units": "revit_internal",
         "reason": "Simplified endpoint pairing diagnostic only; no sorting, self-intersection check, polygonization, offset, or 5m/10m measurement line generation is performed.",
         "warnings": warnings,
     }
 
-def _diagnose_site_boundary(site_boundary):
+def _diagnose_site_boundary_unsafe(site_boundary):
     items = _to_list(site_boundary)
     diagnostics = {
         "provided": len(items) > 0,
@@ -467,7 +539,8 @@ def _diagnose_site_boundary(site_boundary):
             "candidate_curve_count": 0,
             "closed_loop_check_available": False,
             "appears_closed": None,
-            "closure_tolerance_m": 0.01,
+            "closure_tolerance_internal": 0.01,
+            "endpoint_units": "revit_internal",
             "reason": "site_boundary is optional and not provided; boundary-dependent steps will be skipped",
             "warnings": [],
         }
@@ -557,3 +630,45 @@ def _diagnose_site_boundary(site_boundary):
     if diagnostics["boundary_dependent_steps_skipped"]:
         diagnostics["info"].append("site_boundary was provided, but boundary-dependent steps remain gated until a usable Property Line/Site Property or closed Model Lines loop can be read.")
     return diagnostics
+
+
+def _diagnose_site_boundary(site_boundary):
+    """Diagnose optional boundary items independently so one bad item cannot abort peers."""
+    items = _to_list(site_boundary)
+    if not items:
+        return _diagnose_site_boundary_unsafe(site_boundary)
+    combined = _diagnose_site_boundary_unsafe(None)
+    combined["provided"] = True
+    combined["count"] = len(items)
+    combined["items"] = []
+    combined["warnings"] = []
+    combined["info"] = []
+    for index, item in enumerate(items):
+        try:
+            result = _diagnose_site_boundary_unsafe([item])
+            entry = (result.get("items") or [])[0]
+            entry["index"] = index
+            combined["items"].append(entry)
+            combined["accepted_count"] += int(bool(entry.get("accepted")))
+            combined["rejected_count"] += int(not bool(entry.get("accepted")))
+            combined["warnings"].extend(entry.get("warnings") or [])
+        except BaseException as exc:
+            warning = "site_boundary item {0} diagnostics failed; remaining items continue.".format(index)
+            combined["items"].append({
+                "index": index, "is_none": item is None, "type": _type_name(item),
+                "accepted": False, "diagnostic_failed": True,
+                "error_type": type(exc).__name__, "curve_access": {"available": False},
+                "warnings": [warning],
+            })
+            combined["rejected_count"] += 1
+            combined["warnings"].append(warning)
+    combined["loop_diagnostics"] = _diagnose_site_boundary_loop(combined["items"])
+    combined["warnings"].extend(combined["loop_diagnostics"].get("warnings") or [])
+    combined["boundary_dependent_steps_available"] = (
+        combined["accepted_count"] > 0
+        and combined["loop_diagnostics"].get("closed_loop_check_available") is True
+    )
+    combined["boundary_dependent_steps_skipped"] = not combined["boundary_dependent_steps_available"]
+    if combined["boundary_dependent_steps_skipped"]:
+        combined["info"].append("Boundary-dependent steps remain gated; core shadow diagnostics continue.")
+    return combined

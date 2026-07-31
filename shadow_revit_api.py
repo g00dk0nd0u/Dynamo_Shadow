@@ -22,6 +22,16 @@ except Exception:
     CurveLoop = None
 
 try:
+    from Autodesk.Revit.DB import CurveElement
+except Exception:
+    CurveElement = None
+
+try:
+    from Autodesk.Revit.DB import ModelCurve
+except Exception:
+    ModelCurve = None
+
+try:
     from Autodesk.Revit.DB import Plane, XYZ
 except Exception:
     Plane = XYZ = None
