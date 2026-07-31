@@ -198,6 +198,24 @@ def _solar_calculation_debug_summary(solar_calculation):
     return _sanitize_for_debug({key: solar.get(key, defaults.get(key)) for key in keys})
 
 
+def _solar_specification_debug_summary(solar_calculation):
+    """Compact, allowlisted formal-solar contract summary."""
+    solar = solar_calculation if isinstance(solar_calculation, dict) else {}
+    spec = solar.get("solar_specification") if isinstance(solar.get("solar_specification"), dict) else {}
+    return _sanitize_for_debug({
+        "version": spec.get("specification_version"), "status": spec.get("status"),
+        "selected_profile": spec.get("profile"), "selected_mode": spec.get("solar_parameter_mode"),
+        "time_basis": spec.get("time_basis"), "slice_count": solar.get("slice_count", 0),
+        "window": {"start": spec.get("window_start"), "end": spec.get("window_end")},
+        "step_minutes": spec.get("computational_step_minutes"),
+        "declination_source": spec.get("declination_source"),
+        "conversion_flags": {"longitude": spec.get("longitude_correction_applied"), "equation_of_time": spec.get("equation_of_time_applied")},
+        "coordinate_conventions": {"true_north": spec.get("true_north_convention"), "azimuth": spec.get("azimuth_convention")},
+        "formal_readiness": solar.get("formal_solar_calculation_ready", False),
+        "permit_ready_certified": False, "blockers": solar.get("blockers", []), "warnings": solar.get("warnings", []),
+    })
+
+
 def _formal_footprint_debug_summary(footprint_extraction):
     """Return an allowlisted, coordinate-free formal-footprint summary."""
     extraction = footprint_extraction if isinstance(footprint_extraction, dict) else {}
@@ -406,6 +424,7 @@ def _summarize_out_for_debug(out_payload):
         "formal_shadow_polygon_summary": _formal_shadow_polygon_debug_summary(out_payload.get("formal_shadow_polygons")),
         "shadow_preview": _sanitize_for_debug(out_payload.get("shadow_preview")),
         "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
+        "solar_specification_summary": _solar_specification_debug_summary(out_payload.get("solar_calculation_v1")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
         "unit_conversion_summary": _unit_conversion_summary(out_payload),
         "runtime_code_diagnostics": _runtime_code_summary(out_payload),
@@ -440,6 +459,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "formal_shadow_polygon_summary": summary["formal_shadow_polygon_summary"],
         "shadow_preview": summary["shadow_preview"],
         "solar_calculation_summary": summary["solar_calculation_summary"],
+        "solar_specification_summary": summary["solar_specification_summary"],
         "pipeline_readiness": summary["pipeline_readiness"],
         "unit_conversion_summary": summary["unit_conversion_summary"],
         "runtime_code_diagnostics": summary["runtime_code_diagnostics"],

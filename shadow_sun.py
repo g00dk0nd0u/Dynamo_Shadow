@@ -1,12 +1,15 @@
-# Diagnostic-only solar-time conversion and sun position table.
+"""Formal technical solar calculation v1 (not permit-certified)."""
 import math
 import calendar
 from datetime import date
 
 from shadow_policies import LEGAL_CONSTANTS, SUN_POSITION_POLICY
+from shadow_profiles import get_solar_profile
 
 VALID_TIME_BASES = ("true_solar_time", "japan_standard_time")
-VALID_SOLAR_PARAMETER_MODES = ("explicit", "date_derived_noaa_v1")
+VALID_SOLAR_PARAMETER_MODES = ("regulatory_winter_solstice_v1", "explicit", "date_derived_noaa_v1")
+REGULATORY_DECLINATION_DEG = -23.439
+SERIALIZED_ROUNDING_DECIMAL_PLACES = 6
 TRUE_NORTH_CONVENTION = "true_north_deg is measured clockwise from the model +Y axis to true north; model_azimuth_deg=(true_north_azimuth_deg+true_north_deg)%360."
 
 
@@ -114,9 +117,11 @@ def _jst_minutes_to_true_solar_minutes(japan_standard_time_minutes, site_longitu
 
 
 def _direction_from_azimuth(azimuth_deg, basis):
+    x = math.sin(_rad(azimuth_deg))
+    y = math.cos(_rad(azimuth_deg))
     return {
-        "x": _round(math.sin(_rad(azimuth_deg))),
-        "y": _round(math.cos(_rad(azimuth_deg))),
+        "x": 0.0 if abs(x) < 1e-15 else x,
+        "y": 0.0 if abs(y) < 1e-15 else y,
         "z": 0.0,
         "basis": basis,
     }
@@ -136,8 +141,11 @@ def _build_solar_time_conversion(input_minutes, input_time_basis, site_longitude
         return {
             "input_minutes": input_minutes,
             "input_time_basis": input_time_basis,
-            "true_solar_minutes_raw": _round(raw_true),
-            "true_solar_minutes": _round(normalized),
+            "conversion_performed": True,
+            "longitude_sign_convention": "east_positive; 4 * (site_longitude_deg - standard_meridian_deg)",
+            "equation_of_time_sign_convention": "positive values advance true solar time",
+            "true_solar_minutes_raw": raw_true,
+            "true_solar_minutes": normalized,
             "true_solar_time": _format_minutes(normalized),
             "day_offset": day_offset,
             "longitude_correction_minutes": _round(4.0 * (site_longitude_deg - standard_meridian_deg)),
@@ -149,8 +157,11 @@ def _build_solar_time_conversion(input_minutes, input_time_basis, site_longitude
     return {
         "input_minutes": input_minutes,
         "input_time_basis": input_time_basis,
-        "true_solar_minutes_raw": _round(input_minutes),
-        "true_solar_minutes": _round(normalized),
+        "conversion_performed": False,
+        "longitude_sign_convention": "east_positive; longitude metadata does not alter true_solar_time input",
+        "equation_of_time_sign_convention": "not applied to true_solar_time input",
+        "true_solar_minutes_raw": input_minutes,
+        "true_solar_minutes": normalized,
         "true_solar_time": _format_minutes(normalized),
         "day_offset": day_offset,
         "longitude_correction_minutes": None,
@@ -191,7 +202,8 @@ def _sun_position_for_true_solar_minutes(minutes, latitude_deg, declination_deg,
         "solar_altitude_deg": _round(altitude_deg),
         "solar_azimuth_deg": _round(azimuth_deg),
         "shadow_azimuth_true_north_deg": _round(shadow_azimuth_true),
-        "shadow_length_factor": _round(shadow_length_factor),
+        "shadow_length_factor": shadow_length_factor,
+        "raw_shadow_length_factor": shadow_length_factor,
         "shadow_direction_true_north": shadow_direction_true,
         "shadow_direction_vector": None if shadow_direction_true is None else {"x_east": shadow_direction_true.get("x"), "y_north": shadow_direction_true.get("y"), "z_up": 0.0, "basis": shadow_direction_true.get("basis")},
         "true_north_deg": true_north_deg,
@@ -204,125 +216,157 @@ def _sun_position_for_true_solar_minutes(minutes, latitude_deg, declination_deg,
 
 
 def _build_solar_calculation_v1(settings_normalized):
+    """Build the reproducible v1 solar contract and its formal direction slices."""
     normalized = settings_normalized.get("normalized", {}) if isinstance(settings_normalized, dict) else {}
-    warnings = []
-    blockers = []
+    warnings, blockers = [], []
+    invalid_keys = set(settings_normalized.get("invalid_keys", [])) if isinstance(settings_normalized, dict) else set()
+    solar_invalid = sorted(invalid_keys.intersection({
+        "profile", "time_basis", "solar_parameter_mode", "site_latitude_deg",
+        "site_longitude_deg", "standard_meridian_deg", "solar_declination_deg",
+        "equation_of_time_minutes", "true_north_deg", "sun_time_step_minutes",
+        "analysis_start_time", "analysis_end_time", "calculation_date",
+    }))
+    if solar_invalid:
+        blockers.append("Invalid solar settings: {0}.".format(", ".join(solar_invalid)))
     time_basis = normalized.get("time_basis")
-    if time_basis not in VALID_TIME_BASES:
-        blockers.append("settings.time_basis is required and must be one of: true_solar_time, japan_standard_time.")
     latitude_deg = normalized.get("site_latitude_deg")
-    requested_mode = normalized.get("solar_parameter_mode")
-    legacy_explicit_parameter_supplied = (
-        normalized.get("solar_declination_deg") is not None
-        or normalized.get("equation_of_time_minutes") is not None
-    )
-    mode_inferred = requested_mode is None and legacy_explicit_parameter_supplied
-    parameter_mode = requested_mode or "explicit"
-    if parameter_mode not in VALID_SOLAR_PARAMETER_MODES:
-        blockers.append("settings.solar_parameter_mode must be one of: explicit, date_derived_noaa_v1.")
-    declination_deg = normalized.get("solar_declination_deg")
     true_north_deg = normalized.get("true_north_deg")
-    standard_meridian_deg = normalized.get("standard_meridian_deg")
+    standard_meridian_deg = normalized.get("standard_meridian_deg", 135.0)
     site_longitude_deg = normalized.get("site_longitude_deg")
+    requested_mode = normalized.get("solar_parameter_mode")
+    profile_name = normalized.get("profile")
+    profile = get_solar_profile(profile_name)
+    regulatory_profile_resolved = profile is not None
+    if not profile:
+        blockers.append("settings.profile must be one of: standard_8_16, hokkaido_9_15.")
+
+    legacy_regulatory_shape = (requested_mode is None and time_basis == "true_solar_time" and
+                               normalized.get("solar_declination_deg") is not None and
+                               abs(normalized.get("solar_declination_deg") - REGULATORY_DECLINATION_DEG) <= 1e-9 and
+                               regulatory_profile_resolved)
+    parameter_mode = requested_mode or "explicit"
+    mode_inferred = requested_mode is None and (
+        normalized.get("solar_declination_deg") is not None or
+        normalized.get("equation_of_time_minutes") is not None)
+    if parameter_mode not in VALID_SOLAR_PARAMETER_MODES:
+        blockers.append("settings.solar_parameter_mode must be one of: regulatory_winter_solstice_v1, explicit, date_derived_noaa_v1.")
+    if legacy_regulatory_shape:
+        warnings.append("Legacy winter-solstice settings remain in explicit mode without numerical change; regulatory_winter_solstice_v1 is recommended.")
+
+    declination_deg = normalized.get("solar_declination_deg")
     equation = normalized.get("equation_of_time_minutes")
     derived = None
-    if parameter_mode == "date_derived_noaa_v1":
+    if parameter_mode == "regulatory_winter_solstice_v1":
+        if time_basis != "true_solar_time":
+            blockers.append("regulatory_winter_solstice_v1 requires time_basis=true_solar_time.")
+        if normalized.get("calculation_date") is not None or equation is not None:
+            blockers.append("regulatory_winter_solstice_v1 must not include calculation_date or equation_of_time_minutes.")
+        if declination_deg is not None and abs(declination_deg - REGULATORY_DECLINATION_DEG) > 1e-9:
+            blockers.append("regulatory_winter_solstice_v1 does not accept a conflicting solar_declination_deg.")
+        declination_deg = REGULATORY_DECLINATION_DEG
+        equation = None
+        source = "fixed_v1_regulatory_reference_constant"
+    elif parameter_mode == "date_derived_noaa_v1":
         if declination_deg is not None or equation is not None:
             blockers.append("explicit solar parameters must not be supplied when solar_parameter_mode is date_derived_noaa_v1")
         derived = _derive_noaa_daily_solar_parameters(normalized.get("calculation_date"))
         blockers.extend(derived["blockers"])
         if derived["available"]:
-            declination_deg = derived["solar_declination_deg"]
-            equation = derived["equation_of_time_minutes"]
-    if parameter_mode == "date_derived_noaa_v1":
-        solar_parameter_source = "noaa_general_solar_position_calculations_v1"
-        source_available = bool(derived and derived.get("available"))
-        parameters_resolved = bool(source_available and declination_deg is not None and equation is not None)
+            declination_deg, equation = derived["solar_declination_deg"], derived["equation_of_time_minutes"]
+        source = "noaa_general_solar_position_calculations_v1"
     else:
-        solar_parameter_source = "explicit_settings"
-        parameters_resolved = bool(declination_deg is not None and
-                                   (time_basis != "japan_standard_time" or equation is not None))
-        source_available = parameters_resolved
+        source = "explicit_settings"
+        if declination_deg is None:
+            blockers.append("settings.solar_declination_deg is required when solar_parameter_mode is explicit.")
+
+    if time_basis not in VALID_TIME_BASES:
+        blockers.append("settings.time_basis is required and must be one of: true_solar_time, japan_standard_time.")
     if latitude_deg is None: blockers.append("settings.site_latitude_deg is required.")
-    if parameter_mode == "explicit" and declination_deg is None: blockers.append("settings.solar_declination_deg is required when solar_parameter_mode is explicit.")
     if true_north_deg is None: blockers.append("settings.true_north_deg is required.")
     if time_basis == "japan_standard_time":
         if site_longitude_deg is None: blockers.append("settings.site_longitude_deg is required when settings.time_basis is japan_standard_time.")
-        if parameter_mode == "explicit" and equation is None: blockers.append("settings.equation_of_time_minutes is required when settings.time_basis is japan_standard_time and solar_parameter_mode is explicit.")
-    start_key = "analysis_start_time"
-    end_key = "analysis_end_time"
-    start_text = normalized.get(start_key)
-    end_text = normalized.get(end_key)
-    if time_basis == "true_solar_time":
-        if start_text is None and normalized.get("true_solar_start_time") is not None:
-            start_text = normalized.get("true_solar_start_time"); start_key = "true_solar_start_time"
-        if end_text is None and normalized.get("true_solar_end_time") is not None:
-            end_text = normalized.get("true_solar_end_time"); end_key = "true_solar_end_time"
-    if start_text is None: blockers.append("settings.analysis_start_time is required as HH:MM.")
-    if end_text is None: blockers.append("settings.analysis_end_time is required as HH:MM.")
-    start_minutes = _parse_time_to_minutes(start_text, start_key, warnings)
-    end_minutes = _parse_time_to_minutes(end_text, end_key, warnings)
-    if start_text is not None and start_minutes is None: blockers.append("settings.{0} must be a valid HH:MM time.".format(start_key))
-    if end_text is not None and end_minutes is None: blockers.append("settings.{0} must be a valid HH:MM time.".format(end_key))
+        if equation is None: blockers.append("settings.equation_of_time_minutes or a date-derived value is required for japan_standard_time.")
+
+    start_text = normalized.get("analysis_start_time") or (profile or {}).get("window_start")
+    end_text = normalized.get("analysis_end_time") or (profile or {}).get("window_end")
     step = normalized.get("sun_time_step_minutes")
-    if not isinstance(step, int) or step <= 0:
-        blockers.append("settings.sun_time_step_minutes is required and must be a positive integer.")
+    if step is None and profile: step = profile["default_computational_step_minutes"]
+    start_minutes = _parse_time_to_minutes(start_text, "analysis_start_time", warnings)
+    end_minutes = _parse_time_to_minutes(end_text, "analysis_end_time", warnings)
+    if start_minutes is None: blockers.append("settings.analysis_start_time or a known profile window is required.")
+    if end_minutes is None: blockers.append("settings.analysis_end_time or a known profile window is required.")
+    if not isinstance(step, int) or step <= 0: blockers.append("settings.sun_time_step_minutes must be a positive integer.")
     if start_minutes is not None and end_minutes is not None and end_minutes < start_minutes:
-        blockers.append("settings.analysis_end_time must be at or after settings.analysis_start_time in the input time basis.")
-    available = len(blockers) == 0
+        blockers.append("settings.analysis_end_time must be at or after settings.analysis_start_time.")
+
+    available = not blockers
     slices = []
     if available:
         minute = start_minutes
         while minute <= end_minutes:
             conversion = _build_solar_time_conversion(minute, time_basis, site_longitude_deg, standard_meridian_deg, equation)
             solar = _sun_position_for_true_solar_minutes(conversion["true_solar_minutes"], latitude_deg, declination_deg, true_north_deg)
-            item = {"input_time": _format_minutes(minute), "input_time_basis": time_basis}
-            item.update(conversion)
-            item.update(solar)
-            if solar.get("warning"):
-                warnings.append("{0}: {1}".format(item["input_time"], solar["warning"]))
-            slices.append(item)
-            minute += step
-    return {
-        "available": available,
-        "complete": available,
-        "calculation_mode": "date_derived_noaa_v1" if parameter_mode == "date_derived_noaa_v1" else "explicit_declination_and_equation_of_time_v1",
-        "solar_parameter_mode": parameter_mode,
-        "solar_parameter_mode_inferred_for_backward_compatibility": mode_inferred,
-        "solar_parameter_source": solar_parameter_source,
-        "solar_parameter_source_available": source_available,
-        "solar_parameters_resolved": parameters_resolved and not bool(
-            parameter_mode == "date_derived_noaa_v1" and
-            (normalized.get("solar_declination_deg") is not None or normalized.get("equation_of_time_minutes") is not None)),
-        "calculation_date": derived["calculation_date"] if derived else normalized.get("calculation_date"),
-        "day_of_year": derived["day_of_year"] if derived else None,
-        "days_in_year": derived["days_in_year"] if derived else None,
-        "parameter_reference_hour_local_standard": derived["reference_hour_local_standard"] if derived else None,
-        "fractional_year_rad": derived["fractional_year_rad"] if derived else None,
-        "input_time_basis": time_basis,
-        "output_time_basis": "true_solar_time",
+            guard = normalized.get("max_shadow_length_factor")
+            solar["exceeds_projection_guard"] = bool(solar["raw_shadow_length_factor"] is not None and guard is not None and solar["raw_shadow_length_factor"] > guard)
+            item = {"input_time": _format_minutes(minute)}
+            item.update(conversion); item.update(solar)
+            if solar.get("warning"): warnings.append("{0}: {1}".format(item["input_time"], solar["warning"]))
+            slices.append(item); minute += step
+    complete_valid_slices = bool(available and slices and all(item.get("shadow_direction_model") is not None for item in slices))
+    formal_ready = bool(available and complete_valid_slices)
+    specification = {
+        "specification_version": "jp_shadow_solar_v1", "status": "formal_technical_not_permit_certified",
+        "regulatory_reference": "winter_solstice_true_solar_time", "profile": profile_name,
+        "regulatory_region_scope": (profile or {}).get("regulatory_region_scope"),
+        "solar_parameter_mode": parameter_mode, "time_basis": time_basis,
+        "window_start": _format_minutes(start_minutes) if start_minutes is not None else None,
+        "window_end": _format_minutes(end_minutes) if end_minutes is not None else None,
+        "computational_step_minutes": step,
+        "reference_shape_interval_minutes": (profile or {}).get("reference_shape_interval_minutes"),
+        "declination_deg": declination_deg, "declination_source": source,
         "standard_meridian_deg": standard_meridian_deg,
-        "site_latitude_deg": latitude_deg,
-        "site_longitude_deg": site_longitude_deg,
-        "equation_of_time_minutes": equation,
-        "solar_declination_deg": declination_deg,
-        "true_north_deg": true_north_deg,
-        "start_time": start_text,
-        "end_time": end_text,
-        "time_step_minutes": step,
-        "longitude_correction_minutes": None if not available or time_basis != "japan_standard_time" else _round(4.0 * (site_longitude_deg - standard_meridian_deg)),
-        "equation_of_time_applied": available and time_basis == "japan_standard_time",
         "longitude_correction_applied": available and time_basis == "japan_standard_time",
-        "slice_count": len(slices),
-        "slices": slices,
-        "blockers": blockers,
-        "warnings": warnings,
-        "atmospheric_refraction_applied": False,
-        "date_based_declination_calculated": bool(derived and derived.get("available") and derived.get("solar_declination_deg") is not None),
-        "date_based_equation_of_time_calculated": bool(derived and derived.get("available") and derived.get("equation_of_time_minutes") is not None),
+        "equation_of_time_applied": available and time_basis == "japan_standard_time",
+        "atmospheric_refraction_applied": False, "true_north_convention": TRUE_NORTH_CONVENTION,
+        "azimuth_convention": "clockwise_from_true_north", "internal_precision": "full_double_precision",
+        "serialized_rounding_decimal_places": SERIALIZED_ROUNDING_DECIMAL_PLACES,
+        "true_north_source_note": "true_north_deg is supplied through settings; automatic Revit ActiveProjectLocation extraction is not implemented.",
         "permit_ready_certified": False,
     }
-
+    return {
+        "available": available, "complete": complete_valid_slices,
+        "calculation_mode": parameter_mode, "solar_parameter_mode": parameter_mode,
+        "solar_parameter_mode_inferred_for_backward_compatibility": mode_inferred,
+        "legacy_compatibility_note": warnings[0] if legacy_regulatory_shape else None,
+        "recommended_mode": "regulatory_winter_solstice_v1",
+        "user_supplied_parameters": parameter_mode == "explicit",
+        "regulatory_profile_validated": parameter_mode == "regulatory_winter_solstice_v1" and regulatory_profile_resolved,
+        "reference_algorithm": parameter_mode == "date_derived_noaa_v1", "regulatory_default": False,
+        "solar_parameter_source": source, "solar_parameter_source_available": declination_deg is not None,
+        "solar_parameters_resolved": declination_deg is not None and not bool(blockers),
+        "calculation_date": derived["calculation_date"] if derived else normalized.get("calculation_date"),
+        "day_of_year": derived["day_of_year"] if derived else None, "days_in_year": derived["days_in_year"] if derived else None,
+        "parameter_reference_hour_local_standard": derived["reference_hour_local_standard"] if derived else None,
+        "fractional_year_rad": derived["fractional_year_rad"] if derived else None,
+        "input_time_basis": time_basis, "output_time_basis": "true_solar_time",
+        "standard_meridian_deg": standard_meridian_deg, "site_latitude_deg": latitude_deg,
+        "site_longitude_deg": site_longitude_deg, "equation_of_time_minutes": equation,
+        "solar_declination_deg": declination_deg, "true_north_deg": true_north_deg,
+        "start_time": start_text, "end_time": end_text, "time_step_minutes": step,
+        "longitude_correction_minutes": (None if not available or time_basis != "japan_standard_time" else _round(4.0 * (site_longitude_deg - standard_meridian_deg))),
+        "equation_of_time_applied": available and time_basis == "japan_standard_time",
+        "longitude_correction_applied": available and time_basis == "japan_standard_time",
+        "slice_count": len(slices), "slices": slices, "blockers": blockers, "warnings": warnings,
+        "atmospheric_refraction_applied": False,
+        "date_based_declination_calculated": bool(derived and derived.get("available")),
+        "date_based_equation_of_time_calculated": bool(derived and derived.get("available")),
+        "solar_specification": specification,
+        "formal_solar_calculation_ready": formal_ready,
+        "regulatory_profile_resolved": regulatory_profile_resolved,
+        "solar_coordinate_convention_resolved": true_north_deg is not None,
+        "solar_reference_validation_passed": parameter_mode in VALID_SOLAR_PARAMETER_MODES,
+        "permit_ready_certified": False,
+    }
 
 def _build_sun_position_diagnostics(settings_normalized):
     solar = _build_solar_calculation_v1(settings_normalized)
