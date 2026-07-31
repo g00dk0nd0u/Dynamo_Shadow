@@ -85,6 +85,7 @@ try:
         SUN_POSITION_POLICY,
         SHADOW_PROJECTION_POLICY,
         FORMAL_SHADOW_PROJECTION_POLICY,
+        SHADOW_PREVIEW_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
     from shadow_settings import _normalize_settings
@@ -97,6 +98,7 @@ try:
     from shadow_sun import _build_sun_position_diagnostics
     from shadow_projection import _build_shadow_projection_diagnostics
     from shadow_formal_projection import _build_formal_shadow_polygons
+    from shadow_preview import _build_shadow_preview
 except BaseException:
     _IMPORT_ERROR_TEXT = traceback.format_exc()
 else:
@@ -207,6 +209,8 @@ def _minimal_import_failure(error_text):
         "unit_conversion_policy": unit_conversion_policy,
         "shadow_projection_diagnostics": None,
         "shadow_projection_policy": globals().get("SHADOW_PROJECTION_POLICY"),
+        "shadow_preview": {"enabled": False, "mode": "off", "attempted": False, "available": False, "created_element_count": 0, "deleted_element_count": 0, "warnings": ["Preview unavailable because module imports failed."]},
+        "shadow_preview_policy": globals().get("SHADOW_PREVIEW_POLICY"),
         "debug_log_policy": {
             "purpose": "development_review_debug_log",
             "enabled_by_default": False,
@@ -250,6 +254,10 @@ def _build_success():
         formal_shadow_polygons = _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_slices, settings_normalized, shadow_projection_diagnostics)
     except BaseException as exc:
         formal_shadow_polygons = {"available": False, "complete": False, "partial_success": False, "engine": "revit_extrusion_analyzer_v1", "formal_geometry": True, "diagnostic_convex_hull_used_as_fallback": False, "blockers": [{"failure_code": "formal_shadow_engine_unhandled_exception", "failure_type": type(exc).__name__, "failure_message": _sanitize_text_for_debug(exc)}], "warnings": [], "slices": []}
+    try:
+        shadow_preview = _build_shadow_preview(formal_shadow_polygons, measurement_plane, settings_normalized)
+    except BaseException:
+        shadow_preview = {"enabled": False, "mode": "off", "attempted": True, "available": False, "complete": False, "partial_success": False, "formal_shadow_source_available": bool(formal_shadow_polygons.get("available")), "created_element_count": 0, "deleted_element_count": 0, "created_element_ids": [], "groups": [], "warnings": ["Preview failed non-fatally; formal shadow output remains available."]}
     pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
@@ -261,6 +269,7 @@ def _build_success():
     warnings.extend(sun_position_diagnostics.get("warnings", []))
     warnings.extend(shadow_projection_diagnostics.get("warnings", []))
     warnings.extend(formal_shadow_polygons.get("warnings", []))
+    warnings.extend(shadow_preview.get("warnings", []))
     warnings.extend(pipeline_readiness.get("blockers_for_equal_time_shadow", []))
     warnings.extend(pipeline_readiness.get("blockers_for_footprint_extraction", []))
     warnings.extend(pipeline_readiness.get("blockers_for_measurement_plane", []))
@@ -281,7 +290,7 @@ def _build_success():
         "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow Revit-native formal time-slice shadow prototype. No caster union, duration accumulation, equal-time contours, legal judgement, or Revit element creation is performed.",
+        "message": "Dynamo_Shadow Revit-native formal time-slice shadow prototype with optional DirectShape visual QA. No caster union, duration accumulation, equal-time contours, or legal judgement is performed.",
         "legal_constants": LEGAL_CONSTANTS,
         "unit_conversion_diagnostics": unit_conversion_diagnostics,
         "unit_conversion_policy": UNIT_CONVERSION_POLICY,
@@ -305,6 +314,8 @@ def _build_success():
         "shadow_projection_policy": shadow_projection_policy,
         "formal_shadow_polygons": formal_shadow_polygons,
         "formal_shadow_projection_policy": FORMAL_SHADOW_PROJECTION_POLICY,
+        "shadow_preview": shadow_preview,
+        "shadow_preview_policy": SHADOW_PREVIEW_POLICY,
         "law56_2_awareness": law56_2_awareness,
         "measurement_plane": measurement_plane,
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
@@ -379,6 +390,7 @@ def _build_failure(error_text):
     shadow_projection_diagnostics = None
     shadow_projection_policy = SHADOW_PROJECTION_POLICY
     formal_shadow_polygons = None
+    shadow_preview = None
     try:
         unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
     except Exception:
@@ -409,6 +421,7 @@ def _build_failure(error_text):
         sun_time_slices, sun_position_diagnostics, sun_position_policy, solar_calculation_v1 = _build_sun_position_diagnostics(settings_normalized or {})
         shadow_projection_diagnostics, shadow_projection_policy = _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_plane, sun_time_slices)
         formal_shadow_polygons = _build_formal_shadow_polygons({"casters": []}, measurement_plane, sun_time_slices, settings_normalized or {}, shadow_projection_diagnostics)
+        shadow_preview = _build_shadow_preview(formal_shadow_polygons, measurement_plane, settings_normalized or {})
         pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons)
     except Exception:
         pipeline_readiness = None
@@ -442,6 +455,8 @@ def _build_failure(error_text):
         "shadow_projection_policy": shadow_projection_policy,
         "formal_shadow_polygons": formal_shadow_polygons,
         "formal_shadow_projection_policy": FORMAL_SHADOW_PROJECTION_POLICY,
+        "shadow_preview": shadow_preview,
+        "shadow_preview_policy": SHADOW_PREVIEW_POLICY,
         "law56_2_awareness": law56_2_awareness,
         "measurement_plane": measurement_plane,
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
