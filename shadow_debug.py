@@ -397,6 +397,25 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
         "diagnostic_convex_hull_comparison_count": comparisons,
     })
 
+def _unified_shadow_summary(union):
+    union = union if isinstance(union, dict) else {}
+    slices = union.get("slices") or []
+    return _sanitize_for_debug({
+        "engine": union.get("engine"), "available": bool(union.get("available")),
+        "complete": bool(union.get("complete")), "time_slice_count": union.get("time_slice_count", 0),
+        "successful_slice_count": union.get("successful_slice_count", 0), "failed_slice_count": union.get("failed_slice_count", 0),
+        "input_polygon_count": union.get("input_polygon_count", 0), "output_polygon_count": union.get("output_polygon_count", 0),
+        "input_component_count": union.get("input_component_count", 0), "output_component_count": union.get("output_component_count", 0),
+        "boolean_operation_attempt_count": union.get("boolean_operation_attempt_count", 0),
+        "boolean_operation_success_count": union.get("boolean_operation_success_count", 0),
+        "boolean_operation_failure_count": union.get("boolean_operation_failure_count", 0),
+        "total_input_area_m2": sum(float(s.get("input_area_m2_sum") or 0) for s in slices),
+        "total_unified_area_m2": sum(float(s.get("unified_area_m2") or 0) for s in slices),
+        "total_overlap_removed_area_m2": sum(float(s.get("overlap_removed_area_m2") or 0) for s in slices),
+        "ready_for_duration_accumulation": bool(union.get("ready_for_duration_accumulation")),
+        "blockers": union.get("blockers") or [], "warnings": union.get("warnings") or [],
+    })
+
 def _summarize_out_for_debug(out_payload):
     out_payload = out_payload or {}
     settings = out_payload.get("settings_normalized") or {}
@@ -422,6 +441,7 @@ def _summarize_out_for_debug(out_payload):
         "footprint_extraction_summary": _summary_counts(out_payload.get("footprint_extraction")),
         "formal_footprint_summary": _formal_footprint_debug_summary(out_payload.get("footprint_extraction")),
         "formal_shadow_polygon_summary": _formal_shadow_polygon_debug_summary(out_payload.get("formal_shadow_polygons")),
+        "unified_shadow_summary": _unified_shadow_summary(out_payload.get("unified_shadow_slices")),
         "shadow_preview": _sanitize_for_debug(out_payload.get("shadow_preview")),
         "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
         "solar_specification_summary": _solar_specification_debug_summary(out_payload.get("solar_calculation_v1")),
@@ -457,6 +477,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "footprint_extraction_summary": summary["footprint_extraction_summary"],
         "formal_footprint_summary": summary["formal_footprint_summary"],
         "formal_shadow_polygon_summary": summary["formal_shadow_polygon_summary"],
+        "unified_shadow_summary": summary["unified_shadow_summary"],
         "shadow_preview": summary["shadow_preview"],
         "solar_calculation_summary": summary["solar_calculation_summary"],
         "solar_specification_summary": summary["solar_specification_summary"],

@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-31-formal-solar-specification-v1"
+CODE_BUILD_ID = "2026-07-31-revit-native-shadow-union-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -178,6 +178,19 @@ FORMAL_SHADOW_PROJECTION_POLICY = {
     "equal_time_contours_generated": False,
     "legal_judgement_generated": False,
     "permit_ready_certified": False,
+}
+
+FORMAL_SHADOW_UNION_POLICY = {
+    "implementation_status": "revit_native_prototype_v1",
+    "engine": "BooleanOperationsUtils.ExecuteBooleanOperation",
+    "input": "formal shadow Line CurveLoops",
+    "adapter": "temporary 0.1m extrusion Solid",
+    "split_method": "SolidUtils.SplitVolumes",
+    "custom_polygon_clipping": False,
+    "diagnostic_fallback_used_as_formal": False,
+    "failure_blocks_duration": True,
+    "permit_ready_certified": False,
+    "target_revit_version": "Revit 2024.3",
 }
 
 

@@ -23,10 +23,32 @@ Revit owns native element and geometry access, unit conversion, project-location
 | Diagnostic convex hull | Python monotonic-chain hull | No formal Revit equivalent selected | Retain as comparison/over-approximation | Current implementation | Diagnostic only; never formal | #34 comparison |
 | Formal shadow polygon | Exact Line-loop prototype | `ExtrusionAnalyzer.Create`, `GetExtrusionBase`, `Face.GetEdgesAsCurveLoops` | ExtrusionAnalyzer after volume splitting | Explicit failure; no convex-hull substitution | Implemented prototype; broader Revit 2024.3 validation required | Follow-up C / #34 |
 | Multi-volume handling | Native split volumes remain separate | `SolidUtils.SplitVolumes` | Split positive-volume solids before formal analysis | Explicit capability blocker/diagnostic | Implemented; no polygon union | Follow-up C / #34 |
-| Future time-slice union | Not implemented | `BooleanOperationsUtils` is 3D-only and may assist preprocessing | Separate 2D engine decision and controlled tests | Undecided | Not designed or implemented | Future architecture PR |
+| Time-slice union | Temporary native extrusion adapter | `GeometryCreationUtilities.CreateExtrusionGeometry`, `BooleanOperationsUtils.ExecuteBooleanOperation`, `SolidUtils.SplitVolumes`, `Face.GetEdgesAsCurveLoops` | Union exact formal Line loops once per slice; preserve native solids through extraction | None; explicit blocker | Revit-native prototype; two-caster Revit 2024.3 validation pending | #35 |
 | Debug serialization | Sanitized Python dictionaries/JSON | No raw native-object serializer is appropriate | Serialize only explicit scalar/data-model boundaries | Safe string/value normalization | Implemented; unchanged | — |
 
-`BooleanOperationsUtils` must not be assumed to solve 2D time-slice union. No caster union is introduced by this strategy PR.
+## Formal per-time-slice union prototype (Issue #35)
+
+Exact formal Line loops are reconstructed as native `CurveLoop` objects and
+temporarily extruded by 0.1 m solely as an in-memory planar Boolean adapter.
+`BooleanOperationsUtils.ExecuteBooleanOperation` unions caster results once per
+true-solar-time slice, `SolidUtils.SplitVolumes` preserves separated components,
+and the horizontal base faces are serialized back through exact Line loops.
+This avoids double-counting positive-area overlaps and preserves holes and
+concave outlines without BoundingBox, convex hull, tessellation, libG, or an
+external clipping library. No Revit transaction or document element is created.
+
+The standard API considered is the Revit native solid Boolean stack above.
+Dynamo standard geometry nodes were not adopted because they require libG
+conversion and would not preserve the formal native path. No custom polygon
+clipping fallback exists; Python is limited to contracts, deterministic
+ordering, topology/area validation, readiness, and JSON-safe serialization.
+Missing capabilities or unprovable Boolean failures explicitly block future
+duration accumulation while leaving formal source polygons available.
+
+The supported target is Revit 2024.3 with Dynamo CPython3. The prototype still
+requires actual two-caster overlap, contact, containment, hole, concavity,
+retry, and disposal validation in that runtime. Duration accumulation and
+equal-time contours remain unimplemented, and permit readiness remains false.
 
 ## ExtrusionAnalyzer constraints
 
