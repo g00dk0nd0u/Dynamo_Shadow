@@ -512,7 +512,7 @@ def _diagnose_site_boundary_loop(items):
         "warnings": warnings,
     }
 
-def _diagnose_site_boundary(site_boundary):
+def _diagnose_site_boundary_unsafe(site_boundary):
     items = _to_list(site_boundary)
     diagnostics = {
         "provided": len(items) > 0,
@@ -630,3 +630,45 @@ def _diagnose_site_boundary(site_boundary):
     if diagnostics["boundary_dependent_steps_skipped"]:
         diagnostics["info"].append("site_boundary was provided, but boundary-dependent steps remain gated until a usable Property Line/Site Property or closed Model Lines loop can be read.")
     return diagnostics
+
+
+def _diagnose_site_boundary(site_boundary):
+    """Diagnose optional boundary items independently so one bad item cannot abort peers."""
+    items = _to_list(site_boundary)
+    if not items:
+        return _diagnose_site_boundary_unsafe(site_boundary)
+    combined = _diagnose_site_boundary_unsafe(None)
+    combined["provided"] = True
+    combined["count"] = len(items)
+    combined["items"] = []
+    combined["warnings"] = []
+    combined["info"] = []
+    for index, item in enumerate(items):
+        try:
+            result = _diagnose_site_boundary_unsafe([item])
+            entry = (result.get("items") or [])[0]
+            entry["index"] = index
+            combined["items"].append(entry)
+            combined["accepted_count"] += int(bool(entry.get("accepted")))
+            combined["rejected_count"] += int(not bool(entry.get("accepted")))
+            combined["warnings"].extend(entry.get("warnings") or [])
+        except BaseException as exc:
+            warning = "site_boundary item {0} diagnostics failed; remaining items continue.".format(index)
+            combined["items"].append({
+                "index": index, "is_none": item is None, "type": _type_name(item),
+                "accepted": False, "diagnostic_failed": True,
+                "error_type": type(exc).__name__, "curve_access": {"available": False},
+                "warnings": [warning],
+            })
+            combined["rejected_count"] += 1
+            combined["warnings"].append(warning)
+    combined["loop_diagnostics"] = _diagnose_site_boundary_loop(combined["items"])
+    combined["warnings"].extend(combined["loop_diagnostics"].get("warnings") or [])
+    combined["boundary_dependent_steps_available"] = (
+        combined["accepted_count"] > 0
+        and combined["loop_diagnostics"].get("closed_loop_check_available") is True
+    )
+    combined["boundary_dependent_steps_skipped"] = not combined["boundary_dependent_steps_available"]
+    if combined["boundary_dependent_steps_skipped"]:
+        combined["info"].append("Boundary-dependent steps remain gated; core shadow diagnostics continue.")
+    return combined
