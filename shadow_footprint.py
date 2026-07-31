@@ -1,5 +1,6 @@
 # Footprint candidate diagnostics only; no formal polygon generation.
 from shadow_policies import FOOTPRINT_EXTRACTION_POLICY
+from shadow_revit_api import CurveLoop, Face, PlanarFace, XYZ, REVIT_API_CAPABILITIES
 from shadow_utils import *
 from shadow_units import _candidate_raw_to_meters, _internal_area_to_m2, _point_raw_to_meters
 
@@ -91,7 +92,7 @@ def _is_line_curve_type_name(curve_type):
         return False
     normalized = normalized.replace(" ", "")
     leaf = normalized.split(".")[-1]
-    return leaf == "line"
+    return leaf == "line" or (leaf.endswith("line") and "spline" not in leaf)
 
 def _summarize_curve_for_footprint(value):
     warnings = []
@@ -116,7 +117,7 @@ def _summarize_curve_for_footprint(value):
     if cw: summary["unit_conversion_warnings"] = cw
     return summary
 
-def _extract_edge_loop_candidates_from_face(face, face_summary=None):
+def _extract_edge_loop_candidates_from_face_fallback(face, face_summary=None, closure_tolerance_m=0.001):
     warnings=[]; loops_out=[]
     loops = _safe_iter(_safe_attr(face, "EdgeLoops"))
     
@@ -152,18 +153,255 @@ def _extract_edge_loop_candidates_from_face(face, face_summary=None):
         loops_out.append(loop_summary)
     if not loops:
         warnings.append("face EdgeLoops unavailable or empty; no footprint edge loop candidate was read.")
-    return {"available": bool(loops_out), "source_face_type": fs.get("type") or _type_name(face), "source_face_role_candidate": fs.get("height_role_candidate"), "source_face_orientation_candidate": fs.get("orientation_candidate"), "face_area_raw": fs.get("area_raw"), "face_area_m2": fs.get("area_m2") or _internal_area_to_m2(fs.get("area_raw"))[0], "face_origin_raw": fs.get("origin_raw"), "face_origin_m": fs.get("origin_m") or _point_raw_to_meters(fs.get("origin_raw"))[0], "face_normal_raw": fs.get("normal_raw"), "edge_loop_count": len(loops_out), "loops": loops_out, "warnings": warnings}
+    return {"available": bool(loops_out), "source_face_type": fs.get("type") or _type_name(face), "source_face_role_candidate": fs.get("height_role_candidate"), "source_face_orientation_candidate": fs.get("orientation_candidate"), "face_area_raw": fs.get("area_raw"), "face_area_m2": fs.get("area_m2") or _internal_area_to_m2(fs.get("area_raw"))[0], "face_origin_raw": fs.get("origin_raw"), "face_origin_m": fs.get("origin_m") or _point_raw_to_meters(fs.get("origin_raw"))[0], "face_normal_raw": fs.get("normal_raw"), "edge_loop_count": len(loops_out), "loops": loops_out, "warnings": warnings, "generation_method": "python_endpoint_stitch_fallback", "native_path_attempted": False, "native_path_succeeded": False, "fallback_used": True}
+
+
+def _try_get_native_curve_loops(face):
+    """Acquire native loops without allowing raw API objects into diagnostics."""
+    capability = bool(REVIT_API_CAPABILITIES.get("native_curve_loop_path_expected"))
+    getter = getattr(face, "GetEdgesAsCurveLoops", None)
+    method_available = callable(getter)
+    result = {"attempted": method_available, "capability_expected": capability,
+              "method_available": method_available, "acquisition_succeeded": False,
+              "loops": [], "loop_count": 0, "failure_code": None,
+              "failure_type": None, "failure_message": None}
+    if not method_available:
+        if not REVIT_API_CAPABILITIES.get("revit_api_loaded"):
+            result["failure_code"] = "revit_api_unavailable"
+        elif not capability:
+            result["failure_code"] = "native_capability_not_expected"
+        else:
+            result["failure_code"] = "method_unavailable_on_face"
+        return result
+    try:
+        raw = getter()
+    except Exception as exc:
+        result.update(failure_code="native_call_exception", failure_type=_type_name(exc),
+                      failure_message=str(exc)[:200])
+        return result
+    if raw is None:
+        result["failure_code"] = "native_result_none"
+        return result
+    loops = list(_safe_iter(raw))
+    if not loops:
+        result["failure_code"] = "native_result_empty"
+        return result
+    result.update(acquisition_succeeded=True, loops=loops, loop_count=len(loops))
+    return result
+
+
+def _point_m_xyz(point):
+    raw = _xyz_to_raw_dict(point)
+    converted, _ = _point_raw_to_meters(raw)
+    return converted
+
+
+def _distance_xyz(a, b):
+    return sum((float(a[k]) - float(b[k])) ** 2 for k in ("x", "y", "z")) ** 0.5
+
+
+def _ordered_line_points_from_native_curve_loop(curves, closure_tolerance_m):
+    endpoints = []
+    blockers = []
+    for curve in curves:
+        p0, e0 = _safe_call(curve, "GetEndPoint", 0)
+        p1, e1 = _safe_call(curve, "GetEndPoint", 1)
+        if e0 or e1 or p0 is None or p1 is None:
+            return None, ["native_curve_endpoint_unavailable"]
+        endpoints.append((_point_m_xyz(p0), _point_m_xyz(p1)))
+    if not endpoints:
+        return None, ["native_curve_loop_has_no_curves"]
+    for index in range(1, len(endpoints)):
+        if _distance_xyz(endpoints[index - 1][1], endpoints[index][0]) > closure_tolerance_m:
+            blockers.append("native_curve_sequence_discontinuous")
+            break
+    if _distance_xyz(endpoints[-1][1], endpoints[0][0]) > closure_tolerance_m:
+        blockers.append("native_curve_sequence_not_closed")
+    if blockers:
+        return None, blockers
+    points = [endpoints[0][0]] + [pair[1] for pair in endpoints]
+    if _distance_xyz(points[-1], points[0]) <= closure_tolerance_m:
+        points.pop()
+    return [{"x": p["x"], "y": p["y"]} for p in points], []
+
+
+def _inspect_native_curve_loop(curve_loop, loop_index, closure_tolerance_m,
+                               short_curve_tolerance_internal=None):
+    blockers = []; warnings = []
+    is_open, error = _safe_call(curve_loop, "IsOpen")
+    if error: is_open = None; blockers.append("native_curve_loop_inspection_exception")
+    closed = is_open is False
+    if is_open is True: blockers.append("native_curve_loop_is_open")
+    has_plane, error = _safe_call(curve_loop, "HasPlane")
+    if error: has_plane = None; blockers.append("native_curve_loop_inspection_exception")
+    plane = None
+    if has_plane is True:
+        plane, error = _safe_call(curve_loop, "GetPlane")
+        if error: blockers.append("native_curve_loop_inspection_exception")
+    else:
+        blockers.append("native_curve_loop_is_not_planar")
+    origin = _safe_attr(plane, "Origin") if plane is not None else None
+    normal = _safe_attr(plane, "Normal") if plane is not None else None
+    normal_raw = _xyz_to_raw_dict(normal) if normal is not None else None
+    if normal_raw is not None and abs(float(normal_raw.get("z", 0.0))) < 0.999:
+        blockers.append("native_curve_loop_plane_is_not_horizontal")
+    count, error = _safe_call(curve_loop, "NumberOfCurves")
+    if error: count = None; blockers.append("native_curve_loop_inspection_exception")
+    exact, error = _safe_call(curve_loop, "GetExactLength")
+    if error: exact = None; warnings.append("native curve loop exact length unavailable")
+    curves = list(_safe_iter(curve_loop))
+    if not curves or count == 0: blockers.append("native_curve_loop_has_no_curves")
+    curve_types = [_type_name(curve) for curve in curves]
+    type_counts = {}
+    for name in curve_types: type_counts[name] = type_counts.get(name, 0) + 1
+    all_lines = bool(curves) and all(_is_line_curve_type_name(name) for name in curve_types)
+    if short_curve_tolerance_internal is not None:
+        for curve in curves:
+            length = _safe_float_attr(curve, "Length")
+            if length is not None and length < short_curve_tolerance_internal:
+                blockers.append("native_curve_is_below_revit_short_curve_tolerance")
+    points = None
+    if all_lines:
+        points, point_blockers = _ordered_line_points_from_native_curve_loop(curves, closure_tolerance_m)
+        blockers.extend(point_blockers)
+    else:
+        blockers.append("native_curve_loop_contains_non_line_curve")
+    origin_raw = _xyz_to_raw_dict(origin) if origin is not None else None
+    origin_m = _point_raw_to_meters(origin_raw)[0] if origin_raw is not None else None
+    exact_m = _candidate_raw_to_meters({"total_length_raw": exact})[0].get("total_length_m") if exact is not None else None
+    blockers = _dedupe_text(blockers)
+    structurally_valid = not any(code for code in blockers if code != "native_curve_loop_contains_non_line_curve")
+    return {"loop_index": int(loop_index), "source_method": "face_get_edges_as_curve_loops",
+            "native_curve_loop": True, "is_open": is_open, "closed": closed,
+            "has_plane": has_plane, "plane_origin_raw": origin_raw,
+            "plane_origin_m": origin_m, "plane_normal": normal_raw,
+            "curve_count": int(count) if count is not None else len(curves),
+            "exact_length_raw": exact, "exact_length_m": exact_m,
+            "curve_types": curve_types, "curve_type_counts": type_counts,
+            "all_line_curves": all_lines, "contains_non_line_curve": not all_lines,
+            "ordered_line_points_m": points, "valid_native_loop": structurally_valid,
+            "formal_line_adapter_available": structurally_valid and all_lines and points is not None,
+            "blockers": blockers, "warnings": warnings}
+
+
+def _native_orientation(curve_loop, inspected, want_ccw, closure_tolerance_m):
+    if not inspected.get("formal_line_adapter_available"):
+        return
+    direction = getattr(XYZ, "BasisZ", None) if XYZ is not None else None
+    checker = getattr(curve_loop, "IsCounterclockwise", None)
+    flipper = getattr(curve_loop, "Flip", None)
+    if direction is None or not callable(checker):
+        inspected["orientation_method"] = "signed_area_fallback"
+        inspected["native_flip_performed"] = False
+        points = inspected.get("ordered_line_points_m") or []
+        if (_signed_area_2d(points) > 0) != want_ccw:
+            inspected["ordered_line_points_m"] = list(reversed(points))
+        inspected["warnings"].append("native_orientation_api_unavailable")
+        return
+    inspected["orientation_method"] = "curve_loop_is_counterclockwise"
+    inspected["native_flip_performed"] = False
+    if bool(checker(direction)) != want_ccw:
+        if not callable(flipper):
+            inspected["warnings"].append("native_orientation_api_unavailable")
+            inspected["orientation_method"] = "signed_area_fallback"
+            points = inspected.get("ordered_line_points_m") or []
+            inspected["ordered_line_points_m"] = list(reversed(points))
+            return
+        flipper(); inspected["native_flip_performed"] = True
+        curves = list(_safe_iter(curve_loop))
+        points, errors = _ordered_line_points_from_native_curve_loop(curves, closure_tolerance_m)
+        if errors:
+            inspected["blockers"] = _dedupe_text(inspected["blockers"] + errors)
+            inspected["formal_line_adapter_available"] = False
+        else:
+            inspected["ordered_line_points_m"] = points
+
+
+def _try_extract_native_curve_loop_candidates(face, face_summary=None,
+                                               closure_tolerance_m=0.001,
+                                               short_curve_tolerance_internal=None):
+    acquisition = _try_get_native_curve_loops(face)
+    if not acquisition["acquisition_succeeded"]:
+        return acquisition
+    inspected = []
+    dispose_warnings = []
+    loops = acquisition.pop("loops")
+    try:
+        for index, loop in enumerate(loops):
+            try:
+                item = _inspect_native_curve_loop(loop, index, closure_tolerance_m,
+                                                  short_curve_tolerance_internal)
+            except Exception:
+                item = {"loop_index": index, "source_method": "face_get_edges_as_curve_loops",
+                        "native_curve_loop": True, "valid_native_loop": False,
+                        "formal_line_adapter_available": False, "contains_non_line_curve": False,
+                        "ordered_line_points_m": None, "curve_count": 0,
+                        "blockers": ["native_curve_loop_inspection_exception"], "warnings": []}
+            inspected.append(item)
+        line_items = [item for item in inspected if item.get("formal_line_adapter_available")]
+        for item in line_items:
+            probe = (item.get("ordered_line_points_m") or [None])[0]
+            depth = sum(1 for other in line_items if other is not item and probe is not None
+                        and _point_in_polygon(probe, other.get("ordered_line_points_m") or []))
+            item["containment_depth"] = depth
+            item["native_role"] = "outer" if depth % 2 == 0 else "inner"
+            _native_orientation(loops[item["loop_index"]], item,
+                                item["native_role"] == "outer", closure_tolerance_m)
+    finally:
+        for index, loop in enumerate(loops):
+            disposer = getattr(loop, "Dispose", None)
+            if callable(disposer):
+                try: disposer()
+                except Exception: dispose_warnings.append("native_curve_loop_dispose_failed")
+    fs = face_summary or {}
+    candidates = []
+    for item in inspected:
+        candidates.append({"loop_index": item.get("loop_index"), "edge_count": item.get("curve_count"),
+                           "curve_count": item.get("curve_count"), "closed_candidate": item.get("closed"),
+                           "horizontal_candidate": item.get("has_plane") is True and "native_curve_loop_plane_is_not_horizontal" not in item.get("blockers", []),
+                           "curve_types": item.get("curve_types"), "endpoints_m": item.get("ordered_line_points_m"),
+                           "total_length_raw": item.get("exact_length_raw"), "total_length_m": item.get("exact_length_m"),
+                           "generation_method": "native_curve_loop", "native_inspection": item,
+                           "warnings": item.get("warnings") or []})
+    acquisition.update({"available": bool(candidates), "loops": candidates, "edge_loop_count": len(candidates),
+                        "generation_method": "native_curve_loop", "native_path_attempted": True,
+                        "native_path_succeeded": True, "fallback_used": False,
+                        "source_face_type": fs.get("type") or _type_name(face),
+                        "warnings": dispose_warnings})
+    return acquisition
+
+
+def _extract_edge_loop_candidates_from_face(face, face_summary=None, measurement_plane=None,
+                                            closure_tolerance_m=0.001,
+                                            short_curve_tolerance_internal=None):
+    native = _try_extract_native_curve_loop_candidates(face, face_summary, closure_tolerance_m,
+                                                       short_curve_tolerance_internal)
+    if native.get("acquisition_succeeded"):
+        return native
+    fallback = _extract_edge_loop_candidates_from_face_fallback(face, face_summary, closure_tolerance_m)
+    fallback.update(native_path_attempted=native.get("attempted", False), native_path_succeeded=False,
+                    native_failure_code=native.get("failure_code"),
+                    native_failure_type=native.get("failure_type"),
+                    native_failure_message=native.get("failure_message"))
+    return fallback
 
 def _extract_footprint_candidates_from_faces(face_summaries, face_objects, measurement_plane=None):
     candidates=[]; warnings=[]; info=[]; bi=0
+    short_tolerance = None
+    try:
+        document = _document_manager_document()
+        short_tolerance = _safe_float_attr(_safe_attr(document, "Application"), "ShortCurveTolerance")
+    except Exception:
+        pass
     for idx, fs in enumerate(face_summaries or []):
         if fs.get("height_role_candidate") != "bottom_face_candidate":
             continue
         face = face_objects[idx] if idx < len(face_objects or []) else None
-        loops = _extract_edge_loop_candidates_from_face(face, fs) if face is not None else {"available":False,"loops":[],"warnings":["bottom face object unavailable; summary only."]}
+        loops = _extract_edge_loop_candidates_from_face(face, fs, measurement_plane,
+                                                        short_curve_tolerance_internal=short_tolerance) if face is not None else {"available":False,"loops":[],"warnings":["bottom face object unavailable; summary only."]}
         warnings.extend(loops.get("warnings") or [])
         for loop in loops.get("loops") or []:
-            candidates.append({"candidate_index":len(candidates),"source":"bottom_face_candidate_edge_loop","source_face_index":idx,"source_face_type":fs.get("type"),"source_face_area_raw":fs.get("area_raw"),"source_face_origin_raw":fs.get("origin_raw"),"source_face_normal_raw":fs.get("normal_raw"),"loop_index":loop.get("loop_index"),"edge_count":loop.get("edge_count"),"curve_count":loop.get("curve_count"),"closed_candidate":loop.get("closed_candidate"),"horizontal_candidate":loop.get("horizontal_candidate"),"z_min_raw":loop.get("z_min_raw"),"z_max_raw":loop.get("z_max_raw"),"z_min_m":loop.get("z_min_m"),"z_max_m":loop.get("z_max_m"),"z_variation_raw":loop.get("z_variation_raw"),"total_length_raw":loop.get("total_length_raw"),"total_length_m":loop.get("total_length_m"),"curve_types":loop.get("curve_types"),"endpoints_raw_sample":loop.get("endpoints_raw_sample"),"endpoints_m":loop.get("endpoints_m"),"endpoints_m_sample":loop.get("endpoints_m_sample"),"formal_footprint_polygon_generated":False,"units":"revit_raw_internal_units","relation_to_measurement_plane":{"measurement_plane_available":(measurement_plane or {}).get("available") is True,"diagnostic_only":True,"meter_comparison_available": (measurement_plane or {}).get("available") is True and loop.get("z_min_m") is not None,"meter_relation_candidate": "diagnostic_candidate_only","unit_conversion_status":"diagnostic_conversion_available","used_for_legal_judgement":False,"used_for_shadow_geometry":False,"formal_intersection_test_performed":False},"warnings":loop.get("warnings") or []})
+            candidates.append({"candidate_index":len(candidates),"source":"bottom_face_candidate_edge_loop","source_face_index":idx,"source_face_type":fs.get("type"),"source_face_area_raw":fs.get("area_raw"),"source_face_origin_raw":fs.get("origin_raw"),"source_face_normal_raw":fs.get("normal_raw"),"loop_index":loop.get("loop_index"),"edge_count":loop.get("edge_count"),"curve_count":loop.get("curve_count"),"closed_candidate":loop.get("closed_candidate"),"horizontal_candidate":loop.get("horizontal_candidate"),"z_min_raw":loop.get("z_min_raw"),"z_max_raw":loop.get("z_max_raw"),"z_min_m":loop.get("z_min_m"),"z_max_m":loop.get("z_max_m"),"z_variation_raw":loop.get("z_variation_raw"),"total_length_raw":loop.get("total_length_raw"),"total_length_m":loop.get("total_length_m"),"curve_types":loop.get("curve_types"),"endpoints_raw_sample":loop.get("endpoints_raw_sample"),"endpoints_m":loop.get("endpoints_m"),"endpoints_m_sample":loop.get("endpoints_m_sample"),"generation_method":loop.get("generation_method") or loops.get("generation_method"),"native_inspection":loop.get("native_inspection"),"native_path_attempted":loops.get("native_path_attempted"),"native_path_succeeded":loops.get("native_path_succeeded"),"fallback_used":loops.get("fallback_used"),"native_failure_code":loops.get("native_failure_code"),"formal_footprint_polygon_generated":False,"units":"revit_raw_internal_units","relation_to_measurement_plane":{"measurement_plane_available":(measurement_plane or {}).get("available") is True,"diagnostic_only":True,"meter_comparison_available": (measurement_plane or {}).get("available") is True and loop.get("z_min_m") is not None,"meter_relation_candidate": "diagnostic_candidate_only","unit_conversion_status":"diagnostic_conversion_available","used_for_legal_judgement":False,"used_for_shadow_geometry":False,"formal_intersection_test_performed":False},"warnings":loop.get("warnings") or []})
     def score(c):
         return (1 if c.get("closed_candidate") is True else 0, 1 if c.get("horizontal_candidate") is True else 0, c.get("edge_count") or 0, c.get("source_face_area_raw") or 0)
     best = sorted(candidates, key=score, reverse=True)[0] if candidates else None
@@ -173,7 +411,13 @@ def _extract_footprint_candidates_from_faces(face_summaries, face_objects, measu
     if bottom<=0: blockers.append("No bottom face candidate was found.")
     if not candidates: blockers.append("No edge loop candidate was found from bottom face candidates.")
     if closed<=0: blockers.append("No closed loop candidate was verified by raw endpoint comparison.")
-    return {"available": bool(candidates), "bottom_face_candidate_count": bottom, "loop_candidate_count": len(candidates), "closed_loop_candidate_count": closed, "horizontal_loop_candidate_count": horiz, "best_candidate": best, "candidates": candidates, "readiness": {"ready_for_future_footprint_polygon_generation": bool(closed>0), "blockers": blockers}, "warnings": warnings, "info": info}
+    native_faces = {c.get("source_face_index") for c in candidates if c.get("native_path_attempted")}
+    native_success_faces = {c.get("source_face_index") for c in candidates if c.get("native_path_succeeded")}
+    fallback_faces = {c.get("source_face_index") for c in candidates if c.get("fallback_used")}
+    native_loops = [c for c in candidates if c.get("native_path_succeeded")]
+    fallback_loops = [c for c in candidates if c.get("fallback_used")]
+    short_m = _candidate_raw_to_meters({"total_length_raw":short_tolerance})[0].get("total_length_m") if short_tolerance is not None else None
+    return {"available": bool(candidates), "bottom_face_candidate_count": bottom, "loop_candidate_count": len(candidates), "closed_loop_candidate_count": closed, "horizontal_loop_candidate_count": horiz, "best_candidate": best, "candidates": candidates, "native_face_attempt_count":len(native_faces), "native_face_success_count":len(native_success_faces), "native_loop_count":len(native_loops), "fallback_face_count":len(fallback_faces), "fallback_loop_count":len(fallback_loops), "mixed_generation_methods":bool(native_loops and fallback_loops), "non_line_native_loop_count":sum(1 for c in native_loops if (c.get("native_inspection") or {}).get("contains_non_line_curve")), "short_curve_tolerance_available":short_tolerance is not None, "short_curve_tolerance_internal":short_tolerance, "short_curve_tolerance_m":short_m, "readiness": {"ready_for_future_footprint_polygon_generation": bool(closed>0), "blockers": blockers}, "warnings": warnings, "info": info}
 
 
 def _signed_area_2d(points):
@@ -355,6 +599,11 @@ def _classify_and_normalize_caster_loops(polygons):
     warnings = []
     by_group = {}
     for poly in polygons:
+        if poly.get("generation_method") == "native_curve_loop_line_exact":
+            poly["role"] = poly.get("native_role", "unknown")
+            poly["containment_depth"] = poly.get("native_containment_depth", 0)
+            poly["classification_group_key"] = [poly.get("source_caster_index"), poly.get("source_face_index")]
+            continue
         face_index = poly.get("source_face_index")
         if face_index is None:
             poly["classification_group_key"] = [poly.get("source_caster_index"), None, poly.get("source_candidate_index")]
@@ -378,6 +627,33 @@ def _classify_and_normalize_caster_loops(polygons):
 
 def _formal_loop_from_candidate(candidate, tolerance_m=0.001):
     warnings = []
+    native = candidate.get("native_inspection")
+    if native is not None:
+        reasons = list(native.get("blockers") or [])
+        if not native.get("formal_line_adapter_available"):
+            return None, reasons or ["native_curve_loop_inspection_exception"]
+        clean = list(native.get("ordered_line_points_m") or [])
+        if len(clean) < 3:
+            return None, ["native_curve_loop_has_no_curves"]
+        if _has_self_intersection(clean):
+            return None, ["native_curve_loop_self_intersects"]
+        area = _signed_area_2d(clean)
+        if abs(area) <= tolerance_m * tolerance_m:
+            return None, ["native_curve_loop_has_near_zero_area"]
+        return {"points_m": clean, "closed": True, "area_m2_signed": area,
+                "area_m2": abs(area), "orientation": "ccw" if area > 0 else "cw",
+                "role": native.get("native_role", "unknown"), "native_role": native.get("native_role"),
+                "native_containment_depth": native.get("containment_depth"),
+                "source_candidate_index": candidate.get("candidate_index"),
+                "source_caster_index": candidate.get("caster_index"),
+                "source_face_index": candidate.get("source_face_index"),
+                "source_loop_index": candidate.get("loop_index"), "point_count": len(clean),
+                "units": "meter", "generation_method": "native_curve_loop_line_exact",
+                "native_source_loop_index": candidate.get("loop_index"),
+                "native_curve_count": native.get("curve_count"),
+                "native_exact_length_m": native.get("exact_length_m"),
+                "native_orientation_method": native.get("orientation_method"),
+                "native_flip_performed": bool(native.get("native_flip_performed"))}, warnings
     eligible, reasons = _validate_formal_candidate_eligibility(candidate)
     if not eligible:
         return None, reasons
@@ -395,7 +671,7 @@ def _formal_loop_from_candidate(candidate, tolerance_m=0.001):
     if abs(area) <= tolerance_m * tolerance_m:
         warnings.append("formal loop candidate has near-zero area.")
         return None, warnings
-    return {"points_m": clean, "closed": True, "area_m2_signed": area, "area_m2": abs(area), "orientation": "ccw" if area > 0 else "cw", "role": "unknown", "source_candidate_index": candidate.get("candidate_index"), "source_caster_index": candidate.get("caster_index"), "source_face_index": candidate.get("source_face_index"), "source_loop_index": candidate.get("loop_index"), "point_count": len(clean), "units": "meter"}, warnings
+    return {"points_m": clean, "closed": True, "area_m2_signed": area, "area_m2": abs(area), "orientation": "ccw" if area > 0 else "cw", "role": "unknown", "source_candidate_index": candidate.get("candidate_index"), "source_caster_index": candidate.get("caster_index"), "source_face_index": candidate.get("source_face_index"), "source_loop_index": candidate.get("loop_index"), "point_count": len(clean), "units": "meter", "generation_method":"python_endpoint_stitch_fallback", "native_source_loop_index":None, "native_curve_count":None, "native_exact_length_m":None, "native_orientation_method":None, "native_flip_performed":False}, warnings
 
 def _build_formal_footprints_from_candidates(items, tolerance_m=0.001):
     polygons = []; invalid = []; warnings = []
@@ -415,7 +691,7 @@ def _build_formal_footprints_from_candidates(items, tolerance_m=0.001):
             c = dict(candidate); c["caster_index"] = caster_index
             loop, lw = _formal_loop_from_candidate(c, tolerance_m)
             if loop is None:
-                invalid.append({"caster_index": caster_index, "candidate_index": candidate.get("candidate_index"), "source_face_index": candidate.get("source_face_index"), "source_loop_index": candidate.get("loop_index"), "reasons": lw})
+                invalid.append({"caster_index": caster_index, "candidate_index": candidate.get("candidate_index"), "source_face_index": candidate.get("source_face_index"), "source_loop_index": candidate.get("loop_index"), "generation_method":candidate.get("generation_method") or "python_endpoint_stitch_fallback", "reason_codes":list(lw), "reasons": lw})
             else:
                 loop["polygon_index"] = len(polygons); polygons.append(loop)
             warnings.extend(lw)
@@ -454,6 +730,8 @@ def _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plan
     items = (shadow_caster_geometry or {}).get("items") or []
     accepted = (shadow_caster_geometry or {}).get("accepted_caster_count", 0)
     candidates=[]; best=[]; with_c=[]; without=[]; warnings=[]
+    native_face_attempt_count=0; native_face_success_count=0; native_loop_count=0
+    fallback_face_count=0; fallback_loop_count=0; non_line_native_loop_count=0
     for item in items:
         fp=item.get("footprint_extraction") or {}
         if item.get("accepted_shadow_caster"):
@@ -464,6 +742,12 @@ def _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plan
             if fp.get("best_candidate"):
                 best.append(fp.get("best_candidate"))
         warnings.extend(fp.get("warnings") or [])
+        native_face_attempt_count += fp.get("native_face_attempt_count", 0) or 0
+        native_face_success_count += fp.get("native_face_success_count", 0) or 0
+        native_loop_count += fp.get("native_loop_count", 0) or 0
+        fallback_face_count += fp.get("fallback_face_count", 0) or 0
+        fallback_loop_count += fp.get("fallback_loop_count", 0) or 0
+        non_line_native_loop_count += fp.get("non_line_native_loop_count", 0) or 0
     closed=sum(1 for c in candidates if c.get("closed_candidate") is True)
     settings_ready=((settings_normalized or {}).get("readiness") or {}).get("ready_for_equal_time_shadow_calculation") is True
     mp_ready=((measurement_plane or {}).get("readiness") or {}).get("measurement_plane_constructed") is True
@@ -489,4 +773,4 @@ def _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plan
         blockers_poly.append("partial formal footprint generation only")
     blockers_poly = _dedupe_text(blockers_poly)
     blockers_proj = _dedupe_text(blockers_proj + blockers_poly)
-    return {"policy": FOOTPRINT_EXTRACTION_POLICY, "provided": accepted>0, "diagnostic_only": formal_footprints.get("available") is not True, "formal_footprint_polygon_generated": formal_footprints.get("available") is True, "formal_footprints": formal_footprints, "count": len(items), "accepted_caster_count": accepted, "candidate_count": len(candidates), "loop_candidate_count": (shadow_caster_geometry or {}).get("footprint_loop_candidate_count", len(candidates)), "closed_loop_candidate_count": closed, "casters_with_candidates": with_c, "casters_without_candidates": without, "best_candidates": best, "readiness": {"footprint_diagnostics_ready": True, "ready_for_future_footprint_polygon_generation": formal_footprints.get("complete") is True, "ready_for_future_shadow_projection": formal_footprints.get("ready_for_shadow_projection_input") is True and mp_ready and settings_ready, "ready_for_future_legal_judgement_masks": False, "blockers_for_future_footprint_polygon_generation": blockers_poly, "blockers_for_future_shadow_projection": blockers_proj, "blockers_for_future_legal_judgement_masks": blockers_legal}, "warnings": _dedupe_text(warnings), "info": ["Formal footprint loops are generated from accepted Mass / Generic Model bottom-face Line edge-loop candidates only; Arc/Spline/non-Line and unverified-horizontal loops are rejected.", "Multiple caster loops are preserved separately for future logical union; no Revit elements, CurveLoops, offsets, booleans, shadow polygons, or legal judgement are created.", "site_boundary is not required for footprint generation, but is required later for legal judgement masks."]}
+    return {"policy": FOOTPRINT_EXTRACTION_POLICY, "provided": accepted>0, "diagnostic_only": formal_footprints.get("available") is not True, "formal_footprint_polygon_generated": formal_footprints.get("available") is True, "formal_footprints": formal_footprints, "count": len(items), "accepted_caster_count": accepted, "candidate_count": len(candidates), "loop_candidate_count": (shadow_caster_geometry or {}).get("footprint_loop_candidate_count", len(candidates)), "closed_loop_candidate_count": closed, "native_face_attempt_count":native_face_attempt_count, "native_face_success_count":native_face_success_count, "native_loop_count":native_loop_count, "fallback_face_count":fallback_face_count, "fallback_loop_count":fallback_loop_count, "mixed_generation_methods":bool(native_loop_count and fallback_loop_count), "non_line_native_loop_count":non_line_native_loop_count, "casters_with_candidates": with_c, "casters_without_candidates": without, "best_candidates": best, "readiness": {"footprint_diagnostics_ready": True, "ready_for_future_footprint_polygon_generation": formal_footprints.get("complete") is True, "ready_for_future_shadow_projection": formal_footprints.get("ready_for_shadow_projection_input") is True and mp_ready and settings_ready, "ready_for_future_legal_judgement_masks": False, "blockers_for_future_footprint_polygon_generation": blockers_poly, "blockers_for_future_shadow_projection": blockers_proj, "blockers_for_future_legal_judgement_masks": blockers_legal}, "warnings": _dedupe_text(warnings), "info": ["Native CurveLoop acquisition and validation is primary; the exact point adapter currently accepts ordered Line loops only.", "Native non-Line loops remain recognized but are not tessellated or reconstructed as formal polygons.", "site_boundary is not required for footprint generation, but is required later for legal judgement masks."]}

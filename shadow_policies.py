@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-31-date-derived-solar-validation-v2"
+CODE_BUILD_ID = "2026-07-31-native-curveloop-footprint-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -385,6 +385,18 @@ FOOTPRINT_EXTRACTION_POLICY = {
     "merge_casters": False,
     "temporary_unified_revit_model": False,
     "formal_footprint_polygon_generated": True,
+    "primary_path": "PlanarFace.GetEdgesAsCurveLoops -> CurveLoop validation",
+    "fallback_path": "Face.EdgeLoops -> endpoint clustering -> segment stitching",
+    "fallback_allowed_when": [
+        "Revit API unavailable", "GetEdgesAsCurveLoops unavailable",
+        "GetEdgesAsCurveLoops raises", "GetEdgesAsCurveLoops returns no loops",
+    ],
+    "fallback_not_allowed_when": [
+        "native loop is open", "native loop is non-planar",
+        "native loop sequence is invalid", "native loop contains a non-Line curve",
+    ],
+    "native_curve_types_preserved": True,
+    "native_non_line_curves_formal_point_adapter_supported": False,
     "curve_loop_generated": False,
     "offset_generated": False,
     "self_intersection_checked": True,
