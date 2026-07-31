@@ -39,8 +39,8 @@
     "invalid_reason_counts": {},
     "items": [
       {
-        "area_m2": 185.89832939857536,
-        "area_m2_signed": 185.89832939857536,
+        "area_m2": 188.39457917280396,
+        "area_m2_signed": 188.39457917280396,
         "classification_group_key": [
           0,
           1
@@ -136,16 +136,11 @@
       "type": "str"
     },
     "site_boundary": {
-      "count": 8,
+      "count": 7,
       "is_list_like": true,
       "is_none": false,
       "provided": true,
       "sample": [
-        {
-          "element_id": 6344830,
-          "is_none": false,
-          "type": "FamilyInstance"
-        },
         {
           "element_id": 6344914,
           "is_none": false,
@@ -165,11 +160,16 @@
           "element_id": 6344982,
           "is_none": false,
           "type": "ModelLine"
+        },
+        {
+          "element_id": 6345007,
+          "is_none": false,
+          "type": "ModelLine"
         }
       ],
       "sample_limit": 5,
-      "sample_type": "FamilyInstance",
-      "truncated_count": 3,
+      "sample_type": "ModelLine",
+      "truncated_count": 2,
       "type": "list"
     },
     "source": "INPUTS"
@@ -270,7 +270,7 @@
   },
   "runtime_code_diagnostics": {
     "all_local_modules_from_workspace": true,
-    "cached_module_count_removed": 0,
+    "cached_module_count_removed": 13,
     "code_build_id": "2026-07-31-native-curveloop-footprint-v1",
     "import_caches_invalidated": true,
     "loader_bootstrap_received": true,
@@ -355,7 +355,21 @@
         "module_name": "shadow_utils"
       }
     ],
-    "removed_cached_modules": [],
+    "removed_cached_modules": [
+      "shadow_debug",
+      "shadow_footprint",
+      "shadow_geometry",
+      "shadow_inputs",
+      "shadow_measurement_plane",
+      "shadow_policies",
+      "shadow_projection",
+      "shadow_readiness",
+      "shadow_revit_api",
+      "shadow_settings",
+      "shadow_sun",
+      "shadow_units",
+      "shadow_utils"
+    ],
     "script_directory_at_sys_path_zero": true,
     "script_directory_resolved": true,
     "workspace_inserted_at_sys_path_zero": true,
