@@ -21,8 +21,8 @@ Revit owns native element and geometry access, unit conversion, project-location
 | Solar position | Auditable NOAA/true-solar-time Python calculation | `View.SunAndShadowSettings`, frame altitude/azimuth/time | NOAA remains primary; Revit is an independent cross-check | Existing NOAA calculation | NOAA diagnostics implemented; cross-check planned | Follow-up B / #33 |
 | Diagnostic point projection | Python point-cloud projection | No equivalent adopted for this diagnostic | Retain separately from formal engine | Current implementation | Diagnostic only | #34 comparison |
 | Diagnostic convex hull | Python monotonic-chain hull | No formal Revit equivalent selected | Retain as comparison/over-approximation | Current implementation | Diagnostic only; never formal | #34 comparison |
-| Formal shadow polygon | Not implemented | `ExtrusionAnalyzer.Create`, `GetExtrusionBase`, `Face.GetEdgesAsCurveLoops` | ExtrusionAnalyzer candidate after volume splitting | Explicit failure; no convex-hull substitution | Planned; simple-box prototype first; Revit 2024.3 validation required | Follow-up C / #34 |
-| Multi-volume handling | Per-solid diagnostics; no formal preprocessing | `SolidUtils.SplitVolumes` | Split positive-volume solids before formal analysis | Explicit capability blocker/diagnostic | Planned; not implemented | Follow-up C / #34 |
+| Formal shadow polygon | Exact Line-loop prototype | `ExtrusionAnalyzer.Create`, `GetExtrusionBase`, `Face.GetEdgesAsCurveLoops` | ExtrusionAnalyzer after volume splitting | Explicit failure; no convex-hull substitution | Implemented prototype; broader Revit 2024.3 validation required | Follow-up C / #34 |
+| Multi-volume handling | Native split volumes remain separate | `SolidUtils.SplitVolumes` | Split positive-volume solids before formal analysis | Explicit capability blocker/diagnostic | Implemented; no polygon union | Follow-up C / #34 |
 | Future time-slice union | Not implemented | `BooleanOperationsUtils` is 3D-only and may assist preprocessing | Separate 2D engine decision and controlled tests | Undecided | Not designed or implemented | Future architecture PR |
 | Debug serialization | Sanitized Python dictionaries/JSON | No raw native-object serializer is appropriate | Serialize only explicit scalar/data-model boundaries | Safe string/value normalization | Implemented; unchanged | — |
 
@@ -77,3 +77,21 @@ diagnostics and are never formal fallbacks. Non-Line serialization, arbitrary
 complex-solid support, volume/caster union, duration accumulation, equal-time
 contours, and legal judgement remain unsupported. This prototype is not
 permit-ready or ADS-equivalent.
+
+## DirectShape visual-QA adapter
+
+The optional preview reconstructs Line-based `CurveLoop` objects only from the
+already validated `formal_shadow_polygons` output, then uses
+`GeometryCreationUtilities.CreateExtrusionGeometry` to make a thin display
+solid and `DirectShape` to show it in Revit. This is a downstream visualization
+adapter, not formal geometry and never an input to calculation. It does not
+adopt Dynamo/libG geometry, repair polygons, or repeat `ExtrusionAnalyzer`.
+
+Preview DirectShapes use the exact `ApplicationId`
+`Dynamo_Shadow.FormalShadowPreview`. Replace and clear modes collect
+DirectShapes and delete only that owned set. Graphical overrides are
+element-specific in the current active view; the adapter neither changes the
+active view nor global styles and creates no permanent material. DirectShape
+creation can remain successful when an override is unavailable. The supported
+target is Revit 2024.3 with Dynamo CPython3, and runtime visual validation is
+still required.

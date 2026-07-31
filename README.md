@@ -2,7 +2,7 @@
 
 Dynamo Shadow is a Dynamo/Revit diagnostic prototype for studying workflows related to Japanese Building Standard Law Article 56-2 shadow regulations.
 
-This repository is for early-stage research and review. It includes a read-only Revit `ExtrusionAnalyzer` prototype for formal per-solid, per-time-slice shadow polygons within a narrow extrusion-like/Line-loop scope. It does not perform shadow union, duration accumulation, equal-time contour generation, permit-ready calculation, or legal OK/NG judgement.
+This repository is for early-stage research and review. It includes a read-only Revit `ExtrusionAnalyzer` prototype for formal per-solid, per-time-slice shadow polygons within a narrow extrusion-like/Line-loop scope. An optional Revit `DirectShape` visual-QA preview can display selected formal slices in Dynamo Player; it is off by default and creates replaceable Generic Model elements owned by this tool. Neither the preview nor the prototype is a legal or permit-ready output. Shadow union, duration accumulation, equal-time contours, and legal judgement remain pending.
 
 ## Current diagnostics
 
@@ -15,6 +15,31 @@ The prototype currently focuses on input and readiness diagnostics, including:
 - Read-only geometry and footprint-candidate diagnostics for selected proxy elements.
 - Unit-conversion diagnostics that preserve Revit internal-unit values and add meter-based fields.
 - Optional sanitized development debug logs.
+- Optional, downstream DirectShape preview of selected formal shadow polygons.
+
+## Preview settings
+
+Preview is visualization-only and defaults to off. The existing settings JSON input accepts, for example:
+
+```json
+{"preview_mode": "off"}
+```
+
+```json
+{
+  "preview_mode": "replace",
+  "preview_true_solar_times": ["08:00", "12:00", "16:00"],
+  "preview_thickness_mm": 10.0,
+  "preview_vertical_separation_mm": 20.0,
+  "preview_transparency": 45
+}
+```
+
+```json
+{"preview_mode": "clear"}
+```
+
+`replace` removes only prior `Dynamo_Shadow.FormalShadowPreview` DirectShapes before creating the selected slices. `clear` removes those owned previews without creating replacements.
 
 ## Intended Revit inputs
 

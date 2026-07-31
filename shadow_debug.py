@@ -404,6 +404,7 @@ def _summarize_out_for_debug(out_payload):
         "footprint_extraction_summary": _summary_counts(out_payload.get("footprint_extraction")),
         "formal_footprint_summary": _formal_footprint_debug_summary(out_payload.get("footprint_extraction")),
         "formal_shadow_polygon_summary": _formal_shadow_polygon_debug_summary(out_payload.get("formal_shadow_polygons")),
+        "shadow_preview": _sanitize_for_debug(out_payload.get("shadow_preview")),
         "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
         "unit_conversion_summary": _unit_conversion_summary(out_payload),
@@ -413,7 +414,8 @@ def _summarize_out_for_debug(out_payload):
         "error_summary": _sanitize_for_debug(out_payload.get("error")),
         "not_implemented_summary": _sanitize_for_debug({
             "footprint_extraction": (out_payload.get("footprint_extraction_policy") or {}).get("not_implemented_in_this_pr"),
-            "planned_pipeline_pending": (out_payload.get("planned_pipeline") or [])[16:],
+            "planned_pipeline_pending": [item for item in (out_payload.get("planned_pipeline") or [])[16:]
+                                         if item != "formal time-slice shadow projection per caster"],
         }),
     }
 
@@ -436,6 +438,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "footprint_extraction_summary": summary["footprint_extraction_summary"],
         "formal_footprint_summary": summary["formal_footprint_summary"],
         "formal_shadow_polygon_summary": summary["formal_shadow_polygon_summary"],
+        "shadow_preview": summary["shadow_preview"],
         "solar_calculation_summary": summary["solar_calculation_summary"],
         "pipeline_readiness": summary["pipeline_readiness"],
         "unit_conversion_summary": summary["unit_conversion_summary"],
