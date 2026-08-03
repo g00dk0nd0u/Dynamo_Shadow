@@ -253,6 +253,10 @@ FORMAL_SHADOW_CURVELOOPS_AFTER | slice_index=16,caster_index=0,split_solid_index
 FORMAL_SHADOW_ANALYZER_DISPOSE_AFTER | slice_index=16,caster_index=0,split_solid_index=0,ok
 FORMAL_SHADOW_SLICE_AFTER | ok
 FORMAL_SHADOW_END | ok
+SHADOW_PREVIEW_BEGIN | mode=replace
+SHADOW_PREVIEW_CLEANUP_BEFORE | mode=replace
+SHADOW_PREVIEW_TRANSACTION_AFTER | created count=0,deleted count=0
+SHADOW_PREVIEW_END | failure
 UNWRAP_BEFORE
 CANDIDATE_PROBE_BEFORE | original_native_element
 NATIVE_TYPE_CHECK_BEFORE

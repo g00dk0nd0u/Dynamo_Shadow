@@ -261,7 +261,7 @@
         {
           "is_none": false,
           "type": "str",
-          "value": "{ \"profile\": \"standard_8_16\", \"average_ground_level_elevation_m\": 0.0, \"measurement_height_m\": 4.0, \"latitude\": 35.6812, \"longitude\": 139.7671..."
+          "value": "{ \"profile\": \"standard_8_16\", \"average_ground_level_elevation_m\": 0.0, \"measurement_height_m\": 4.0, \"latitude\": 35.6812, \"longitude\": 139.7671, \"..."
         }
       ],
       "sample_limit": 5,
@@ -301,15 +301,16 @@
       "Level reference is present but is not used as average ground level or measurement plane."
     ]
   },
-  "message": "Dynamo_Shadow Revit-native formal time-slice shadow prototype. No caster union, duration accumulation, equal-time contours, legal judgement, or Revit element...",
+  "message": "Dynamo_Shadow Revit-native formal time-slice shadow prototype with optional DirectShape visual QA. No caster union, duration accumulation, equal-time contour...",
   "not_implemented_summary": {
     "footprint_extraction": [
-      "CurveLoop creation",
       "boolean union across casters",
+      "split-Solid polygon union",
+      "duration accumulation",
       "site boundary clipping",
       "own-site exclusion",
       "beyond-5m legal range",
-      "formal shadow polygon generation",
+      "5m / 10m legal lines",
       "equal-time contour generation",
       "legal OK/NG judgement"
     ],
@@ -321,7 +322,6 @@
       "optional 5m / 10m measurement line generation when site_boundary is available",
       "true solar time diagnostics",
       "sun vector calculation",
-      "time-slice shadow projection per caster",
       "logical union of shadows per time slice",
       "shadow duration accumulation without double counting",
       "equal-time contour generation",
@@ -356,22 +356,22 @@
     "future_projection_context_ready": true,
     "future_shadow_projection_ready": true,
     "info": [
-      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; formal footprint polygon generat..."
+      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; union, accumulation, contours, a..."
     ],
     "input_diagnostics_ready": true,
     "legal_judgement_masks_ready": false,
     "measurement_plane_constructed": true,
     "measurement_plane_ready": true,
     "next_implementation_steps": [
-      "formal footprint polygon generation",
       "optional site boundary loop extraction",
       "legal judgement mask preparation",
-      "true solar time diagnostics",
-      "sun vector calculation",
-      "time-slice shadow projection",
-      "logical union",
+      "per-time-slice caster union",
+      "split-Solid polygon union",
       "shadow duration accumulation",
       "equal-time contour generation",
+      "site clipping",
+      "own-site exclusion",
+      "5m / 10m legal lines",
       "legal judgement report"
     ],
     "settings_ready_for_equal_time_shadow": true,
@@ -382,8 +382,8 @@
   },
   "runtime_code_diagnostics": {
     "all_local_modules_from_workspace": true,
-    "cached_module_count_removed": 14,
-    "code_build_id": "2026-07-31-revit-extrusion-shadow-prototype-v1",
+    "cached_module_count_removed": 15,
+    "code_build_id": "2026-07-31-formal-shadow-revit-preview-v1",
     "import_caches_invalidated": true,
     "loader_bootstrap_received": true,
     "loader_build_id": "2026-07-28-loader-module-isolation-v1",
@@ -429,6 +429,12 @@
         "module_file_available": true,
         "module_filename": "shadow_policies.py",
         "module_name": "shadow_policies"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_preview.py",
+        "module_name": "shadow_preview"
       },
       {
         "loaded_from_workspace": true,
@@ -481,6 +487,7 @@
       "shadow_inputs",
       "shadow_measurement_plane",
       "shadow_policies",
+      "shadow_preview",
       "shadow_projection",
       "shadow_readiness",
       "shadow_revit_api",
@@ -528,6 +535,15 @@
       "max_shadow_length_factor": 100.0,
       "measurement_height_m": 4.0,
       "measurement_plane_elevation_m": 4.0,
+      "preview_mode": "replace",
+      "preview_thickness_mm": 10.0,
+      "preview_transparency": 45,
+      "preview_true_solar_times": [
+        "08:00:00",
+        "12:00:00",
+        "16:00:00"
+      ],
+      "preview_vertical_separation_mm": 20.0,
       "profile": "standard_8_16",
       "site_latitude_deg": 35.6812,
       "site_longitude_deg": 139.7671,
@@ -840,6 +856,41 @@
       "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics."
     ]
   },
+  "shadow_preview": {
+    "active_view_id": 3003448,
+    "active_view_type": "1",
+    "attempted": true,
+    "available": false,
+    "complete": false,
+    "created_element_count": 0,
+    "created_element_ids": [],
+    "deleted_element_count": 0,
+    "enabled": true,
+    "failed_group_count": 0,
+    "failure_reason_counts": {},
+    "formal_shadow_source_available": true,
+    "graphical_overrides_attempted": false,
+    "graphical_overrides_succeeded": false,
+    "groups": [],
+    "matched_true_solar_times": [
+      "08:00:00",
+      "12:00:00",
+      "16:00:00"
+    ],
+    "measurement_plane_elevation_m": 4.0,
+    "mode": "replace",
+    "partial_success": false,
+    "preview_thickness_mm": 10.0,
+    "preview_vertical_separation_mm": 20.0,
+    "requested_true_solar_times": [
+      "08:00:00",
+      "12:00:00",
+      "16:00:00"
+    ],
+    "warnings": [
+      "Preview transaction failed; formal shadow output remains unchanged."
+    ]
+  },
   "site_boundary_skipped": true,
   "site_boundary_summary": {
     "accepted_count": 0,
@@ -880,7 +931,7 @@
     "true_north_deg": 0.0,
     "warnings": []
   },
-  "stage": "v1_formal_footprint_stabilization",
+  "stage": "v1_formal_shadow_visual_validation",
   "success": true,
   "tool": "Dynamo_Shadow",
   "unit_conversion_summary": {
@@ -902,7 +953,7 @@
     },
     "raw_fields_preserved": true,
     "used_for_legal_judgement": false,
-    "used_for_shadow_projection": false,
+    "used_for_shadow_projection": true,
     "volume": {
       "fallback_factor": 0.028316846592,
       "internal_unit": "cubic_foot",
@@ -915,10 +966,11 @@
     "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
     "Level reference is present but is not used as average ground level or measurement plane.",
     "zero/unknown-volume Solid was retained as a geometry object but excluded from formal Solid and face counts.",
+    "Preview transaction failed; formal shadow output remains unchanged.",
     "legal judgement masks not implemented",
     "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
     "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.",
     "site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped."
   ],
-  "warnings_count": 8
+  "warnings_count": 9
 }
