@@ -81,6 +81,10 @@ This repository must not be used as a complete building permit calculation tool.
 
 ## Direction verification status
 
-The serialized formal-slice contract distinguishes the downward `physical_shadow_ray_model` from the reversed `extrusion_analyzer_input_direction` required to analyze an extrusion from the measurement plane toward the caster. Pure-Python checks cover the 08:00 northwest, 12:00 north, and 16:00 northeast reference directions, true-north rotation, opposite-sign rejection, and the analytical `height * shadow_length_factor` projection length. These checks set `pure_python_verified`; `revit_runtime_direction_verified` remains `false` until the documented box case is run in Revit 2024.3. Active-view up direction is diagnostic only and must not be confused with calculated true north.
+The serialized formal-slice contract distinguishes the downward `physical_shadow_ray_model` from the reversed `extrusion_analyzer_input_direction` required to analyze an extrusion from the measurement plane toward the caster. Pure-Python checks cover the 08:00 northwest, 12:00 north, and 16:00 northeast reference directions, true-north rotation, opposite-sign rejection, and the analytical `height * shadow_length_factor` projection length. Revit runtime verification additionally compares clipped-Solid edge endpoint projections with the extracted polygon extents; both direction and extent checks must pass. Active-view up direction is diagnostic only and must not be confused with calculated true north.
 
 The required Revit runtime check uses true north 0 degrees, a simple box above a 4 m measurement plane, and confirms: noon extends toward model +Y; 08:00/16:00 extend symmetrically northwest/northeast; all nine hourly lines appear in plan; and no 3D thickness exists. This prototype remains `permit_ready_certified=false`.
+
+## Shadow duration accumulation v1
+
+Complete `unified_shadow_slices` can be sampled on a bounded meter grid and integrated between adjacent slices with the trapezoidal rule. Outer/inner loops and multiple components are supported, and `max_duration_grid_points` stops oversized grids before allocation. The result remains a numerical approximation at the configured temporal step (normally 30 minutes), works without a site boundary, and is not permit-certified; site-boundary-dependent legal judgement remains blocked.

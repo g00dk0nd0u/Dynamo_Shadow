@@ -44,15 +44,14 @@ PLANNED_PIPELINE = [
     "measurement plane construction diagnostics",
     "pipeline readiness diagnostics",
     "formal footprint polygon generation",
-    "optional site boundary loop extraction",
-    "legal judgement mask preparation",
-    "optional 5m / 10m measurement line generation when site_boundary is available",
     "formal technical solar specification v1",
     "formal model-coordinate shadow direction calculation",
     "formal time-slice shadow projection per caster",
     "logical union of shadows per time slice",
     "shadow duration accumulation without double counting",
     "equal-time contour generation",
+    "site boundary",
+    "optional 5m / 10m measurement line generation when site_boundary is available",
     "legal judgement report",
 ]
 
@@ -139,6 +138,7 @@ SETTINGS_DIAGNOSTIC_DEFAULTS = {
     "max_projected_points_output_per_slice": 300,
     "max_shadow_length_factor": 100.0,
     "max_formal_shadow_loop_points": 2000,
+    "max_duration_grid_points": 250000,
     "preview_mode": "off",
     "preview_true_solar_times": None,
 }
@@ -446,7 +446,6 @@ FOOTPRINT_EXTRACTION_POLICY = {
         "self-intersection check",
     ],
     "not_implemented_in_this_pr": [
-        "boolean union across casters", "split-Solid polygon union", "duration accumulation",
         "site boundary clipping", "own-site exclusion", "beyond-5m legal range",
         "5m / 10m legal lines",
         "equal-time contour generation", "legal OK/NG judgement",
