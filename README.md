@@ -2,7 +2,7 @@
 
 Dynamo Shadow is a Dynamo/Revit diagnostic prototype for studying workflows related to Japanese Building Standard Law Article 56-2 shadow regulations.
 
-This repository is for early-stage research and review. It includes a read-only Revit `ExtrusionAnalyzer` prototype for formal per-solid, per-time-slice shadow polygons within a narrow extrusion-like/Line-loop scope. An optional Revit `DirectShape` visual-QA preview can display selected formal slices in Dynamo Player; it is off by default and creates replaceable Generic Model elements owned by this tool. Neither the preview nor the prototype is a legal or permit-ready output. Shadow union, duration accumulation, equal-time contours, and legal judgement remain pending.
+This repository is for early-stage research and review. It includes a read-only Revit `ExtrusionAnalyzer` prototype for formal per-solid, per-time-slice shadow polygons within a narrow extrusion-like/Line-loop scope. A Revit-native Boolean prototype unions those polygons once per time slice so overlapping caster shadows are counted only once while separate components and holes remain distinct. Actual two-caster validation in Revit 2024.3 remains required. An optional Revit `DirectShape` visual-QA preview is independent and off by default. None of these prototypes is a legal or permit-ready output; duration accumulation, equal-time contours, and legal judgement remain unimplemented.
 
 ## Current diagnostics
 
@@ -16,6 +16,7 @@ The prototype currently focuses on input and readiness diagnostics, including:
 - Unit-conversion diagnostics that preserve Revit internal-unit values and add meter-based fields.
 - Optional sanitized development debug logs.
 - Optional, downstream DirectShape preview of selected formal shadow polygons.
+- Revit-native per-time-slice union through temporary in-memory extrusion solids; no model elements or transactions are used.
 
 ## Preview settings
 
@@ -54,7 +55,7 @@ Existing Walls, Floors, Roofs, equipment, CAD imports, and topography-derived ed
 - `Shadow.dyn` is the Dynamo graph and contains the Python Node bootstrap.
 - `dynamo_loader.py` resolves workspace paths, maps Dynamo `IN[]` values to named `INPUTS`, runs `script.py`, and returns diagnostics.
 - `script.py` orchestrates imports, fallback behavior outside Dynamo, and top-level `OUT` construction.
-- `shadow_*.py` modules contain focused policies, utilities, input diagnostics, settings normalization, measurement-plane diagnostics, geometry diagnostics, footprint diagnostics, unit conversion, debug logging, and readiness checks.
+- `shadow_*.py` modules contain focused policies, utilities, input diagnostics, settings normalization, measurement-plane diagnostics, geometry diagnostics, footprint diagnostics, formal projection and union adapters, unit conversion, debug logging, and readiness checks.
 - `docs/` contains research notes, specifications, and implementation notes.
 
 ## Debug logs

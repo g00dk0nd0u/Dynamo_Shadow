@@ -1,7 +1,7 @@
 # Pipeline readiness diagnostics.
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None):
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
@@ -40,6 +40,13 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
     if not boundary_ready:
         blockers_boundary.append("site_boundary is missing or not usable as a closed boundary; boundary-dependent steps remain skipped.")
     formal = formal_shadow_polygons or {}
+    solar = solar_calculation or {}
+    union = unified_shadow_slices or {}
+    union_complete = union.get("complete") is True
+    duration_ready = (solar.get("formal_solar_calculation_ready") is True
+                      and formal.get("complete") is True and union_complete
+                      and union.get("ready_for_duration_accumulation") is True
+                      and union.get("time_slice_count") == solar.get("slice_count"))
     return {
         "input_diagnostics_ready": True,
         "shadow_caster_ready": shadow_ready,
@@ -54,6 +61,12 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "future_shadow_projection_ready": future_projection_ready,
         "legal_judgement_masks_ready": legal_judgement_masks_ready,
         "settings_ready_for_equal_time_shadow": settings_ready,
+        "formal_solar_calculation_ready": solar.get("formal_solar_calculation_ready") is True,
+        "regulatory_profile_resolved": solar.get("regulatory_profile_resolved") is True,
+        "solar_coordinate_convention_resolved": solar.get("solar_coordinate_convention_resolved") is True,
+        "solar_reference_validation_passed": solar.get("solar_reference_validation_passed") is True,
+        "permit_ready_certified": False,
+        "legal_judgement_ready": False,
         "site_boundary_required_for_equal_time_shadow": False,
         "site_boundary_ready_for_boundary_dependent_steps": boundary_ready,
         "equal_time_shadow_calculation_ready": equal_ready,
@@ -62,6 +75,11 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "formal_shadow_polygon_generation_available": formal.get("available") is True,
         "formal_shadow_polygon_generation_complete": formal.get("complete") is True,
         "blockers_for_formal_shadow_polygon_generation": list(formal.get("blockers") or []),
+        "formal_shadow_union_attempted": unified_shadow_slices is not None,
+        "formal_shadow_union_available": union.get("available") is True,
+        "formal_shadow_union_complete": union_complete,
+        "blockers_for_formal_shadow_union": list(union.get("blockers") or []),
+        "ready_for_duration_accumulation": duration_ready,
         "blockers_for_equal_time_shadow": blockers_equal,
         "blockers_for_footprint_extraction": blockers_fp,
         "blockers_for_future_footprint_polygon_generation": blockers_fp,
@@ -70,6 +88,6 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "blockers_for_future_shadow_projection": blockers_projection,
         "blockers_for_legal_judgement_masks": blockers_legal,
         "blockers_for_boundary_dependent_steps": blockers_boundary,
-        "info": ["equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; union, accumulation, contours, and legal masks remain unimplemented."],
-        "next_implementation_steps": ["optional site boundary loop extraction", "legal judgement mask preparation", "per-time-slice caster union", "split-Solid polygon union", "shadow duration accumulation", "equal-time contour generation", "site clipping", "own-site exclusion", "5m / 10m legal lines", "legal judgement report"],
+        "info": ["ready_for_duration_accumulation confirms complete formal solar, projection, and native per-slice union inputs only; accumulation, contours, and legal masks remain unimplemented."],
+        "next_implementation_steps": ["optional site boundary loop extraction", "legal judgement mask preparation", "shadow duration accumulation", "equal-time contour generation", "site clipping", "own-site exclusion", "5m / 10m legal lines", "legal judgement report"],
     }

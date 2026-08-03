@@ -87,9 +87,14 @@ class Id:
 class Shape:
     def __init__(self, value, app=""): self.Id=Id(value); self.ApplicationId=app; self.shapes=[]
     def SetShape(self, shapes): self.shapes=shapes
+    def GetType(self): return types.SimpleNamespace(FullName="Autodesk.Revit.DB.DirectShape")
 class Collector:
-    def __init__(self, doc): self.doc=doc
-    def OfClass(self, cls): return self.doc.patterns if cls is FakeFill else self.doc.shapes
+    def __init__(self, doc): self.doc=doc; self.items=[]
+    def OfClass(self, cls): self.items=self.doc.patterns if cls is FakeFill else self.doc.shapes; return self
+    def OfCategory(self, category): self.items=self.doc.shapes; return self
+    def WhereElementIsNotElementType(self): return self
+    def ToElements(self): self.doc.events.append("collect"); return list(self.items)
+    def __iter__(self): return iter(self.items)
 class FakeFill: pass
 class Geometry:
     calls=[]
@@ -102,14 +107,16 @@ class Direct:
         shape=Shape(doc.next_id); doc.next_id+=1; doc.shapes.append(shape); return shape
 class TM:
     def __init__(self): self.opened=0; self.closed=0
-    def EnsureInTransaction(self, doc): self.opened+=1
+    def EnsureInTransaction(self, doc): self.opened+=1; doc.events.append("transaction")
     def TransactionTaskDone(self): self.closed+=1
 class Document:
     def __init__(self):
         self.shapes=[Shape(1,preview.APPLICATION_ID),Shape(2,"other")]; self.patterns=[]; self.next_id=3
+        self.events=[]
         self.Application=types.SimpleNamespace(ShortCurveTolerance=0); self.ActiveView=types.SimpleNamespace(Id=Id(9),ViewType="3D")
-    def Delete(self, ids):
-        values={i.IntegerValue for i in ids}; self.shapes=[s for s in self.shapes if s.Id.IntegerValue not in values]
+    def Delete(self, element_id):
+        self.events.append(("delete", element_id.IntegerValue))
+        self.shapes=[s for s in self.shapes if s.Id.IntegerValue != element_id.IntegerValue]
 
 
 def install_runtime(monkeypatch, document):
@@ -126,6 +133,8 @@ def test_clear_deletes_only_owned_directshape(monkeypatch):
     result=preview.build_shadow_preview(formal(),{"elevation_m":4},{"preview_mode":"clear"})
     assert result["deleted_element_count"]==1 and result["created_element_count"]==0
     assert [s.ApplicationId for s in doc.shapes]==["other"] and tm.opened==tm.closed==1
+    assert doc.events[:2] == ["collect", "transaction"]
+    assert doc.events[2] == ("delete", 1)
 
 
 def test_replace_is_idempotent_and_serializes_no_native_objects(monkeypatch):
@@ -138,3 +147,70 @@ def test_replace_is_idempotent_and_serializes_no_native_objects(monkeypatch):
     assert owned[0].ApplicationDataId=="slice=4;caster=2;solid=0" and owned[0].shapes
     assert Geometry.calls[-1][1] is XYZ.BasisZ and Geometry.calls[-1][2] > 0
     assert tm.opened==tm.closed==2 and json.dumps(second)
+
+
+class Proxy:
+    def __init__(self, value): self.Id=Id(value); self.ApplicationId=preview.APPLICATION_ID
+    def GetType(self): return types.SimpleNamespace(FullName="Autodesk.Revit.DB.FamilyInstance")
+
+
+def test_owned_collector_materializes_and_filters_type_and_application(monkeypatch):
+    doc=Document(); doc.shapes.append(Proxy(3)); install_runtime(monkeypatch,doc)
+    found=preview._collect_owned_preview_ids(doc)
+    assert found["succeeded"] is True and found["collector_method"] == "of_class_direct_shape"
+    assert [item.IntegerValue for item in found["element_ids"]] == [1]
+    assert found["direct_shape_candidate_count"] == 2 and doc.events == ["collect"]
+
+
+def test_owned_collector_uses_category_fallback_with_native_type_filter(monkeypatch):
+    doc=Document(); doc.shapes.append(Proxy(3)); install_runtime(monkeypatch,doc)
+    class FallbackCollector(Collector):
+        def OfClass(self, cls):
+            if cls is not FakeFill: raise TypeError("OfClass unsupported")
+            return super().OfClass(cls)
+    monkeypatch.setattr(preview,"FilteredElementCollector",FallbackCollector)
+    found=preview._collect_owned_preview_ids(doc)
+    assert found["succeeded"] is True and found["fallback_used"] is True
+    assert [item.IntegerValue for item in found["element_ids"]] == [1]
+    assert len(found["attempts"]) == 2 and found["attempts"][0]["failure_type"] == "TypeError"
+
+
+def test_both_cleanup_collectors_fail_before_transaction(monkeypatch):
+    doc=Document(); tm=install_runtime(monkeypatch,doc)
+    class BrokenCollector(Collector):
+        def OfClass(self, cls): raise RuntimeError("C:/Users/private/model.rvt")
+        def OfCategory(self, category): raise ValueError("category failed")
+    monkeypatch.setattr(preview,"FilteredElementCollector",BrokenCollector)
+    result=preview.build_shadow_preview(formal(),{"elevation_m":4},{"preview_mode":"replace","preview_true_solar_times":["12:00"]})
+    assert result["failure_stage"] == "cleanup_collection"
+    assert result["sanitized_failure_message"] == "category failed"
+    assert tm.opened == 0 and doc.next_id == 3 and result["created_element_count"] == 0
+
+
+def test_delete_failure_is_localized_and_stops_replacement(monkeypatch):
+    doc=Document(); doc.shapes.insert(1,Shape(3,preview.APPLICATION_ID)); tm=install_runtime(monkeypatch,doc)
+    original_delete=doc.Delete
+    def delete(element_id):
+        if element_id.IntegerValue == 3: raise RuntimeError("owned delete failed")
+        original_delete(element_id)
+    doc.Delete=delete
+    result=preview.build_shadow_preview(formal(),{"elevation_m":4},{"preview_mode":"replace","preview_true_solar_times":["12:00"]})
+    assert result["requested_delete_count"] == 2
+    assert result["successful_delete_count"] == result["failed_delete_count"] == 1
+    assert result["failure_stage"] == "cleanup_delete" and result["created_element_count"] == 0
+    assert [s.Id.IntegerValue for s in doc.shapes] == [3,2] and tm.opened == tm.closed == 1
+
+
+def test_transaction_begin_and_close_failures_are_distinct(monkeypatch):
+    doc=Document(); tm=install_runtime(monkeypatch,doc)
+    def fail_begin(document): raise RuntimeError("begin failed")
+    tm.EnsureInTransaction=fail_begin
+    begin=preview.build_shadow_preview(formal(),{"elevation_m":4},{"preview_mode":"clear"})
+    assert begin["failure_stage"] == "transaction_begin" and begin["transaction_close_attempted"] is False
+
+    doc=Document(); tm=install_runtime(monkeypatch,doc)
+    def fail_close(): tm.closed += 1; raise RuntimeError("close failed")
+    tm.TransactionTaskDone=fail_close
+    close=preview.build_shadow_preview(formal(),{"elevation_m":4},{"preview_mode":"clear"})
+    assert close["failure_stage"] == "transaction_close"
+    assert close["transaction_begin_succeeded"] is True and close["transaction_close_succeeded"] is False

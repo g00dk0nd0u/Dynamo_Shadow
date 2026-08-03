@@ -52,6 +52,11 @@ except Exception:
     BooleanOperationsUtils = BooleanOperationsType = None
 
 try:
+    from Autodesk.Revit.DB import GeometryCreationUtilities, Line
+except Exception:
+    GeometryCreationUtilities = Line = None
+
+try:
     from Autodesk.Revit.DB import ProjectLocation, SiteLocation
 except Exception:
     ProjectLocation = SiteLocation = None
@@ -63,11 +68,11 @@ except Exception:
 
 # Preview-only APIs.  Keep these isolated from the formal geometry imports.
 try:
-    from Autodesk.Revit.DB import (DirectShape, GeometryCreationUtilities, Line,
+    from Autodesk.Revit.DB import (DirectShape,
         FilteredElementCollector, FillPatternElement, OverrideGraphicSettings,
         Color, SubTransaction)
 except Exception:
-    DirectShape = GeometryCreationUtilities = Line = FilteredElementCollector = None
+    DirectShape = FilteredElementCollector = None
     FillPatternElement = OverrideGraphicSettings = Color = SubTransaction = None
 
 
@@ -86,6 +91,15 @@ REVIT_API_CAPABILITIES = {
     "solid_utils_split_volumes_expected": SolidUtils is not None and hasattr(SolidUtils, "SplitVolumes"),
     "extrusion_analyzer_available": ExtrusionAnalyzer is not None,
     "boolean_operations_available": BooleanOperationsUtils is not None and BooleanOperationsType is not None,
+    "formal_shadow_union_api_available": (
+        BooleanOperationsUtils is not None and BooleanOperationsType is not None
+        and GeometryCreationUtilities is not None and SolidUtils is not None
+        and CurveLoop is not None and Line is not None and XYZ is not None
+        and PlanarFace is not None
+        and hasattr(BooleanOperationsUtils, "ExecuteBooleanOperation")
+        and hasattr(GeometryCreationUtilities, "CreateExtrusionGeometry")
+        and hasattr(SolidUtils, "SplitVolumes")
+    ),
     "project_location_available": ProjectLocation is not None and SiteLocation is not None,
     "sun_and_shadow_settings_available": SunAndShadowSettings is not None,
     "unit_utils_available": UnitUtils is not None,

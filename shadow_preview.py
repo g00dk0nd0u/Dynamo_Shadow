@@ -4,6 +4,7 @@ Nothing in this module is consumed by the formal calculation.  All returned
 values are JSON-safe diagnostics; native objects remain local to this adapter.
 """
 import math
+import re
 
 import shadow_utils
 from shadow_policies import SETTINGS_DIAGNOSTIC_DEFAULTS
@@ -94,7 +95,17 @@ def _empty(config, formal, elevation):
         "preview_vertical_separation_mm": config["preview_vertical_separation_mm"],
         "active_view_id": None, "active_view_type": None,
         "graphical_overrides_attempted": False, "graphical_overrides_succeeded": False,
-        "groups": [], "failure_reason_counts": {}, "warnings": list(config["warnings"])}
+        "groups": [], "failure_reason_counts": {}, "warnings": list(config["warnings"]),
+        "failure_stage": None, "failure_code": None, "failure_type": None,
+        "sanitized_failure_message": None,
+        "transaction_begin_attempted": False, "transaction_begin_succeeded": False,
+        "transaction_close_attempted": False, "transaction_close_succeeded": False,
+        "cleanup_collection_attempted": False, "cleanup_collection_succeeded": False,
+        "cleanup_collector_method": None, "cleanup_collector_fallback_used": False,
+        "cleanup_candidate_count": 0, "cleanup_owned_count": 0,
+        "cleanup_delete_attempted": False, "cleanup_delete_succeeded": False,
+        "requested_delete_count": 0, "successful_delete_count": 0,
+        "failed_delete_count": 0, "cleanup_collection_attempts": []}
 
 
 def _element_id(value):
@@ -106,13 +117,74 @@ def _element_id(value):
     except BaseException: return None
 
 
-def _owned_ids(document):
-    collector = FilteredElementCollector(document).OfClass(DirectShape)
-    result = []
-    for element in collector:
+def _sanitize_failure_message(exc):
+    """Return a bounded diagnostic without paths or multiline exception output."""
+    try: text = str(exc)
+    except BaseException: text = "Exception message unavailable."
+    text = text.replace("\r", " ").replace("\n", " ").replace("\t", " ")
+    text = re.sub(r"[A-Za-z]:[\\/][^\s\"'<>|]+", "<redacted_path>", text)
+    text = re.sub(r"/(?:Users|home)/[^\s\"'<>|]+", "<redacted_path>", text)
+    text = re.sub(r"(?<![:\w])/(?:[^/\s\"'<>|]+/)+[^\s\"'<>|]*", "<redacted_path>", text)
+    text = re.sub(r"\\\\[^\\\s]+\\[^\s\"'<>|]+", "<redacted_path>", text)
+    text = re.sub(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}", "<redacted_email>", text)
+    text = re.sub(r"OneDrive(?:\s*-\s*[^/\\\n\r\t]+)?", "<redacted_private_text>", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:240] + ("...<truncated>" if len(text) > 240 else "")
+
+
+def _is_direct_shape(element):
+    try:
+        if isinstance(element, DirectShape): return True
+    except BaseException: pass
+    try: return element.GetType().FullName == "Autodesk.Revit.DB.DirectShape"
+    except BaseException: return False
+
+
+def _collect_owned_preview_ids(document):
+    """Discover only native DirectShapes owned by this preview, without writes."""
+    result = {"succeeded": False, "element_ids": [], "collector_method": None,
+        "scanned_element_count": 0, "direct_shape_candidate_count": 0,
+        "owned_element_count": 0, "fallback_used": False, "attempts": [],
+        "failure_code": None, "failure_type": None, "failure_message": None}
+    methods = (("of_class_direct_shape", False), ("generic_model_category_fallback", True))
+    last_exc = None
+    for method, fallback in methods:
         try:
-            if element.ApplicationId == APPLICATION_ID: result.append(element.Id)
-        except BaseException: pass
+            collector = FilteredElementCollector(document)
+            if fallback:
+                collector = collector.OfCategory(BuiltInCategory.OST_GenericModel)
+            else:
+                collector = collector.OfClass(DirectShape)
+            elements = list(collector.WhereElementIsNotElementType().ToElements())
+            candidates = [element for element in elements if _is_direct_shape(element)]
+            owned = []
+            for element in candidates:
+                try:
+                    if element.ApplicationId == APPLICATION_ID: owned.append(element.Id)
+                except BaseException: pass
+            result.update({"succeeded": True, "element_ids": owned,
+                "collector_method": method, "scanned_element_count": len(elements),
+                "direct_shape_candidate_count": len(candidates),
+                "owned_element_count": len(owned), "fallback_used": fallback})
+            result["attempts"].append({"collector_method": method, "succeeded": True,
+                "candidate_count": len(candidates), "owned_count": len(owned),
+                "fallback_used": fallback, "failure_type": None})
+            stage = "SHADOW_PREVIEW_COLLECT_FALLBACK_AFTER" if fallback else "SHADOW_PREVIEW_COLLECT_OFCLASS_AFTER"
+            _checkpoint(stage, "method=%s,candidate count=%d,owned count=%d,fallback=%s,ok" %
+                (method, len(candidates), len(owned), str(fallback).lower()))
+            return result
+        except BaseException as exc:
+            last_exc = exc
+            result["attempts"].append({"collector_method": method, "succeeded": False,
+                "candidate_count": 0, "owned_count": 0, "fallback_used": fallback,
+                "failure_type": type(exc).__name__})
+            stage = "SHADOW_PREVIEW_COLLECT_FALLBACK_AFTER" if fallback else "SHADOW_PREVIEW_COLLECT_OFCLASS_AFTER"
+            _checkpoint(stage, "method=%s,candidate count=0,owned count=0,fallback=%s,failure,exception type=%s" %
+                (method, str(fallback).lower(), type(exc).__name__))
+    result.update({"collector_method": "generic_model_category_fallback", "fallback_used": True,
+        "failure_code": "preview_cleanup_collection_failed",
+        "failure_type": type(last_exc).__name__ if last_exc is not None else "UnknownError",
+        "failure_message": _sanitize_failure_message(last_exc)})
     return result
 
 
@@ -195,6 +267,29 @@ def _apply_override(document, view, element_id, style_index, transparency):
     return True, None
 
 
+def _record_failure_values(result, stage, code, failure_type, message):
+    result.update({"failure_stage": stage, "failure_code": code,
+        "failure_type": failure_type, "sanitized_failure_message": message})
+
+
+def _record_failure(result, stage, code, exc):
+    _record_failure_values(result, stage, code, type(exc).__name__,
+        _sanitize_failure_message(exc))
+
+
+def _finish(result, config):
+    result["created_element_count"] = len(result["created_element_ids"])
+    result["failed_group_count"] = sum(result["failure_reason_counts"].values())
+    cleanup_ok = result["cleanup_collection_succeeded"] and result["cleanup_delete_succeeded"]
+    transaction_ok = result["transaction_begin_succeeded"] and result["transaction_close_succeeded"]
+    result["available"] = cleanup_ok and transaction_ok and (
+        config["mode"] == "clear" or result["created_element_count"] > 0)
+    result["complete"] = result["available"] and result["failed_group_count"] == 0 and result["failure_stage"] is None
+    result["partial_success"] = result["available"] and not result["complete"]
+    _checkpoint("SHADOW_PREVIEW_END", "ok" if result["available"] else "failure")
+    return result
+
+
 def build_shadow_preview(formal_shadow_polygons, measurement_plane, settings):
     config = normalize_preview_settings(settings); elevation = (measurement_plane or {}).get("elevation_m")
     result = _empty(config, formal_shadow_polygons, elevation); _checkpoint("SHADOW_PREVIEW_BEGIN", "mode=" + config["mode"])
@@ -203,22 +298,78 @@ def build_shadow_preview(formal_shadow_polygons, measurement_plane, settings):
     if DocumentManager is None or TransactionManager is None or any(x is None for x in (DirectShape, GeometryCreationUtilities, CurveLoop, XYZ, Line, FilteredElementCollector)):
         result["warnings"].append("Revit DocumentManager, TransactionManager, or preview API is unavailable; preview skipped.")
         _checkpoint("SHADOW_PREVIEW_END", "failure"); return result
-    try: document = DocumentManager.Instance.CurrentDBDocument; view = document.ActiveView
-    except BaseException:
-        result["warnings"].append("Current Revit document or active view is unavailable; preview skipped."); _checkpoint("SHADOW_PREVIEW_END", "failure"); return result
+    try: document = DocumentManager.Instance.CurrentDBDocument
+    except BaseException as exc:
+        _record_failure(result, "document_access", "preview_document_access_failed", exc)
+        result["warnings"].append("Current Revit document is unavailable; preview skipped.")
+        _checkpoint("SHADOW_PREVIEW_END", "failure"); return result
+    try: view = document.ActiveView
+    except BaseException as exc:
+        _record_failure(result, "active_view_access", "preview_active_view_access_failed", exc)
+        result["warnings"].append("Current Revit active view is unavailable; preview skipped.")
+        _checkpoint("SHADOW_PREVIEW_END", "failure"); return result
     result["active_view_id"] = _element_id(view)
     try: result["active_view_type"] = str(view.ViewType)
     except BaseException: result["active_view_type"] = None
     groups, matched = _selected_groups(formal_shadow_polygons, config["requested_true_solar_times"], result["warnings"])
     result["matched_true_solar_times"] = matched
-    transaction_open = False
+    result["cleanup_collection_attempted"] = True
+    _checkpoint("SHADOW_PREVIEW_COLLECT_OWNED_BEFORE", "fallback=false")
+    cleanup = _collect_owned_preview_ids(document)
+    result.update({"cleanup_collection_succeeded": cleanup["succeeded"],
+        "cleanup_collector_method": cleanup["collector_method"],
+        "cleanup_collector_fallback_used": cleanup["fallback_used"],
+        "cleanup_candidate_count": cleanup["direct_shape_candidate_count"],
+        "cleanup_owned_count": cleanup["owned_element_count"],
+        "cleanup_collection_attempts": cleanup["attempts"]})
+    _checkpoint("SHADOW_PREVIEW_COLLECT_OWNED_AFTER",
+        "method=%s,candidate count=%d,owned count=%d,fallback=%s,%s" %
+        (cleanup["collector_method"], cleanup["direct_shape_candidate_count"],
+         cleanup["owned_element_count"], str(cleanup["fallback_used"]).lower(),
+         "ok" if cleanup["succeeded"] else "failure"))
+    if not cleanup["succeeded"]:
+        _record_failure_values(result, "cleanup_collection", cleanup["failure_code"],
+            cleanup["failure_type"], cleanup["failure_message"])
+        result["warnings"].append("Preview cleanup discovery failed; replacement preview was not created.")
+        _checkpoint("SHADOW_PREVIEW_END", "failure"); return result
+
+    transaction_started = False
     try:
-        TransactionManager.Instance.EnsureInTransaction(document); transaction_open = True
+        result["transaction_begin_attempted"] = True
+        _checkpoint("SHADOW_PREVIEW_TRANSACTION_BEGIN_BEFORE", "ok")
+        try:
+            TransactionManager.Instance.EnsureInTransaction(document)
+            transaction_started = True; result["transaction_begin_succeeded"] = True
+            _checkpoint("SHADOW_PREVIEW_TRANSACTION_BEGIN_AFTER", "ok")
+        except BaseException as exc:
+            _record_failure(result, "transaction_begin", "preview_transaction_begin_failed", exc)
+            _checkpoint("SHADOW_PREVIEW_TRANSACTION_BEGIN_AFTER", "failure,exception type=%s" % type(exc).__name__)
+            result["warnings"].append("Preview transaction could not be started; formal shadow output remains unchanged.")
+            return _finish(result, config)
         _checkpoint("SHADOW_PREVIEW_CLEANUP_BEFORE", "mode=" + config["mode"])
-        owned = _owned_ids(document)
-        if owned: document.Delete(owned)
-        result["deleted_element_count"] = len(owned); _checkpoint("SHADOW_PREVIEW_CLEANUP_AFTER", "deleted count=%d" % len(owned))
-        if config["mode"] == "replace":
+        owned = cleanup["element_ids"]
+        result["cleanup_delete_attempted"] = bool(owned)
+        result["requested_delete_count"] = len(owned)
+        _checkpoint("SHADOW_PREVIEW_DELETE_BEFORE", "candidate count=%d,owned count=%d" % (cleanup["direct_shape_candidate_count"], len(owned)))
+        delete_exc = None
+        for element_id in owned:
+            try:
+                document.Delete(element_id)
+                result["successful_delete_count"] += 1
+            except BaseException as exc:
+                result["failed_delete_count"] += 1
+                if delete_exc is None: delete_exc = exc
+        result["deleted_element_count"] = result["successful_delete_count"]
+        result["cleanup_delete_succeeded"] = result["failed_delete_count"] == 0
+        _checkpoint("SHADOW_PREVIEW_DELETE_AFTER", "owned count=%d,%s%s" %
+            (len(owned), "ok" if delete_exc is None else "failure",
+             "" if delete_exc is None else ",exception type=" + type(delete_exc).__name__))
+        _checkpoint("SHADOW_PREVIEW_CLEANUP_AFTER", "owned count=%d,%s" %
+            (len(owned), "ok" if delete_exc is None else "failure"))
+        if delete_exc is not None:
+            _record_failure(result, "cleanup_delete", "preview_cleanup_delete_incomplete", delete_exc)
+            result["warnings"].append("Preview cleanup was incomplete; replacement creation was stopped to avoid duplicates.")
+        elif config["mode"] == "replace":
             thickness, _ = _meters_to_internal_length(config["preview_thickness_mm"] / 1000.0)
             short_tol = 0.0
             try: short_tol = float(document.Application.ShortCurveTolerance)
@@ -228,15 +379,18 @@ def build_shadow_preview(formal_shadow_polygons, measurement_plane, settings):
                 diagnostic = {k: group[k] for k in ("slice_index","true_solar_time","caster_index","source_solid_index","split_solid_index","style_index")}
                 diagnostic.update({"outer_loop_count":sum(p.get("role")=="outer" for p in group["polygons"]), "inner_loop_count":sum(p.get("role")=="inner" for p in group["polygons"]), "direct_shape_created":False, "element_id":None, "z_offset_mm":group["style_index"]*config["preview_vertical_separation_mm"], "warnings":[]})
                 loops = []
+                stage = "group_curve_loop"
                 try:
                     _checkpoint("SHADOW_PREVIEW_GROUP_BEFORE", detail)
                     loops = _curve_loops(group["polygons"], elevation, diagnostic["z_offset_mm"], short_tol); _checkpoint("SHADOW_PREVIEW_CURVELOOPS_AFTER", detail+",ok")
+                    stage = "group_extrusion"
                     solid = GeometryCreationUtilities.CreateExtrusionGeometry(loops, XYZ.BasisZ, thickness)
                     if solid is None: raise RuntimeError("preview_extrusion_creation_failed")
                     try:
                         if float(solid.Volume) <= 0: raise RuntimeError("preview_extrusion_creation_failed")
                     except AttributeError: pass
                     _checkpoint("SHADOW_PREVIEW_EXTRUSION_AFTER", detail+",ok")
+                    stage = "group_direct_shape"
                     shape = DirectShape.CreateElement(document, ElementId(BuiltInCategory.OST_GenericModel))
                     shape.ApplicationId = APPLICATION_ID
                     shape.ApplicationDataId = "slice={0};caster={1};solid={2}".format(group["slice_index"],group["caster_index"],group["split_solid_index"])
@@ -244,35 +398,38 @@ def build_shadow_preview(formal_shadow_polygons, measurement_plane, settings):
                     shape.SetShape([solid]); diagnostic["element_id"] = _element_id(shape); diagnostic["direct_shape_created"] = True
                     result["created_element_ids"].append(diagnostic["element_id"]); _checkpoint("SHADOW_PREVIEW_DIRECTSHAPE_AFTER", detail+",ok")
                     result["graphical_overrides_attempted"] = True
+                    stage = "graphical_override"
                     try:
                         ok, warning = _apply_override(document, view, shape.Id, group["style_index"], config["preview_transparency"])
                         result["graphical_overrides_succeeded"] = result["graphical_overrides_succeeded"] or ok
                         if warning: diagnostic["warnings"].append(warning); result["warnings"].append(warning)
-                    except BaseException:
+                    except BaseException as exc:
                         diagnostic["warnings"].append("Active-view graphical override failed; DirectShape was retained."); result["warnings"].append(diagnostic["warnings"][-1])
+                        _record_failure(result, "graphical_override", "preview_graphical_override_failed", exc)
                     _checkpoint("SHADOW_PREVIEW_OVERRIDE_AFTER", detail+",ok")
                     _checkpoint("SHADOW_PREVIEW_GROUP_AFTER", detail+",ok")
                 except BaseException as exc:
                     reason = "preview_extrusion_creation_failed" if "extrusion" in str(exc).lower() else str(exc)
                     if not reason.startswith("preview_"): reason = "preview_group_creation_failed"
                     result["failure_reason_counts"][reason] = result["failure_reason_counts"].get(reason, 0) + 1
+                    _record_failure(result, stage, reason, exc)
                     diagnostic["warnings"].append(reason); _checkpoint("SHADOW_PREVIEW_GROUP_AFTER", detail+",failure")
                 finally: _dispose_loops(loops)
                 result["groups"].append(diagnostic)
         result["created_element_count"] = len(result["created_element_ids"])
-    except BaseException:
-        result["warnings"].append("Preview transaction failed; formal shadow output remains unchanged.")
+    except BaseException as exc:
+        _record_failure(result, result["failure_stage"] or "cleanup_delete", "preview_write_failed", exc)
+        result["warnings"].append("Preview write failed; formal shadow output remains unchanged.")
     finally:
-        if transaction_open:
-            try: TransactionManager.Instance.TransactionTaskDone()
-            except BaseException: result["warnings"].append("Preview transaction could not be closed normally.")
+        if transaction_started:
+            result["transaction_close_attempted"] = True
+            try:
+                TransactionManager.Instance.TransactionTaskDone(); result["transaction_close_succeeded"] = True
+            except BaseException as exc:
+                _record_failure(result, "transaction_close", "preview_transaction_close_failed", exc)
+                result["warnings"].append("Preview transaction could not be closed normally.")
         _checkpoint("SHADOW_PREVIEW_TRANSACTION_AFTER", "created count=%d,deleted count=%d" % (result["created_element_count"], result["deleted_element_count"]))
-    result["failed_group_count"] = sum(result["failure_reason_counts"].values())
-    result["available"] = config["mode"] == "clear" or result["created_element_count"] > 0
-    result["complete"] = result["available"] and result["failed_group_count"] == 0
-    result["partial_success"] = result["available"] and not result["complete"]
-    _checkpoint("SHADOW_PREVIEW_END", "ok" if result["available"] else "failure")
-    return result
+    return _finish(result, config)
 
 
 _build_shadow_preview = build_shadow_preview

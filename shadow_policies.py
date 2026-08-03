@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-07-31-formal-shadow-revit-preview-v1"
+CODE_BUILD_ID = "2026-07-31-revit-native-shadow-union-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -47,8 +47,8 @@ PLANNED_PIPELINE = [
     "optional site boundary loop extraction",
     "legal judgement mask preparation",
     "optional 5m / 10m measurement line generation when site_boundary is available",
-    "true solar time diagnostics",
-    "sun vector calculation",
+    "formal technical solar specification v1",
+    "formal model-coordinate shadow direction calculation",
     "formal time-slice shadow projection per caster",
     "logical union of shadows per time slice",
     "shadow duration accumulation without double counting",
@@ -180,6 +180,19 @@ FORMAL_SHADOW_PROJECTION_POLICY = {
     "permit_ready_certified": False,
 }
 
+FORMAL_SHADOW_UNION_POLICY = {
+    "implementation_status": "revit_native_prototype_v1",
+    "engine": "BooleanOperationsUtils.ExecuteBooleanOperation",
+    "input": "formal shadow Line CurveLoops",
+    "adapter": "temporary 0.1m extrusion Solid",
+    "split_method": "SolidUtils.SplitVolumes",
+    "custom_polygon_clipping": False,
+    "diagnostic_fallback_used_as_formal": False,
+    "failure_blocks_duration": True,
+    "permit_ready_certified": False,
+    "target_revit_version": "Revit 2024.3",
+}
+
 
 UNIT_CONVERSION_POLICY = {
     "purpose": "revit_internal_units_to_legal_si_meters_diagnostics",
@@ -204,61 +217,44 @@ UNIT_CONVERSION_POLICY = {
 
 
 SUN_POSITION_POLICY = {
-    "purpose": "diagnostic_solar_time_conversion_and_sun_position_table",
-    "diagnostic_only": True,
+    "purpose": "formal_technical_solar_calculation_not_permit_certified",
+    "implementation_status": "formal_technical_v1",
+    "diagnostic_only": False,
+    "regulatory_reference": "winter_solstice_true_solar_time",
+    "recommended_mode": "regulatory_winter_solstice_v1",
     "supported_time_basis": ["true_solar_time", "japan_standard_time"],
-    "supported_solar_parameter_modes": ["explicit", "date_derived_noaa_v1"],
+    "supported_solar_parameter_modes": ["regulatory_winter_solstice_v1", "explicit", "date_derived_noaa_v1"],
     "requirements_by_mode": {
+        "regulatory_winter_solstice_v1": {"true_solar_time": ["solar_parameter_mode", "time_basis", "profile", "site_latitude_deg", "true_north_deg"]},
         "explicit": {
-            "true_solar_time": ["time_basis", "site_latitude_deg", "solar_declination_deg", "true_north_deg", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes"],
-            "japan_standard_time": ["time_basis", "site_latitude_deg", "site_longitude_deg", "standard_meridian_deg", "solar_declination_deg", "equation_of_time_minutes", "true_north_deg", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes"],
+            "true_solar_time": ["time_basis", "site_latitude_deg", "solar_declination_deg", "true_north_deg"],
+            "japan_standard_time": ["time_basis", "site_latitude_deg", "site_longitude_deg", "standard_meridian_deg", "solar_declination_deg", "equation_of_time_minutes", "true_north_deg"],
         },
         "date_derived_noaa_v1": {
-            "true_solar_time": ["solar_parameter_mode", "calculation_date", "time_basis", "site_latitude_deg", "true_north_deg", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes"],
-            "japan_standard_time": ["solar_parameter_mode", "calculation_date", "time_basis", "site_latitude_deg", "site_longitude_deg", "standard_meridian_deg", "true_north_deg", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes"],
+            "true_solar_time": ["solar_parameter_mode", "calculation_date", "time_basis", "site_latitude_deg", "true_north_deg"],
+            "japan_standard_time": ["solar_parameter_mode", "calculation_date", "time_basis", "site_latitude_deg", "site_longitude_deg", "standard_meridian_deg", "true_north_deg"],
         },
     },
-    "date_derived_noaa_v1": {
-        "source": "NOAA General Solar Position Calculations",
-        "reference_hour_local_standard": 12.0,
-        "same_parameters_used_for_all_daily_slices": True,
-        "fractional_year_denominator": "365 or 366 for leap year",
-        "atmospheric_refraction_applied": False,
-        "permit_ready_certified": False,
-    },
-    "requires_explicit_settings": ["time_basis", "analysis_start_time", "analysis_end_time", "sun_time_step_minutes", "site_latitude_deg", "solar_declination_deg", "true_north_deg"],
-    "explicit_true_solar_time_requires": SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR,
-    "explicit_japan_standard_time_requires": SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD,
-    "explicit_jst_conversion_requires": ["site_longitude_deg", "standard_meridian_deg", "equation_of_time_minutes"],
+    "date_derived_noaa_v1": {"source": "NOAA General Solar Position Calculations", "reference_algorithm": True, "regulatory_default": False, "permit_ready_certified": False},
     "formula": {
         "longitude_correction_minutes": "4.0 * (site_longitude_deg - standard_meridian_deg)",
         "true_solar_time_minutes": "japan_standard_time_minutes + longitude_correction_minutes + equation_of_time_minutes",
         "hour_angle_deg": "15 * (true_solar_hour - 12)",
-        "solar_altitude": "asin(sin(latitude) * sin(declination) + cos(latitude) * cos(declination) * cos(hour_angle))",
-        "solar_azimuth": "atan2(sin(hour_angle), cos(hour_angle) * sin(latitude) - tan(declination) * cos(latitude)) + 180deg",
         "model_azimuth_deg": "(true_north_azimuth_deg + true_north_deg) % 360",
-        "shadow_length_factor": "1 / tan(solar_altitude) when altitude is above horizon"
     },
     "azimuth_convention": "degrees clockwise from true north: 0=N, 90=E, 180=S, 270=W",
-    "true_north_convention": "true_north_deg is measured clockwise from model +Y to true north; 0 means model +Y is true north, 90 means model +X is true north, -90 means model -X is true north.",
+    "true_north_convention": "true_north_deg is clockwise from model +Y toward true north under the settings convention",
+    "formal_shadow_input": True,
     "atmospheric_refraction_applied": False,
+    "model_direction_required": True,
+    "permit_ready_certified": False,
+    "legal_judgement_output": False,
+    "target_revit_version": "Revit 2024.3",
+    "reference_sources": ["Japanese MLIT shadow-regulation material", "NOAA General Solar Position Calculations", "NREL Solar Position Algorithm report"],
+    "numerical_precision": "full float internally, 6-decimal diagnostic serialization",
     "date_based_declination_calculation_supported": True,
     "date_based_equation_of_time_calculation_supported": True,
-    "permit_ready_certified": False,
-    "not_implemented_in_this_pr": [
-        "date-based winter solstice selection",
-        "automatic winter-solstice date selection",
-        "astronomical solstice instant calculation",
-        "permit-ready certification",
-        "atmospheric refraction",
-        "Revit ProjectLocation true-north extraction",
-        "Boolean union",
-        "time accumulation",
-        "equal-time contours",
-        "5m / 10m legal masks",
-        "legal OK/NG judgement",
-        "Revit element creation"
-    ],
+    "not_implemented_in_this_pr": ["permit certification", "automatic Revit ProjectLocation extraction", "union", "duration accumulation", "equal-time contours", "legal judgement"],
 }
 
 SHADOW_PROJECTION_POLICY = {
