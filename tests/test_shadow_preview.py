@@ -109,6 +109,12 @@ class TM:
     def __init__(self): self.opened=0; self.closed=0
     def EnsureInTransaction(self, doc): self.opened+=1; doc.events.append("transaction")
     def TransactionTaskDone(self): self.closed+=1
+class FakeSubTransaction:
+    def __init__(self, doc): self.doc=doc; self.snapshot=None
+    def Start(self): self.snapshot=list(self.doc.shapes); self.doc.events.append("subtransaction")
+    def Commit(self): self.snapshot=None; self.doc.events.append("subtransaction_commit")
+    def RollBack(self):
+        self.doc.shapes=list(self.snapshot); self.snapshot=None; self.doc.events.append("subtransaction_rollback")
 class Document:
     def __init__(self):
         self.shapes=[Shape(1,preview.APPLICATION_ID),Shape(2,"other")]; self.patterns=[]; self.next_id=3
@@ -124,6 +130,7 @@ def install_runtime(monkeypatch, document):
     monkeypatch.setattr(preview,"GeometryCreationUtilities",Geometry); monkeypatch.setattr(preview,"DirectShape",Direct)
     monkeypatch.setattr(preview,"FilteredElementCollector",Collector); monkeypatch.setattr(preview,"FillPatternElement",FakeFill)
     monkeypatch.setattr(preview,"BuiltInCategory",types.SimpleNamespace(OST_GenericModel=42)); monkeypatch.setattr(preview,"ElementId",lambda x:x)
+    monkeypatch.setattr(preview,"SubTransaction",FakeSubTransaction)
     tm=TM(); monkeypatch.setattr(preview,"DocumentManager",types.SimpleNamespace(Instance=types.SimpleNamespace(CurrentDBDocument=document)))
     monkeypatch.setattr(preview,"TransactionManager",types.SimpleNamespace(Instance=tm)); return tm
 
@@ -145,6 +152,7 @@ def test_replace_is_idempotent_and_serializes_no_native_objects(monkeypatch):
     owned=[s for s in doc.shapes if s.ApplicationId==preview.APPLICATION_ID]
     assert first["created_element_count"]==second["created_element_count"]==len(owned)==1
     assert owned[0].ApplicationDataId=="slice=4;caster=2;solid=0" and owned[0].shapes
+    assert owned[0].Name == "Dynamo_Shadow_120000_s000"
     assert Geometry.calls[-1][1] is XYZ.BasisZ and Geometry.calls[-1][2] > 0
     assert tm.opened==tm.closed==2 and json.dumps(second)
 
@@ -196,9 +204,39 @@ def test_delete_failure_is_localized_and_stops_replacement(monkeypatch):
     doc.Delete=delete
     result=preview.build_shadow_preview(formal(),{"elevation_m":4},{"preview_mode":"replace","preview_true_solar_times":["12:00"]})
     assert result["requested_delete_count"] == 2
-    assert result["successful_delete_count"] == result["failed_delete_count"] == 1
+    assert result["successful_delete_count"] == 0 and result["failed_delete_count"] == 1
     assert result["failure_stage"] == "cleanup_delete" and result["created_element_count"] == 0
-    assert [s.Id.IntegerValue for s in doc.shapes] == [3,2] and tm.opened == tm.closed == 1
+    assert [s.Id.IntegerValue for s in doc.shapes] == [1,3,2] and tm.opened == tm.closed == 1
+
+
+def test_element_name_sanitizes_time_and_all_prohibited_characters():
+    group = {"true_solar_time":"08:00:00", "split_solid_index":0}
+    assert preview._preview_element_name(group) == "Dynamo_Shadow_080000_s000"
+    assert preview._sanitize_element_name("bad:name\nwith\ttabs?|~") == "bad_name_with_tabs___"
+
+
+def test_all_creation_failures_roll_back_and_keep_existing_preview(monkeypatch):
+    doc=Document(); tm=install_runtime(monkeypatch,doc)
+    class FailingDirect:
+        @staticmethod
+        def CreateElement(document, category): raise RuntimeError("create failed")
+    monkeypatch.setattr(preview,"DirectShape",FailingDirect)
+    result=preview.build_shadow_preview(formal(),{"elevation_m":4},{"preview_mode":"replace","preview_true_solar_times":["12:00"]})
+    assert [s.Id.IntegerValue for s in doc.shapes] == [1,2]
+    assert result["created_element_count"] == result["deleted_element_count"] == 0
+    assert result["failure_stage"] == "direct_shape_create"
+    assert "subtransaction_rollback" in doc.events and tm.opened == tm.closed == 1
+
+
+def test_default_preview_times_create_three_safe_names(monkeypatch):
+    doc=Document(); install_runtime(monkeypatch,doc)
+    slices=[]
+    for index, time in enumerate(("08:00:00","12:00:00","16:00:00")):
+        item=formal(time=time)["slices"][0]; item["slice_index"]=index; slices.append(item)
+    result=preview.build_shadow_preview({"available":True,"slices":slices},{"elevation_m":4},{"preview_mode":"replace"})
+    owned=[shape for shape in doc.shapes if shape.ApplicationId == preview.APPLICATION_ID]
+    assert result["created_element_count"] == 3
+    assert [shape.Name for shape in owned] == ["Dynamo_Shadow_080000_s000","Dynamo_Shadow_120000_s000","Dynamo_Shadow_160000_s000"]
 
 
 def test_transaction_begin_and_close_failures_are_distinct(monkeypatch):

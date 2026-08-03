@@ -11,7 +11,7 @@ from shadow_policies import SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_units import _meters_to_internal_length
 from shadow_revit_api import (BuiltInCategory, ElementId, CurveLoop, XYZ, Line,
     DirectShape, GeometryCreationUtilities, FilteredElementCollector,
-    FillPatternElement, OverrideGraphicSettings, Color)
+    FillPatternElement, OverrideGraphicSettings, Color, SubTransaction)
 
 try:
     from RevitServices.Persistence import DocumentManager
@@ -43,6 +43,17 @@ def _canonical_time(value):
     if len(nums) == 2: nums.append(0)
     if not (0 <= nums[0] <= 23 and 0 <= nums[1] <= 59 and 0 <= nums[2] <= 59): return None
     return "%02d:%02d:%02d" % tuple(nums)
+
+
+def _sanitize_element_name(value):
+    """Replace characters prohibited in Revit element names with underscores."""
+    return re.sub(r"[\\:{}\[\]|;<>?`~\x00-\x1f]", "_", str(value))
+
+
+def _preview_element_name(group):
+    time_token = group["true_solar_time"].replace(":", "")
+    split_index = int(group["split_solid_index"] or 0)
+    return _sanitize_element_name("Dynamo_Shadow_%s_s%03d" % (time_token, split_index))
 
 
 def normalize_preview_settings(settings):
@@ -295,7 +306,7 @@ def build_shadow_preview(formal_shadow_polygons, measurement_plane, settings):
     result = _empty(config, formal_shadow_polygons, elevation); _checkpoint("SHADOW_PREVIEW_BEGIN", "mode=" + config["mode"])
     if config["mode"] == "off": _checkpoint("SHADOW_PREVIEW_END", "ok"); return result
     result["attempted"] = True
-    if DocumentManager is None or TransactionManager is None or any(x is None for x in (DirectShape, GeometryCreationUtilities, CurveLoop, XYZ, Line, FilteredElementCollector)):
+    if DocumentManager is None or TransactionManager is None or any(x is None for x in (DirectShape, GeometryCreationUtilities, CurveLoop, XYZ, Line, FilteredElementCollector, SubTransaction)):
         result["warnings"].append("Revit DocumentManager, TransactionManager, or preview API is unavailable; preview skipped.")
         _checkpoint("SHADOW_PREVIEW_END", "failure"); return result
     try: document = DocumentManager.Instance.CurrentDBDocument
@@ -334,6 +345,9 @@ def build_shadow_preview(formal_shadow_polygons, measurement_plane, settings):
         _checkpoint("SHADOW_PREVIEW_END", "failure"); return result
 
     transaction_started = False
+    replace_transaction = None
+    replace_rolled_back = False
+    replace_committed = False
     try:
         result["transaction_begin_attempted"] = True
         _checkpoint("SHADOW_PREVIEW_TRANSACTION_BEGIN_BEFORE", "ok")
@@ -346,6 +360,9 @@ def build_shadow_preview(formal_shadow_polygons, measurement_plane, settings):
             _checkpoint("SHADOW_PREVIEW_TRANSACTION_BEGIN_AFTER", "failure,exception type=%s" % type(exc).__name__)
             result["warnings"].append("Preview transaction could not be started; formal shadow output remains unchanged.")
             return _finish(result, config)
+        if config["mode"] == "replace":
+            replace_transaction = SubTransaction(document)
+            replace_transaction.Start()
         _checkpoint("SHADOW_PREVIEW_CLEANUP_BEFORE", "mode=" + config["mode"])
         owned = cleanup["element_ids"]
         result["cleanup_delete_attempted"] = bool(owned)
@@ -377,8 +394,9 @@ def build_shadow_preview(formal_shadow_polygons, measurement_plane, settings):
             for group in groups:
                 detail = "slice_index={0},caster_index={1},split_solid_index={2}".format(group["slice_index"], group["caster_index"], group["split_solid_index"])
                 diagnostic = {k: group[k] for k in ("slice_index","true_solar_time","caster_index","source_solid_index","split_solid_index","style_index")}
-                diagnostic.update({"outer_loop_count":sum(p.get("role")=="outer" for p in group["polygons"]), "inner_loop_count":sum(p.get("role")=="inner" for p in group["polygons"]), "direct_shape_created":False, "element_id":None, "z_offset_mm":group["style_index"]*config["preview_vertical_separation_mm"], "warnings":[]})
+                diagnostic.update({"outer_loop_count":sum(p.get("role")=="outer" for p in group["polygons"]), "inner_loop_count":sum(p.get("role")=="inner" for p in group["polygons"]), "direct_shape_created":False, "element_id":None, "failure_stage":None, "z_offset_mm":group["style_index"]*config["preview_vertical_separation_mm"], "warnings":[]})
                 loops = []
+                shape = None
                 stage = "group_curve_loop"
                 try:
                     _checkpoint("SHADOW_PREVIEW_GROUP_BEFORE", detail)
@@ -390,12 +408,16 @@ def build_shadow_preview(formal_shadow_polygons, measurement_plane, settings):
                         if float(solid.Volume) <= 0: raise RuntimeError("preview_extrusion_creation_failed")
                     except AttributeError: pass
                     _checkpoint("SHADOW_PREVIEW_EXTRUSION_AFTER", detail+",ok")
-                    stage = "group_direct_shape"
+                    stage = "direct_shape_create"
                     shape = DirectShape.CreateElement(document, ElementId(BuiltInCategory.OST_GenericModel))
+                    stage = "set_shape"
+                    shape.SetShape([solid])
+                    stage = "set_name"
+                    shape.Name = _preview_element_name(group)
+                    stage = "set_parameters"
                     shape.ApplicationId = APPLICATION_ID
                     shape.ApplicationDataId = "slice={0};caster={1};solid={2}".format(group["slice_index"],group["caster_index"],group["split_solid_index"])
-                    shape.Name = "Dynamo_Shadow Preview " + group["true_solar_time"]
-                    shape.SetShape([solid]); diagnostic["element_id"] = _element_id(shape); diagnostic["direct_shape_created"] = True
+                    diagnostic["element_id"] = _element_id(shape); diagnostic["direct_shape_created"] = True
                     result["created_element_ids"].append(diagnostic["element_id"]); _checkpoint("SHADOW_PREVIEW_DIRECTSHAPE_AFTER", detail+",ok")
                     result["graphical_overrides_attempted"] = True
                     stage = "graphical_override"
@@ -405,22 +427,44 @@ def build_shadow_preview(formal_shadow_polygons, measurement_plane, settings):
                         if warning: diagnostic["warnings"].append(warning); result["warnings"].append(warning)
                     except BaseException as exc:
                         diagnostic["warnings"].append("Active-view graphical override failed; DirectShape was retained."); result["warnings"].append(diagnostic["warnings"][-1])
+                        diagnostic["failure_stage"] = "graphical_override"
                         _record_failure(result, "graphical_override", "preview_graphical_override_failed", exc)
                     _checkpoint("SHADOW_PREVIEW_OVERRIDE_AFTER", detail+",ok")
                     _checkpoint("SHADOW_PREVIEW_GROUP_AFTER", detail+",ok")
                 except BaseException as exc:
+                    if shape is not None:
+                        try: document.Delete(shape.Id)
+                        except BaseException: pass
                     reason = "preview_extrusion_creation_failed" if "extrusion" in str(exc).lower() else str(exc)
                     if not reason.startswith("preview_"): reason = "preview_group_creation_failed"
                     result["failure_reason_counts"][reason] = result["failure_reason_counts"].get(reason, 0) + 1
+                    diagnostic["failure_stage"] = stage
                     _record_failure(result, stage, reason, exc)
                     diagnostic["warnings"].append(reason); _checkpoint("SHADOW_PREVIEW_GROUP_AFTER", detail+",failure")
                 finally: _dispose_loops(loops)
                 result["groups"].append(diagnostic)
+            if not result["created_element_ids"]:
+                replace_transaction.RollBack()
+                replace_rolled_back = True
+                result["successful_delete_count"] = 0
+                result["deleted_element_count"] = 0
+                result["cleanup_delete_succeeded"] = False
+                result["warnings"].append("All replacement DirectShape creation failed; the replacement transaction was rolled back and existing previews were retained.")
+            else:
+                replace_transaction.Commit()
+                replace_committed = True
         result["created_element_count"] = len(result["created_element_ids"])
     except BaseException as exc:
         _record_failure(result, result["failure_stage"] or "cleanup_delete", "preview_write_failed", exc)
         result["warnings"].append("Preview write failed; formal shadow output remains unchanged.")
     finally:
+        if replace_transaction is not None and not replace_rolled_back and not replace_committed:
+            try:
+                replace_transaction.RollBack()
+                replace_rolled_back = True
+                result["successful_delete_count"] = 0
+                result["deleted_element_count"] = 0
+            except BaseException: pass
         if transaction_started:
             result["transaction_close_attempted"] = True
             try:
