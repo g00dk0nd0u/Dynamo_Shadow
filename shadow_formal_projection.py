@@ -6,8 +6,10 @@ there is deliberately no geometric fallback when a Revit operation fails.
 import math
 
 from shadow_policies import FORMAL_SHADOW_PROJECTION_POLICY
-from shadow_revit_api import REVIT_API_CAPABILITIES, SolidUtils, ExtrusionAnalyzer, Plane, XYZ, Face
-from shadow_units import _meters_to_internal_length, _internal_length_to_meters
+from shadow_revit_api import (REVIT_API_CAPABILITIES, SolidUtils, ExtrusionAnalyzer,
+    BooleanOperationsUtils, Plane, XYZ, Face)
+from shadow_units import (_meters_to_internal_length, _internal_length_to_meters,
+    _internal_volume_to_m3)
 from shadow_utils import _runtime_checkpoint, _safe_text, _type_name
 
 _ENGINE = "revit_extrusion_analyzer_v1"
@@ -29,6 +31,10 @@ def _formal_capability_blockers():
         "extrusion_analyzer_get_base_expected": ExtrusionAnalyzer is not None and hasattr(ExtrusionAnalyzer, "GetExtrusionBase"),
         "plane_xyz_available": Plane is not None and XYZ is not None,
         "face_get_edges_as_curve_loops_expected": Face is not None and hasattr(Face, "GetEdgesAsCurveLoops"),
+        "boolean_cut_with_half_space_available": (
+            BooleanOperationsUtils is not None
+            and hasattr(BooleanOperationsUtils, "CutWithHalfSpace")
+        ),
     }
     return [{"code": "required_revit_api_unavailable", "capability": key} for key in sorted(required) if not required[key]]
 
@@ -228,25 +234,144 @@ def _classify_and_orient(polygons):
     return polygons
 
 
-def _split_runtime_geometry(runtime_geometry):
+def _validate_actual_polygon_direction(section_polygons, shadow_polygons, physical_ray,
+                                       tolerance_m=1e-6):
+    """Validate extracted geometry along the horizontal down-shadow axis."""
+    try:
+        dx, dy = float(physical_ray["x"]), float(physical_ray["y"])
+        length = math.hypot(dx, dy)
+        axis = (dx / length, dy / length)
+        section_values = [float(p["x"]) * axis[0] + float(p["y"]) * axis[1]
+            for polygon in section_polygons for p in polygon.get("points_m", [])]
+        shadow_values = [float(p["x"]) * axis[0] + float(p["y"]) * axis[1]
+            for polygon in shadow_polygons for p in polygon.get("points_m", [])]
+    except (TypeError, ValueError, KeyError, ZeroDivisionError):
+        section_values, shadow_values = [], []
+    result = {"section_axis_min_m": min(section_values) if section_values else None,
+        "section_axis_max_m": max(section_values) if section_values else None,
+        "shadow_axis_min_m": min(shadow_values) if shadow_values else None,
+        "shadow_axis_max_m": max(shadow_values) if shadow_values else None,
+        "sunward_overflow_m": None, "downshadow_extension_m": None,
+        "passed": False, "reason": "measurement-plane section or shadow polygon unavailable"}
+    if not section_values or not shadow_values:
+        return result
+    overflow = max(0.0, result["section_axis_min_m"] - result["shadow_axis_min_m"])
+    extension = max(0.0, result["shadow_axis_max_m"] - result["section_axis_max_m"])
+    result.update({"sunward_overflow_m": overflow, "downshadow_extension_m": extension})
+    result["passed"] = overflow <= float(tolerance_m) and extension > float(tolerance_m)
+    result["reason"] = ("shadow polygon stays out of the sunward side and extends down-shadow"
+        if result["passed"] else "shadow polygon extends sunward or has no down-shadow extension")
+    return result
+
+
+def _measurement_section_polygons(solid, measurement_z_internal, settings, short_tolerance):
+    """Read the horizontal face introduced by the half-space cut."""
+    polygons = []
+    try: faces = list(getattr(solid, "Faces"))
+    except BaseException: return polygons
+    for face in faces:
+        try:
+            normal = getattr(face, "FaceNormal")
+            origin = getattr(face, "Origin")
+            if abs(abs(float(normal.Z)) - 1.0) > 1e-7 or abs(float(origin.Z) - measurement_z_internal) > 1e-6:
+                continue
+            loops = list(face.GetEdgesAsCurveLoops())
+        except BaseException:
+            continue
+        for index, loop in enumerate(loops):
+            try:
+                polygon, _ = _inspect_native_curve_loop(loop, index, measurement_z_internal,
+                    settings, short_tolerance)
+                if polygon: polygons.append(polygon)
+            finally:
+                try: loop.Dispose()
+                except BaseException: pass
+    return _classify_and_orient(polygons)
+
+
+def _volume_m3(solid):
+    try:
+        raw = float(getattr(solid, "Volume"))
+    except BaseException:
+        return None, None
+    converted, _ = _internal_volume_to_m3(raw)
+    return raw, converted
+
+
+def _dispose_owned_solids(owned):
+    diagnostics = []
+    seen = set()
+    for solid in reversed(owned):
+        if solid is None or id(solid) in seen:
+            continue
+        seen.add(id(solid)); item = {"dispose_attempted": True, "dispose_succeeded": False}
+        try:
+            solid.Dispose(); item["dispose_succeeded"] = True
+        except BaseException as exc:
+            item.update(_failure("clipped_solid_dispose_failure", exc))
+        diagnostics.append(item)
+    return diagnostics
+
+
+def _split_and_clip_runtime_geometry(runtime_geometry, native_plane, measurement_elevation_m):
     casters, blockers, count = [], [], 0
+    owned = []
     for caster in sorted((runtime_geometry or {}).get("casters") or [], key=lambda x: x.get("caster_index", 0)):
         output = {"caster_index": caster.get("caster_index"), "element_id": caster.get("element_id"), "source_solid_count": len(caster.get("solids") or []), "solids": [], "blockers": []}
         for source in sorted(caster.get("solids") or [], key=lambda x: x.get("solid_index", 0)):
             si = source.get("solid_index", 0); _runtime_checkpoint("FORMAL_SHADOW_SPLIT_BEFORE", "caster_index={0},split_solid_index=0".format(output["caster_index"]))
-            try: split = list(SolidUtils.SplitVolumes(source.get("native_solid")))
+            original = source.get("native_solid")
+            try: split = list(SolidUtils.SplitVolumes(original))
             except BaseException as exc:
                 output["blockers"].append(dict(_failure("solid_split_exception", exc), source_solid_index=si)); _runtime_checkpoint("FORMAL_SHADOW_SPLIT_AFTER", "failure"); continue
             accepted = 0
             for split_index, solid in enumerate(split):
-                try: volume = float(getattr(solid, "Volume"))
-                except BaseException: volume = None
+                if solid is not original: owned.append(solid)
+                volume, source_volume_m3 = _volume_m3(solid)
                 if volume is None or volume <= 0.0:
                     output["blockers"].append({"failure_code":"split_solid_zero_or_unknown_volume", "source_solid_index":si, "split_solid_index":split_index}); continue
-                output["solids"].append({"source_solid_index":si, "split_solid_index":split_index, "native_solid":solid}); accepted += 1; count += 1
+                clip = {"measurement_plane_elevation_m": measurement_elevation_m,
+                    "half_space_normal": {"x": 0.0, "y": 0.0, "z": 1.0},
+                    "half_space_retained_side": "positive_z_above_measurement_plane",
+                    "half_space_clip_attempted": True, "half_space_clip_succeeded": False,
+                    "source_volume_m3": source_volume_m3, "clipped_volume_m3": None,
+                    "below_plane_volume_removed_m3": None, "clipped_component_count": 0,
+                    "analyzer_input_geometry": "clipped_above_measurement_plane",
+                    "skipped_because_not_above_measurement_plane": False}
+                try:
+                    clipped = BooleanOperationsUtils.CutWithHalfSpace(solid, native_plane)
+                    clip["half_space_clip_succeeded"] = clipped is not None
+                    if clipped is None: raise RuntimeError("CutWithHalfSpace returned no Solid")
+                    owned.append(clipped)
+                    clipped_raw, clipped_m3 = _volume_m3(clipped)
+                    clip["clipped_volume_m3"] = clipped_m3
+                    if source_volume_m3 is not None and clipped_m3 is not None:
+                        clip["below_plane_volume_removed_m3"] = max(0.0, source_volume_m3 - clipped_m3)
+                    if clipped_raw is None or clipped_raw <= 0.0:
+                        clip["skipped_because_not_above_measurement_plane"] = True
+                        output["solids"].append(dict(clip, source_solid_index=si,
+                            split_solid_index=split_index, components=[]))
+                        accepted += 1; continue
+                    components = list(SolidUtils.SplitVolumes(clipped))
+                    positive = []
+                    for component in components:
+                        if component is not clipped: owned.append(component)
+                        component_raw, _ = _volume_m3(component)
+                        if component_raw is not None and component_raw > 0.0: positive.append(component)
+                    clip["clipped_component_count"] = len(positive)
+                    clip["skipped_because_not_above_measurement_plane"] = not positive
+                    output["solids"].append(dict(clip, source_solid_index=si,
+                        split_solid_index=split_index, components=positive))
+                    accepted += 1; count += len(positive)
+                except BaseException as exc:
+                    # A failed clip is a formal blocker. Never analyze the uncut Solid.
+                    output["blockers"].append(dict(_failure("half_space_clip_failed", exc),
+                        source_solid_index=si, split_solid_index=split_index))
+                    output["solids"].append(dict(clip, source_solid_index=si,
+                        split_solid_index=split_index, components=[]))
             _runtime_checkpoint("FORMAL_SHADOW_SPLIT_AFTER", "ok" if accepted else "failure")
         casters.append(output)
-    return casters, blockers, count
+    return casters, blockers, count, owned
 
 
 def _empty_result(measurement_plane, slices, runtime_geometry):
@@ -267,7 +392,8 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
     native_plane, plane_diag, plane_error = _build_native_measurement_plane(measurement_plane)
     result["measurement_plane"] = plane_diag
     if plane_error: result["blockers"].append(plane_error); _runtime_checkpoint("FORMAL_SHADOW_END", "failure"); return result
-    split_casters, split_blockers, split_count = _split_runtime_geometry(runtime_geometry)
+    split_casters, split_blockers, split_count, owned_solids = _split_and_clip_runtime_geometry(
+        runtime_geometry, native_plane, (measurement_plane or {}).get("elevation_m"))
     result["split_solid_count"] = split_count; result["blockers"].extend(split_blockers)
     max_factor = settings.get("max_shadow_length_factor", 100.0)
     short_tol = settings.get("short_curve_tolerance_internal", 0.0)
@@ -288,7 +414,9 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
                      "shadow_azimuth_model_deg": sun_slice.get("shadow_azimuth_model_deg"),
                      "shadow_length_factor": sun_slice.get("shadow_length_factor"),
                      "physical_shadow_ray_model": physical_info, "extrusion_analyzer_input_direction": direction_info,
-                     "expected_shadow_quadrant": expected, "actual_polygon_direction_check": validation,
+                     "expected_shadow_quadrant": expected,
+                     "direction_vector_contract_check": validation,
+                     "actual_polygon_direction_check": {"passed":False, "reason":"runtime polygon not yet verified"},
                      "direction_validation_passed": validation_passed,
                      "direction_validation_reason": validation.get("reason"),
                      "pure_python_verified": validation_passed, "revit_runtime_direction_verified": False,
@@ -302,18 +430,31 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
             caster_out = {k: caster.get(k) for k in ("caster_index","element_id","source_solid_count")}
             caster_out.update({"split_solid_count":len(caster["solids"]), "complete":True, "polygons":[], "analyzers":[], "blockers":list(caster["blockers"]), "warnings":[]})
             for split in caster["solids"]:
-                analyzer = None
-                ad = {"create_attempted":True, "create_succeeded":False, "get_extrusion_base_succeeded":False,
+                if split.get("skipped_because_not_above_measurement_plane"):
+                    caster_out["analyzers"].append({k:v for k,v in split.items() if k != "components"})
+                    continue
+                for component_index, component in enumerate(split.get("components") or []):
+                  analyzer = None
+                  ad = {"create_attempted":True, "create_succeeded":False, "get_extrusion_base_succeeded":False,
                       "extrusion_direction_xyz": {k: direction_info[k] for k in ("x","y","z")}, "dispose_attempted":False, "dispose_succeeded":False,
-                      "source_solid_index":split["source_solid_index"], "split_solid_index":split["split_solid_index"]}
-                detail = "slice_index={0},caster_index={1},split_solid_index={2}".format(slice_index,caster["caster_index"],split["split_solid_index"])
-                try:
+                      "source_solid_index":split["source_solid_index"], "split_solid_index":split["split_solid_index"],
+                      "clipped_component_index":component_index}
+                  ad.update({k:v for k,v in split.items() if k != "components"})
+                  detail = "slice_index={0},caster_index={1},split_solid_index={2},clipped_component_index={3}".format(slice_index,caster["caster_index"],split["split_solid_index"],component_index)
+                  try:
                     _runtime_checkpoint("FORMAL_SHADOW_ANALYZER_CREATE_BEFORE", detail)
-                    analyzer = ExtrusionAnalyzer.Create(split["native_solid"], native_plane, direction); ad["create_succeeded"] = True
+                    analyzer = ExtrusionAnalyzer.Create(component, native_plane, direction); ad["create_succeeded"] = True
                     _runtime_checkpoint("FORMAL_SHADOW_ANALYZER_CREATE_AFTER", detail+",ok")
                     for name, key in (("GetStartParameter","start_parameter_internal"),("GetEndParameter","end_parameter_internal")):
                         try: ad[key] = float(getattr(analyzer,name)()); ad[key.replace("internal","m")], _ = _internal_length_to_meters(ad[key])
                         except BaseException: ad[key] = ad[key.replace("internal","m")] = None
+                    ad["analyzer_start_parameter_m"] = ad.get("start_parameter_m")
+                    tolerance_m = float(settings.get("closure_tolerance_m", 1e-6) or 1e-6)
+                    ad["analyzer_start_parameter_nonnegative"] = (ad.get("start_parameter_m") is not None
+                        and ad["start_parameter_m"] >= -tolerance_m)
+                    if ad.get("start_parameter_m") is not None and not ad["analyzer_start_parameter_nonnegative"]:
+                        caster_out["blockers"].append({"failure_code":"analyzer_start_parameter_below_measurement_plane",
+                            "start_parameter_m":ad["start_parameter_m"]})
                     _runtime_checkpoint("FORMAL_SHADOW_BASE_FACE_BEFORE", detail)
                     face = analyzer.GetExtrusionBase(); ad["get_extrusion_base_succeeded"] = face is not None
                     _runtime_checkpoint("FORMAL_SHADOW_BASE_FACE_AFTER", detail + (",ok" if face is not None else ",failure"))
@@ -330,28 +471,47 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
                             try: loop.Dispose()
                             except BaseException as exc: caster_out["warnings"].append(_failure("curve_loop_dispose_failed", exc))
                     _runtime_checkpoint("FORMAL_SHADOW_CURVELOOPS_AFTER", detail+",ok")
-                    for polygon in _classify_and_orient(extracted):
+                    classified = _classify_and_orient(extracted)
+                    section = _measurement_section_polygons(component,
+                        plane_diag["elevation_internal"], settings, short_tol)
+                    polygon_check = _validate_actual_polygon_direction(section, classified,
+                        physical_info, tolerance_m)
+                    for polygon in classified:
                         polygon.update({"polygon_index":len(caster_out["polygons"]), "source_solid_index":split["source_solid_index"],
                                         "split_solid_index":split["split_solid_index"], "generation_method":"revit_extrusion_analyzer_curve_loop_line_exact",
                                         "direction_validation_passed":validation_passed,
                                         "direction_validation_reason":validation.get("reason")})
                         caster_out["polygons"].append(polygon)
+                    ad["actual_polygon_direction_check"] = polygon_check
                     if not extracted: ad.update(_failure("no_valid_native_line_shadow_loop"))
-                except BaseException as exc:
+                  except BaseException as exc:
                     code = "extrusion_analyzer_exception" if not ad["create_succeeded"] else ("get_extrusion_base_failure" if not ad["get_extrusion_base_succeeded"] else "native_curve_loop_acquisition_failure")
                     ad.update(_failure(code, exc)); caster_out["blockers"].append(_failure(code, exc))
-                finally:
+                  finally:
                     if analyzer is not None:
                         ad["dispose_attempted"] = True
                         try: analyzer.Dispose(); ad["dispose_succeeded"] = True
                         except BaseException as exc: ad.update(_failure("extrusion_analyzer_dispose_failure", exc))
                     _runtime_checkpoint("FORMAL_SHADOW_ANALYZER_DISPOSE_AFTER", detail + (",ok" if ad["dispose_succeeded"] else ",failure"))
-                caster_out["analyzers"].append(ad)
-            caster_out["complete"] = bool(caster_out["polygons"]) and not caster_out["blockers"]
+                  caster_out["analyzers"].append(ad)
+            all_skipped = bool(caster["solids"]) and all(
+                item.get("skipped_because_not_above_measurement_plane") for item in caster["solids"])
+            caster_out["complete"] = (bool(caster_out["polygons"]) or all_skipped) and not caster_out["blockers"]
             if caster_out["polygons"]: result["successful_slice_caster_count"] += 1
             else: result["failed_slice_caster_count"] += 1
             slice_out["casters"].append(caster_out)
-        slice_out["complete"] = validation_passed and bool(slice_out["casters"]) and all(c["complete"] for c in slice_out["casters"])
+        checks = [a.get("actual_polygon_direction_check") for c in slice_out["casters"]
+            for a in c["analyzers"] if a.get("actual_polygon_direction_check")]
+        verified = bool(checks) and all(check.get("passed") is True for check in checks)
+        failed_runtime = any(check.get("passed") is False and check.get("section_axis_min_m") is not None for check in checks)
+        slice_out["actual_polygon_direction_check"] = (checks[0] if len(checks) == 1 else {
+            "passed": verified, "reason": ("all runtime polygons verified" if verified else
+            ("one or more runtime polygons failed" if failed_runtime else "runtime polygon direction unverified")),
+            "checks": checks})
+        slice_out["revit_runtime_direction_verified"] = verified
+        runtime_check_required = any(split.get("components") for caster in split_casters for split in caster["solids"])
+        slice_out["complete"] = (validation_passed and (verified or not runtime_check_required)
+            and bool(slice_out["casters"]) and all(c["complete"] for c in slice_out["casters"]))
         if not slice_out["complete"]: slice_out["blockers"].append({"failure_code":"one_or_more_caster_splits_failed"})
         diagnostic_slices = (diagnostic_projection or {}).get("slices") or []
         diagnostic_slice = diagnostic_slices[slice_index] if slice_index < len(diagnostic_slices) else {}
@@ -374,6 +534,7 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
     result["available"] = result["polygon_count"] > 0
     result["complete"] = bool(result["slices"]) and all(s["complete"] for s in result["slices"])
     result["partial_success"] = result["available"] and not result["complete"]
+    result["owned_solid_disposal"] = _dispose_owned_solids(owned_solids)
     _runtime_checkpoint("FORMAL_SHADOW_END", "ok" if result["available"] else "failure")
     return result
 

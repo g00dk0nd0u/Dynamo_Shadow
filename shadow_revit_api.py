@@ -2,7 +2,7 @@
 try:
     import clr
     clr.AddReference("RevitAPI")
-    from Autodesk.Revit.DB import BuiltInCategory, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, Mesh, UnitUtils, Element, ElementId
+    from Autodesk.Revit.DB import BuiltInCategory, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, GeometryObject, Mesh, UnitUtils, Element, ElementId
     try:
         from Autodesk.Revit.DB import UnitTypeId
     except Exception:
@@ -12,7 +12,7 @@ try:
     except Exception:
         DisplayUnitType = None
 except Exception:
-    BuiltInCategory = Options = Solid = GeometryInstance = Face = PlanarFace = Edge = Curve = Mesh = UnitUtils = Element = ElementId = UnitTypeId = DisplayUnitType = None
+    BuiltInCategory = Options = Solid = GeometryInstance = Face = PlanarFace = Edge = Curve = GeometryObject = Mesh = UnitUtils = Element = ElementId = UnitTypeId = DisplayUnitType = None
 
 # APIs used by planned native-first paths are deliberately isolated. A class
 # missing from a particular Revit release must not disable the core imports.
@@ -98,6 +98,10 @@ REVIT_API_CAPABILITIES = {
     "solid_utils_split_volumes_expected": SolidUtils is not None and hasattr(SolidUtils, "SplitVolumes"),
     "extrusion_analyzer_available": ExtrusionAnalyzer is not None,
     "boolean_operations_available": BooleanOperationsUtils is not None and BooleanOperationsType is not None,
+    "boolean_cut_with_half_space_available": (
+        BooleanOperationsUtils is not None
+        and hasattr(BooleanOperationsUtils, "CutWithHalfSpace")
+    ),
     "formal_shadow_union_api_available": (
         BooleanOperationsUtils is not None and BooleanOperationsType is not None
         and GeometryCreationUtilities is not None and SolidUtils is not None
@@ -129,6 +133,8 @@ REVIT_API_CAPABILITIES = {
         and ExtrusionAnalyzer is not None
         and hasattr(SolidUtils, "SplitVolumes")
         and _has_methods(ExtrusionAnalyzer, ("Create", "GetExtrusionBase", "Dispose"))
+        and BooleanOperationsUtils is not None
+        and hasattr(BooleanOperationsUtils, "CutWithHalfSpace")
     ),
     "project_location_read_path_expected": _has_methods(
         ProjectLocation, ("GetSiteLocation", "GetProjectPosition")

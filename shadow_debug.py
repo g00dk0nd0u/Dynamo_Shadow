@@ -358,11 +358,18 @@ def _runtime_code_summary(out_payload):
 def _formal_shadow_polygon_debug_summary(formal_shadow):
     """Compact, coordinate-free summary; runtime native objects are never visited."""
     formal = formal_shadow if isinstance(formal_shadow, dict) else {}
-    reason_counts = {}; sign_counts = {}; areas = []; point_counts = []
+    reason_counts = {}; areas = []; point_counts = []
+    vector_contract_passed = runtime_verified = runtime_failed = runtime_unverified = 0
     analyzer_ok = analyzer_fail = analyzer_dispose_fail = native_loops = line_loops = non_line_loops = 0
     outer = inner = failed_slices = failed_caster_slices = comparisons = 0
     per_slice = []
     for item in (formal.get("slices") or [])[:17]:
+        if (item.get("direction_vector_contract_check") or {}).get("antiparallel_api_conversion") is True:
+            vector_contract_passed += 1
+        runtime_check = item.get("actual_polygon_direction_check") or {}
+        if item.get("revit_runtime_direction_verified") is True: runtime_verified += 1
+        elif runtime_check.get("section_axis_min_m") is not None or runtime_check.get("reason") == "one or more runtime polygons failed": runtime_failed += 1
+        else: runtime_unverified += 1
         polygons = 0; failed_casters = 0
         for caster in item.get("casters") or []:
             cps = caster.get("polygons") or []; polygons += len(cps)
@@ -373,9 +380,6 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
                 else: outer += 1
                 native_loops += 1; line_loops += 0 if polygon.get("contains_non_line_curve") else 1
                 if polygon.get("contains_non_line_curve"): non_line_loops += 1
-                status = polygon.get("direction_validation_passed")
-                sign = "passed" if status is True else ("failed" if status is False else "unknown")
-                sign_counts[sign] = sign_counts.get(sign, 0) + 1
             for blocker in caster.get("blockers") or []:
                 code = blocker.get("failure_code") if isinstance(blocker, dict) else str(blocker); reason_counts[code] = reason_counts.get(code, 0) + 1
             for analyzer in caster.get("analyzers") or []:
@@ -393,7 +397,11 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
         "outer_loop_count": outer, "inner_loop_count": inner, "failed_slice_count": failed_slices, "failed_caster_slice_count": failed_caster_slices,
         "analyzer_create_success_count": analyzer_ok, "analyzer_create_failure_count": analyzer_fail, "analyzer_dispose_failure_count": analyzer_dispose_fail,
         "native_loop_count": native_loops, "native_line_loop_count": line_loops, "native_non_line_loop_count": non_line_loops,
-        "direction_sign_status_counts": sign_counts, "failure_reason_counts": reason_counts, "per_slice": per_slice,
+        "vector_contract_passed_count": vector_contract_passed,
+        "runtime_polygon_direction_verified_count": runtime_verified,
+        "runtime_polygon_direction_failed_count": runtime_failed,
+        "runtime_polygon_direction_unverified_count": runtime_unverified,
+        "failure_reason_counts": reason_counts, "per_slice": per_slice,
         "minimum_area_m2": min(areas) if areas else None, "maximum_area_m2": max(areas) if areas else None,
         "minimum_point_count": min(point_counts) if point_counts else None, "maximum_point_count": max(point_counts) if point_counts else None,
         "diagnostic_convex_hull_comparison_count": comparisons,
@@ -456,7 +464,10 @@ def _summarize_out_for_debug(out_payload):
         "not_implemented_summary": _sanitize_for_debug({
             "footprint_extraction": (out_payload.get("footprint_extraction_policy") or {}).get("not_implemented_in_this_pr"),
             "planned_pipeline_pending": [item for item in (out_payload.get("planned_pipeline") or [])[16:]
-                                         if item != "formal time-slice shadow projection per caster"],
+                                         if item not in ("formal footprint polygon generation",
+                                             "formal model-coordinate shadow direction calculation",
+                                             "formal time-slice shadow projection per caster",
+                                             "logical union of shadows per time slice")],
         }),
     }
 

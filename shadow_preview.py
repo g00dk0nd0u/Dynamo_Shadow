@@ -6,7 +6,7 @@ import shadow_utils
 from shadow_profiles import get_solar_profile
 from shadow_policies import SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_units import _meters_to_internal_length
-from shadow_revit_api import (BuiltInCategory, ElementId, XYZ, Line, DirectShape,
+from shadow_revit_api import (BuiltInCategory, ElementId, XYZ, Line, GeometryObject, DirectShape,
     DirectShapeTargetViewType, FilteredElementCollector, OverrideGraphicSettings,
     Color, SubTransaction)
 
@@ -177,6 +177,14 @@ def _curves(polygons, elevation_m, short_tolerance):
             curves.append(Line.CreateBound(start, end))
     return curves
 
+
+def _geometry_object_list(curves):
+    """Create the exact ICollection<GeometryObject> overload expected by Revit."""
+    system = __import__("System")
+    values = system.Collections.Generic.List[GeometryObject]()
+    for curve in curves: values.Add(curve)
+    return values
+
 # Compatibility alias used by focused pure-Python tests.
 def _curve_loops(polygons, elevation_m, z_offset_mm=0.0, short_tolerance=0.0):
     if z_offset_mm: raise ValueError("preview_vertical_offset_not_supported")
@@ -261,8 +269,20 @@ def build_shadow_preview(unified_shadow_slices, measurement_plane, settings):
                     shape = DirectShape.CreateElement(document, ElementId(BuiltInCategory.OST_GenericModel))
                     shape.SetShape(curves)
                     if DirectShapeTargetViewType is not None and hasattr(DirectShapeTargetViewType, "Plan"):
-                        try: shape.SetShape(curves, DirectShapeTargetViewType.Plan); diag["plan_representation_set"] = True
-                        except BaseException: diag["plan_representation_set"] = False; diag["warnings"].append("Plan Curve representation failed; Default Curve representation retained.")
+                        try:
+                            plan_curves = _geometry_object_list(curves)
+                            diag["plan_representation_valid"] = bool(shape.IsValidShape(plan_curves, DirectShapeTargetViewType.Plan))
+                            if diag["plan_representation_valid"]:
+                                shape.SetShape(plan_curves, DirectShapeTargetViewType.Plan)
+                                diag["plan_representation_set"] = True
+                            else:
+                                diag["plan_representation_set"] = False
+                                diag["warnings"].append("Plan Curve representation is invalid; Default Curve representation retained.")
+                        except BaseException as exc:
+                            diag["plan_representation_set"] = False
+                            diag["plan_representation_failure_type"] = type(exc).__name__
+                            diag["plan_representation_failure_message"] = _safe_message(exc)
+                            diag["warnings"].append("Plan Curve representation failed; Default Curve representation retained.")
                     else: diag["plan_representation_set"] = False
                     shape.Name = _preview_element_name(group); shape.ApplicationId = APPLICATION_ID
                     shape.ApplicationDataId = "true_solar_time=%s;slice_index=%s;output_kind=time_shadow_line" % (group["true_solar_time"], group["slice_index"])
@@ -281,6 +301,8 @@ def build_shadow_preview(unified_shadow_slices, measurement_plane, settings):
                     code = str(exc) if str(exc).startswith("preview_") else "preview_group_creation_failed"
                     result["failure_reason_counts"][code] = result["failure_reason_counts"].get(code, 0) + 1; diag["warnings"].append(code)
                     result.update({"failure_stage":"direct_shape_create", "failure_code":code, "failure_type":type(exc).__name__, "sanitized_failure_message":_safe_message(exc)})
+                for warning in diag["warnings"]:
+                    if warning not in result["warnings"]: result["warnings"].append(warning)
                 result["groups"].append(diag)
             if not result["created_element_ids"]:
                 sub.RollBack(); sub = None; result["successful_delete_count"] = result["deleted_element_count"] = 0

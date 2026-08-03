@@ -29,7 +29,7 @@
       "Name": "String",
       "Type": "string",
       "Type2": "string",
-      "Value": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671,\r\n  \"site_latitude_deg\": 35.6812,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"true_solar_start_time\": \"08:00\",\r\n  \"true_solar_end_time\": \"16:00\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\"\r\n}",
+      "Value": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"solar_parameter_mode\": \"regulatory_winter_solstice_v1\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671,\r\n  \"site_latitude_deg\": 35.6812,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"true_solar_start_time\": \"08:00\",\r\n  \"true_solar_end_time\": \"16:00\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\",\r\n  \"preview_mode\": \"replace\"\r\n}",
       "Description": "文字列を作成します。"
     }
   ],
@@ -214,7 +214,7 @@
       ],
       "Replication": "Disabled",
       "Description": "文字列を作成します。",
-      "InputValue": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671,\r\n  \"site_latitude_deg\": 35.6812,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"true_solar_start_time\": \"08:00\",\r\n  \"true_solar_end_time\": \"16:00\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\"\r\n}"
+      "InputValue": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"solar_parameter_mode\": \"regulatory_winter_solstice_v1\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671,\r\n  \"site_latitude_deg\": 35.6812,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"true_solar_start_time\": \"08:00\",\r\n  \"true_solar_end_time\": \"16:00\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\",\r\n  \"preview_mode\": \"replace\"\r\n}"
     }
   ],
   "Connectors": [
