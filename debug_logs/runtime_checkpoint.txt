@@ -266,17 +266,23 @@ SHADOW_PREVIEW_CLEANUP_AFTER | owned count=3,ok
 SHADOW_PREVIEW_GROUP_BEFORE | slice_index=0,caster_index=0,split_solid_index=0
 SHADOW_PREVIEW_CURVELOOPS_AFTER | slice_index=0,caster_index=0,split_solid_index=0,ok
 SHADOW_PREVIEW_EXTRUSION_AFTER | slice_index=0,caster_index=0,split_solid_index=0,ok
-SHADOW_PREVIEW_GROUP_AFTER | slice_index=0,caster_index=0,split_solid_index=0,failure
+SHADOW_PREVIEW_DIRECTSHAPE_AFTER | slice_index=0,caster_index=0,split_solid_index=0,ok
+SHADOW_PREVIEW_OVERRIDE_AFTER | slice_index=0,caster_index=0,split_solid_index=0,ok
+SHADOW_PREVIEW_GROUP_AFTER | slice_index=0,caster_index=0,split_solid_index=0,ok
 SHADOW_PREVIEW_GROUP_BEFORE | slice_index=8,caster_index=0,split_solid_index=0
 SHADOW_PREVIEW_CURVELOOPS_AFTER | slice_index=8,caster_index=0,split_solid_index=0,ok
 SHADOW_PREVIEW_EXTRUSION_AFTER | slice_index=8,caster_index=0,split_solid_index=0,ok
-SHADOW_PREVIEW_GROUP_AFTER | slice_index=8,caster_index=0,split_solid_index=0,failure
+SHADOW_PREVIEW_DIRECTSHAPE_AFTER | slice_index=8,caster_index=0,split_solid_index=0,ok
+SHADOW_PREVIEW_OVERRIDE_AFTER | slice_index=8,caster_index=0,split_solid_index=0,ok
+SHADOW_PREVIEW_GROUP_AFTER | slice_index=8,caster_index=0,split_solid_index=0,ok
 SHADOW_PREVIEW_GROUP_BEFORE | slice_index=16,caster_index=0,split_solid_index=0
 SHADOW_PREVIEW_CURVELOOPS_AFTER | slice_index=16,caster_index=0,split_solid_index=0,ok
 SHADOW_PREVIEW_EXTRUSION_AFTER | slice_index=16,caster_index=0,split_solid_index=0,ok
-SHADOW_PREVIEW_GROUP_AFTER | slice_index=16,caster_index=0,split_solid_index=0,failure
-SHADOW_PREVIEW_TRANSACTION_AFTER | created count=0,deleted count=3
-SHADOW_PREVIEW_END | failure
+SHADOW_PREVIEW_DIRECTSHAPE_AFTER | slice_index=16,caster_index=0,split_solid_index=0,ok
+SHADOW_PREVIEW_OVERRIDE_AFTER | slice_index=16,caster_index=0,split_solid_index=0,ok
+SHADOW_PREVIEW_GROUP_AFTER | slice_index=16,caster_index=0,split_solid_index=0,ok
+SHADOW_PREVIEW_TRANSACTION_AFTER | created count=3,deleted count=3
+SHADOW_PREVIEW_END | ok
 FORMAL_UNION_BEGIN
 FORMAL_UNION_SLICE_BEFORE | slice_index=0,input_group_count=1
 FORMAL_UNION_ADAPTER_BEFORE | slice_index=0,component_count=1

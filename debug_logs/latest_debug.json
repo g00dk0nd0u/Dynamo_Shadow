@@ -887,7 +887,7 @@
     "active_view_id": 3003448,
     "active_view_type": "1",
     "attempted": true,
-    "available": false,
+    "available": true,
     "cleanup_candidate_count": 3,
     "cleanup_collection_attempted": true,
     "cleanup_collection_attempts": [
@@ -906,27 +906,30 @@
     "cleanup_delete_attempted": true,
     "cleanup_delete_succeeded": true,
     "cleanup_owned_count": 3,
-    "complete": false,
-    "created_element_count": 0,
-    "created_element_ids": [],
+    "complete": true,
+    "created_element_count": 3,
+    "created_element_ids": [
+      6345219,
+      6345220,
+      6345221
+    ],
     "deleted_element_count": 3,
     "enabled": true,
     "failed_delete_count": 0,
-    "failed_group_count": 3,
-    "failure_code": "preview_group_creation_failed",
-    "failure_reason_counts": {
-      "preview_group_creation_failed": 3
-    },
-    "failure_stage": "group_direct_shape",
-    "failure_type": "ArgumentException",
+    "failed_group_count": 0,
+    "failure_code": null,
+    "failure_reason_counts": {},
+    "failure_stage": null,
+    "failure_type": null,
     "formal_shadow_source_available": true,
-    "graphical_overrides_attempted": false,
-    "graphical_overrides_succeeded": false,
+    "graphical_overrides_attempted": true,
+    "graphical_overrides_succeeded": true,
     "groups": [
       {
         "caster_index": 0,
-        "direct_shape_created": false,
-        "element_id": null,
+        "direct_shape_created": true,
+        "element_id": 6345219,
+        "failure_stage": null,
         "inner_loop_count": 0,
         "outer_loop_count": 1,
         "slice_index": 0,
@@ -934,15 +937,14 @@
         "split_solid_index": 0,
         "style_index": 0,
         "true_solar_time": "08:00:00",
-        "warnings": [
-          "preview_group_creation_failed"
-        ],
+        "warnings": [],
         "z_offset_mm": 0.0
       },
       {
         "caster_index": 0,
-        "direct_shape_created": false,
-        "element_id": null,
+        "direct_shape_created": true,
+        "element_id": 6345220,
+        "failure_stage": null,
         "inner_loop_count": 0,
         "outer_loop_count": 1,
         "slice_index": 8,
@@ -950,15 +952,14 @@
         "split_solid_index": 0,
         "style_index": 1,
         "true_solar_time": "12:00:00",
-        "warnings": [
-          "preview_group_creation_failed"
-        ],
+        "warnings": [],
         "z_offset_mm": 20.0
       },
       {
         "caster_index": 0,
-        "direct_shape_created": false,
-        "element_id": null,
+        "direct_shape_created": true,
+        "element_id": 6345221,
+        "failure_stage": null,
         "inner_loop_count": 0,
         "outer_loop_count": 1,
         "slice_index": 16,
@@ -966,9 +967,7 @@
         "split_solid_index": 0,
         "style_index": 2,
         "true_solar_time": "16:00:00",
-        "warnings": [
-          "preview_group_creation_failed"
-        ],
+        "warnings": [],
         "z_offset_mm": 40.0
       }
     ],
@@ -988,7 +987,7 @@
       "12:00:00",
       "16:00:00"
     ],
-    "sanitized_failure_message": "Name cannot include prohibited characters. Parameter name: name at Autodesk.Revit.DB.Element.set_Name(String name)",
+    "sanitized_failure_message": null,
     "successful_delete_count": 3,
     "transaction_begin_attempted": true,
     "transaction_begin_succeeded": true,
