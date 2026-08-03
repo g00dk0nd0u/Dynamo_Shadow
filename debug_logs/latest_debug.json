@@ -39,8 +39,8 @@
     "invalid_reason_counts": {},
     "items": [
       {
-        "area_m2": 188.39457917280396,
-        "area_m2_signed": 188.39457917280396,
+        "area_m2": 185.89832939857536,
+        "area_m2_signed": 185.89832939857536,
         "classification_group_key": [
           0,
           1
@@ -98,9 +98,9 @@
     "failed_slice_count": 0,
     "failure_reason_counts": {},
     "inner_loop_count": 0,
-    "maximum_area_m2": 1767.0054839619968,
+    "maximum_area_m2": 1764.5091621098004,
     "maximum_point_count": 14,
-    "minimum_area_m2": 502.74887074411333,
+    "minimum_area_m2": 500.2525962175597,
     "minimum_point_count": 12,
     "native_line_loop_count": 17,
     "native_loop_count": 17,
@@ -301,7 +301,7 @@
       "Level reference is present but is not used as average ground level or measurement plane."
     ]
   },
-  "message": "Dynamo_Shadow Revit-native formal time-slice shadow prototype with optional DirectShape visual QA. No caster union, duration accumulation, equal-time contour...",
+  "message": "Dynamo_Shadow Revit-native formal time-slice shadow and per-slice union prototype with optional DirectShape visual QA. No duration accumulation, equal-time c...",
   "not_implemented_summary": {
     "footprint_extraction": [
       "boolean union across casters",
@@ -320,8 +320,8 @@
       "optional site boundary loop extraction",
       "legal judgement mask preparation",
       "optional 5m / 10m measurement line generation when site_boundary is available",
-      "true solar time diagnostics",
-      "sun vector calculation",
+      "formal technical solar specification v1",
+      "formal model-coordinate shadow direction calculation",
       "logical union of shadows per time slice",
       "shadow duration accumulation without double counting",
       "equal-time contour generation",
@@ -335,6 +335,7 @@
     "blockers_for_equal_time_shadow": [],
     "blockers_for_footprint_extraction": [],
     "blockers_for_formal_shadow_polygon_generation": [],
+    "blockers_for_formal_shadow_union": [],
     "blockers_for_future_footprint_polygon_generation": [],
     "blockers_for_future_projection_context": [],
     "blockers_for_future_shadow_projection": [],
@@ -352,21 +353,24 @@
     "formal_shadow_polygon_generation_attempted": true,
     "formal_shadow_polygon_generation_available": true,
     "formal_shadow_polygon_generation_complete": true,
+    "formal_shadow_union_attempted": true,
+    "formal_shadow_union_available": true,
+    "formal_shadow_union_complete": true,
+    "formal_solar_calculation_ready": true,
     "future_footprint_polygon_generation_ready": true,
     "future_projection_context_ready": true,
     "future_shadow_projection_ready": true,
     "info": [
-      "equal_time_shadow_calculation_ready is a technical pipeline readiness diagnostic only, not formal legal judgement readiness; union, accumulation, contours, a..."
+      "ready_for_duration_accumulation confirms complete formal solar, projection, and native per-slice union inputs only; accumulation, contours, and legal masks r..."
     ],
     "input_diagnostics_ready": true,
     "legal_judgement_masks_ready": false,
+    "legal_judgement_ready": false,
     "measurement_plane_constructed": true,
     "measurement_plane_ready": true,
     "next_implementation_steps": [
       "optional site boundary loop extraction",
       "legal judgement mask preparation",
-      "per-time-slice caster union",
-      "split-Solid polygon union",
       "shadow duration accumulation",
       "equal-time contour generation",
       "site clipping",
@@ -374,16 +378,21 @@
       "5m / 10m legal lines",
       "legal judgement report"
     ],
+    "permit_ready_certified": false,
+    "ready_for_duration_accumulation": true,
+    "regulatory_profile_resolved": true,
     "settings_ready_for_equal_time_shadow": true,
     "shadow_caster_geometry_ready": true,
     "shadow_caster_ready": true,
     "site_boundary_ready_for_boundary_dependent_steps": false,
-    "site_boundary_required_for_equal_time_shadow": false
+    "site_boundary_required_for_equal_time_shadow": false,
+    "solar_coordinate_convention_resolved": true,
+    "solar_reference_validation_passed": true
   },
   "runtime_code_diagnostics": {
     "all_local_modules_from_workspace": true,
-    "cached_module_count_removed": 15,
-    "code_build_id": "2026-07-31-formal-shadow-revit-preview-v1",
+    "cached_module_count_removed": 17,
+    "code_build_id": "2026-07-31-revit-native-shadow-union-v1",
     "import_caches_invalidated": true,
     "loader_bootstrap_received": true,
     "loader_build_id": "2026-07-28-loader-module-isolation-v1",
@@ -439,6 +448,12 @@
       {
         "loaded_from_workspace": true,
         "module_file_available": true,
+        "module_filename": "shadow_profiles.py",
+        "module_name": "shadow_profiles"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
         "module_filename": "shadow_projection.py",
         "module_name": "shadow_projection"
       },
@@ -469,6 +484,12 @@
       {
         "loaded_from_workspace": true,
         "module_file_available": true,
+        "module_filename": "shadow_union.py",
+        "module_name": "shadow_union"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
         "module_filename": "shadow_units.py",
         "module_name": "shadow_units"
       },
@@ -488,11 +509,13 @@
       "shadow_measurement_plane",
       "shadow_policies",
       "shadow_preview",
+      "shadow_profiles",
       "shadow_projection",
       "shadow_readiness",
       "shadow_revit_api",
       "shadow_settings",
       "shadow_sun",
+      "shadow_union",
       "shadow_units",
       "shadow_utils"
     ],
@@ -504,6 +527,10 @@
   "sanitized": true,
   "settings_summary": {
     "defaults_applied": [
+      "preview_true_solar_times",
+      "preview_thickness_mm",
+      "preview_vertical_separation_mm",
+      "preview_transparency",
       "standard_meridian_deg",
       "grid_resolution_m",
       "analysis_margin_m",
@@ -861,17 +888,90 @@
     "active_view_type": "1",
     "attempted": true,
     "available": false,
+    "cleanup_candidate_count": 3,
+    "cleanup_collection_attempted": true,
+    "cleanup_collection_attempts": [
+      {
+        "candidate_count": 3,
+        "collector_method": "of_class_direct_shape",
+        "failure_type": null,
+        "fallback_used": false,
+        "owned_count": 3,
+        "succeeded": true
+      }
+    ],
+    "cleanup_collection_succeeded": true,
+    "cleanup_collector_fallback_used": false,
+    "cleanup_collector_method": "of_class_direct_shape",
+    "cleanup_delete_attempted": true,
+    "cleanup_delete_succeeded": true,
+    "cleanup_owned_count": 3,
     "complete": false,
     "created_element_count": 0,
     "created_element_ids": [],
-    "deleted_element_count": 0,
+    "deleted_element_count": 3,
     "enabled": true,
-    "failed_group_count": 0,
-    "failure_reason_counts": {},
+    "failed_delete_count": 0,
+    "failed_group_count": 3,
+    "failure_code": "preview_group_creation_failed",
+    "failure_reason_counts": {
+      "preview_group_creation_failed": 3
+    },
+    "failure_stage": "group_direct_shape",
+    "failure_type": "ArgumentException",
     "formal_shadow_source_available": true,
     "graphical_overrides_attempted": false,
     "graphical_overrides_succeeded": false,
-    "groups": [],
+    "groups": [
+      {
+        "caster_index": 0,
+        "direct_shape_created": false,
+        "element_id": null,
+        "inner_loop_count": 0,
+        "outer_loop_count": 1,
+        "slice_index": 0,
+        "source_solid_index": 0,
+        "split_solid_index": 0,
+        "style_index": 0,
+        "true_solar_time": "08:00:00",
+        "warnings": [
+          "preview_group_creation_failed"
+        ],
+        "z_offset_mm": 0.0
+      },
+      {
+        "caster_index": 0,
+        "direct_shape_created": false,
+        "element_id": null,
+        "inner_loop_count": 0,
+        "outer_loop_count": 1,
+        "slice_index": 8,
+        "source_solid_index": 0,
+        "split_solid_index": 0,
+        "style_index": 1,
+        "true_solar_time": "12:00:00",
+        "warnings": [
+          "preview_group_creation_failed"
+        ],
+        "z_offset_mm": 20.0
+      },
+      {
+        "caster_index": 0,
+        "direct_shape_created": false,
+        "element_id": null,
+        "inner_loop_count": 0,
+        "outer_loop_count": 1,
+        "slice_index": 16,
+        "source_solid_index": 0,
+        "split_solid_index": 0,
+        "style_index": 2,
+        "true_solar_time": "16:00:00",
+        "warnings": [
+          "preview_group_creation_failed"
+        ],
+        "z_offset_mm": 40.0
+      }
+    ],
     "matched_true_solar_times": [
       "08:00:00",
       "12:00:00",
@@ -882,14 +982,19 @@
     "partial_success": false,
     "preview_thickness_mm": 10.0,
     "preview_vertical_separation_mm": 20.0,
+    "requested_delete_count": 3,
     "requested_true_solar_times": [
       "08:00:00",
       "12:00:00",
       "16:00:00"
     ],
-    "warnings": [
-      "Preview transaction failed; formal shadow output remains unchanged."
-    ]
+    "sanitized_failure_message": "Name cannot include prohibited characters. Parameter name: name at Autodesk.Revit.DB.Element.set_Name(String name)",
+    "successful_delete_count": 3,
+    "transaction_begin_attempted": true,
+    "transaction_begin_succeeded": true,
+    "transaction_close_attempted": true,
+    "transaction_close_succeeded": true,
+    "warnings": []
   },
   "site_boundary_skipped": true,
   "site_boundary_summary": {
@@ -905,7 +1010,7 @@
     "available": true,
     "blockers": [],
     "calculation_date": null,
-    "calculation_mode": "explicit_declination_and_equation_of_time_v1",
+    "calculation_mode": "explicit",
     "complete": true,
     "date_based_declination_calculated": false,
     "date_based_equation_of_time_calculated": false,
@@ -929,11 +1034,62 @@
     "solar_parameters_resolved": true,
     "standard_meridian_deg": 135.0,
     "true_north_deg": 0.0,
-    "warnings": []
+    "warnings": [
+      "Legacy winter-solstice settings remain in explicit mode without numerical change; regulatory_winter_solstice_v1 is recommended."
+    ]
+  },
+  "solar_specification_summary": {
+    "blockers": [],
+    "conversion_flags": {
+      "equation_of_time": false,
+      "longitude": false
+    },
+    "coordinate_conventions": {
+      "azimuth": "clockwise_from_true_north",
+      "true_north": "true_north_deg is measured clockwise from the model +Y axis to true north; model_azimuth_deg=(true_north_azimuth_deg+true_north_deg)%360."
+    },
+    "declination_source": "explicit_settings",
+    "formal_readiness": true,
+    "permit_ready_certified": false,
+    "selected_mode": "explicit",
+    "selected_profile": "standard_8_16",
+    "slice_count": 17,
+    "status": "formal_technical_not_permit_certified",
+    "step_minutes": 30,
+    "time_basis": "true_solar_time",
+    "version": "jp_shadow_solar_v1",
+    "warnings": [
+      "Legacy winter-solstice settings remain in explicit mode without numerical change; regulatory_winter_solstice_v1 is recommended."
+    ],
+    "window": {
+      "end": "16:00:00",
+      "start": "08:00:00"
+    }
   },
   "stage": "v1_formal_shadow_visual_validation",
   "success": true,
   "tool": "Dynamo_Shadow",
+  "unified_shadow_summary": {
+    "available": true,
+    "blockers": [],
+    "boolean_operation_attempt_count": 0,
+    "boolean_operation_failure_count": 0,
+    "boolean_operation_success_count": 0,
+    "complete": true,
+    "engine": "revit_boolean_solid_union_v1",
+    "failed_slice_count": 0,
+    "input_component_count": 17,
+    "input_polygon_count": 17,
+    "output_component_count": 17,
+    "output_polygon_count": 17,
+    "ready_for_duration_accumulation": true,
+    "successful_slice_count": 17,
+    "time_slice_count": 17,
+    "total_input_area_m2": 13756.141463866223,
+    "total_overlap_removed_area_m2": 4.547473508864641e-13,
+    "total_unified_area_m2": 13756.14146386622,
+    "warnings": []
+  },
   "unit_conversion_summary": {
     "area": {
       "fallback_factor": 0.09290304,
@@ -966,7 +1122,7 @@
     "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
     "Level reference is present but is not used as average ground level or measurement plane.",
     "zero/unknown-volume Solid was retained as a geometry object but excluded from formal Solid and face counts.",
-    "Preview transaction failed; formal shadow output remains unchanged.",
+    "Legacy winter-solstice settings remain in explicit mode without numerical change; regulatory_winter_solstice_v1 is recommended.",
     "legal judgement masks not implemented",
     "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
     "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.",
