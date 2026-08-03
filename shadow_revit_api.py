@@ -75,6 +75,13 @@ except Exception:
     DirectShape = FilteredElementCollector = None
     FillPatternElement = OverrideGraphicSettings = Color = SubTransaction = None
 
+# Revit 2024 exposes the plan-specific DirectShape representation, but keep it
+# optional so an older runtime cannot disable the ordinary Curve path.
+try:
+    from Autodesk.Revit.DB import DirectShapeTargetViewType
+except Exception:
+    DirectShapeTargetViewType = None
+
 
 def _has_methods(value, names):
     return value is not None and all(hasattr(value, name) for name in names)
@@ -103,6 +110,7 @@ REVIT_API_CAPABILITIES = {
     "project_location_available": ProjectLocation is not None and SiteLocation is not None,
     "sun_and_shadow_settings_available": SunAndShadowSettings is not None,
     "unit_utils_available": UnitUtils is not None,
+    "direct_shape_plan_representation_available": DirectShapeTargetViewType is not None,
     "unit_type_id_available": UnitTypeId is not None,
     "legacy_display_unit_type_available": DisplayUnitType is not None,
     "native_curve_loop_path_expected": (

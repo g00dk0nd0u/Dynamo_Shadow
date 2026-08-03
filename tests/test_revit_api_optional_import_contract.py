@@ -16,7 +16,7 @@ OPTIONAL_NAMES = (
     "CurveLoop", "Plane", "XYZ", "SolidUtils", "ExtrusionAnalyzer",
     "BooleanOperationsUtils", "BooleanOperationsType", "ProjectLocation",
     "SiteLocation", "SunAndShadowSettings",
-    "GeometryCreationUtilities", "Line",
+    "GeometryCreationUtilities", "Line", "DirectShapeTargetViewType",
 )
 
 CAPABILITY_KEYS = {
@@ -39,6 +39,7 @@ CAPABILITY_KEYS = {
     "sun_frame_read_path_expected",
     "unit_type_si_ids_expected",
     "formal_shadow_union_api_available",
+    "direct_shape_plan_representation_available",
 }
 
 

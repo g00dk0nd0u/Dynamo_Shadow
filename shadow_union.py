@@ -315,6 +315,12 @@ def _build_unified_shadow_slices(formal_shadow_polygons, measurement_plane, sett
                 "boolean_operation_attempt_count": stats["attempts"], "boolean_operation_success_count": stats["successes"],
                 "boolean_operation_failure_count": stats["failures"], "retry_count": stats["retries"],
                 "polygons": output, "blockers": [], "warnings": []}
+            source_slice = next((item for item in (formal_shadow_polygons or {}).get("slices") or [] if item.get("slice_index") == slice_index), {})
+            for key in ("solar_azimuth_deg", "shadow_azimuth_true_north_deg", "shadow_azimuth_model_deg",
+                        "physical_shadow_ray_model", "extrusion_analyzer_input_direction", "expected_shadow_quadrant",
+                        "actual_polygon_direction_check", "direction_validation_passed", "direction_validation_reason",
+                        "pure_python_verified", "revit_runtime_direction_verified"):
+                slice_out[key] = source_slice.get(key)
         except BaseException as exc:
             code = str(exc) if str(exc) in ("revit_boolean_union_failed", "invalid_formal_polygon", "union_area_validation_failed") else "formal_shadow_union_slice_failed"
             blockers = [{"failure_code": code, "failure_type": type(exc).__name__}]

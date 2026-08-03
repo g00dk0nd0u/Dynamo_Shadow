@@ -373,7 +373,9 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
                 else: outer += 1
                 native_loops += 1; line_loops += 0 if polygon.get("contains_non_line_curve") else 1
                 if polygon.get("contains_non_line_curve"): non_line_loops += 1
-                sign = polygon.get("direction_sign_validation") or "unknown"; sign_counts[sign] = sign_counts.get(sign, 0) + 1
+                status = polygon.get("direction_validation_passed")
+                sign = "passed" if status is True else ("failed" if status is False else "unknown")
+                sign_counts[sign] = sign_counts.get(sign, 0) + 1
             for blocker in caster.get("blockers") or []:
                 code = blocker.get("failure_code") if isinstance(blocker, dict) else str(blocker); reason_counts[code] = reason_counts.get(code, 0) + 1
             for analyzer in caster.get("analyzers") or []:

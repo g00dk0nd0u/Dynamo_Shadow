@@ -1,6 +1,8 @@
 import json
 import math
 
+import pytest
+
 import shadow_formal_projection as formal
 from shadow_debug import _build_debug_log_payload
 
@@ -75,3 +77,20 @@ def test_empty_formal_result_never_claims_convex_hull_fallback():
     assert result["diagnostic_convex_hull_used_as_fallback"] is False
     assert result["union_performed"] is False
     assert result["permit_ready_certified"] is False
+
+
+def test_api_boundary_reverses_physical_ray_and_wrong_sign_fails():
+    physical, info = formal._build_physical_shadow_ray_model({"shadow_direction_model":{"x":0,"y":1},"shadow_length_factor":2}, xyz_type=MockXYZ)
+    analyzer, api = formal._build_extrusion_analyzer_direction(physical, MockXYZ)
+    passed, check = formal._validate_direction_contract(physical, analyzer, 2, "north")
+    wrong, _ = formal._validate_direction_contract(physical, physical, 2, "north")
+    assert passed is True and wrong is False
+    assert api["conversion"].startswith("negative_of_physical")
+    assert check["horizontal_projection_length_per_unit_height"] == 2
+
+
+def test_box_projection_length_is_height_times_shadow_factor():
+    physical, _ = formal._build_physical_shadow_ray_model({"shadow_direction_model":{"x":.6,"y":.8},"shadow_length_factor":2.5}, xyz_type=MockXYZ)
+    height=7.0
+    projected=height*math.hypot(physical.X,physical.Y)/abs(physical.Z)
+    assert projected == pytest.approx(height*2.5)

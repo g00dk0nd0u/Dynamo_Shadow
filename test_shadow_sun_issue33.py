@@ -110,3 +110,16 @@ def test_true_solar_time_allows_missing_longitude():
     out = solar(base())
     assert out["available"] is True
     assert out["site_longitude_deg"] is None
+
+
+def test_reference_shadow_quadrants_and_true_north_rotation():
+    from shadow_sun import _sun_position_for_true_solar_minutes
+    expected={8:(-1,1),12:(0,1),16:(1,1)}
+    for hour,(xs,ys) in expected.items():
+        result=_sun_position_for_true_solar_minutes(hour*60,35.0,-23.439,0.0)
+        direction=result["shadow_direction_model"]
+        assert direction["y"]*ys > 0
+        assert abs(direction["x"]) < 1e-12 if xs == 0 else direction["x"]*xs > 0
+    base=_sun_position_for_true_solar_minutes(8*60,35.0,-23.439,0.0)["shadow_azimuth_model_deg"]
+    rotated=_sun_position_for_true_solar_minutes(8*60,35.0,-23.439,25.0)["shadow_azimuth_model_deg"]
+    assert (rotated-base)%360 == 25.0

@@ -102,18 +102,18 @@ permit-ready or ADS-equivalent.
 
 ## DirectShape visual-QA adapter
 
-The optional preview reconstructs Line-based `CurveLoop` objects only from the
-already validated `formal_shadow_polygons` output, then uses
-`GeometryCreationUtilities.CreateExtrusionGeometry` to make a thin display
-solid and `DirectShape` to show it in Revit. This is a downstream visualization
-adapter, not formal geometry and never an input to calculation. It does not
-adopt Dynamo/libG geometry, repair polygons, or repeat `ExtrusionAnalyzer`.
+The optional preview reads only the outer and inner loops from the completed
+`unified_shadow_slices` output and converts every segment to a Revit DB `Line`.
+It writes one Curve-only `DirectShape` per exact hourly slice. The ordinary
+representation is retained for 3D, and `DirectShapeTargetViewType.Plan` is
+added when the runtime supports it. It never creates a display Solid, Mesh, or
+thin extrusion and is never an input to calculation.
 
 Preview DirectShapes use the exact `ApplicationId`
 `Dynamo_Shadow.FormalShadowPreview`. Replace and clear modes collect
 DirectShapes and delete only that owned set. Graphical overrides are
-element-specific in the current active view; the adapter neither changes the
-active view nor global styles and creates no permanent material. DirectShape
+projection-line colour and weight only in the current active view; the adapter
+neither changes the active view nor global styles and creates no material. DirectShape
 creation can remain successful when an override is unavailable. The supported
 target is Revit 2024.3 with Dynamo CPython3, and runtime visual validation is
 still required.

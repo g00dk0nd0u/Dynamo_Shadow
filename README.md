@@ -2,7 +2,7 @@
 
 Dynamo Shadow is a Dynamo/Revit diagnostic prototype for studying workflows related to Japanese Building Standard Law Article 56-2 shadow regulations.
 
-This repository is for early-stage research and review. It includes a read-only Revit `ExtrusionAnalyzer` prototype for formal per-solid, per-time-slice shadow polygons within a narrow extrusion-like/Line-loop scope. A Revit-native Boolean prototype unions those polygons once per time slice so overlapping caster shadows are counted only once while separate components and holes remain distinct. Actual two-caster validation in Revit 2024.3 remains required. An optional Revit `DirectShape` visual-QA preview is independent and off by default. None of these prototypes is a legal or permit-ready output; duration accumulation, equal-time contours, and legal judgement remain unimplemented.
+This repository is for early-stage research and review. It includes a read-only Revit `ExtrusionAnalyzer` prototype for formal per-solid, per-time-slice shadow polygons within a narrow extrusion-like/Line-loop scope. A Revit-native Boolean prototype unions those polygons once per time slice so overlapping caster shadows are counted only once while separate components and holes remain distinct. Actual two-caster validation in Revit 2024.3 remains required. An optional Revit `DirectShape` visual-QA preview draws the unioned hourly slice boundaries as zero-thickness Curves and is off by default. None of these prototypes is a legal or permit-ready output; duration accumulation, equal-time contours, formal closed site-boundary extraction, 5 m/10 m measurement lines, road/water/elevation-difference relaxations, and legal judgement remain unimplemented.
 
 ## Current diagnostics
 
@@ -15,8 +15,8 @@ The prototype currently focuses on input and readiness diagnostics, including:
 - Read-only geometry and footprint-candidate diagnostics for selected proxy elements.
 - Unit-conversion diagnostics that preserve Revit internal-unit values and add meter-based fields.
 - Optional sanitized development debug logs.
-- Optional, downstream DirectShape preview of selected formal shadow polygons.
 - Revit-native per-time-slice union through temporary in-memory extrusion solids; no model elements or transactions are used.
+- Optional downstream DirectShape Curve preview of unioned outer and inner boundaries at one measurement-plane Z.
 
 ## Preview settings
 
@@ -28,11 +28,7 @@ Preview is visualization-only and defaults to off. The existing settings JSON in
 
 ```json
 {
-  "preview_mode": "replace",
-  "preview_true_solar_times": ["08:00", "12:00", "16:00"],
-  "preview_thickness_mm": 10.0,
-  "preview_vertical_separation_mm": 20.0,
-  "preview_transparency": 45
+  "preview_mode": "replace"
 }
 ```
 
@@ -40,7 +36,7 @@ Preview is visualization-only and defaults to off. The existing settings JSON in
 {"preview_mode": "clear"}
 ```
 
-`replace` removes only prior `Dynamo_Shadow.FormalShadowPreview` DirectShapes before creating the selected slices. `clear` removes those owned previews without creating replacements.
+`replace` removes only prior `Dynamo_Shadow.FormalShadowPreview` DirectShapes before creating one Curve-only DirectShape for each exact hourly profile slice (08:00 through 16:00 for `standard_8_16`). It uses the unioned slice boundaries, so overlaps and internal lines between casters are not displayed. The default representation remains visible as lines in 3D; the Plan representation is also set when the runtime supports it. Projection-line colour and weight are the only graphical overrides. `clear` removes those owned previews without creating replacements.
 
 ## Intended Revit inputs
 
@@ -82,3 +78,9 @@ Revit geometry values are preserved as raw internal units, normally feet. Settin
 ## Scope warning
 
 This repository must not be used as a complete building permit calculation tool. Formal code checks, permit submissions, and regulatory decisions require validated professional tools and confirmation against applicable laws, ordinances, and reviewing authority requirements.
+
+## Direction verification status
+
+The serialized formal-slice contract distinguishes the downward `physical_shadow_ray_model` from the reversed `extrusion_analyzer_input_direction` required to analyze an extrusion from the measurement plane toward the caster. Pure-Python checks cover the 08:00 northwest, 12:00 north, and 16:00 northeast reference directions, true-north rotation, opposite-sign rejection, and the analytical `height * shadow_length_factor` projection length. These checks set `pure_python_verified`; `revit_runtime_direction_verified` remains `false` until the documented box case is run in Revit 2024.3. Active-view up direction is diagnostic only and must not be confused with calculated true north.
+
+The required Revit runtime check uses true north 0 degrees, a simple box above a 4 m measurement plane, and confirms: noon extends toward model +Y; 08:00/16:00 extend symmetrically northwest/northeast; all nine hourly lines appear in plan; and no 3D thickness exists. This prototype remains `permit_ready_certified=false`.
