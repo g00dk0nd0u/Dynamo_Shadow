@@ -41,8 +41,8 @@ def _new_xyz(x, y, z):
     return XYZ(float(x), float(y), float(z))
 
 
-def _build_shadow_direction(sun_slice, max_shadow_length_factor=100.0, xyz_type=None):
-    """Build a normalized model-XYZ ray; never reads shadow_direction_vector."""
+def _build_physical_shadow_ray_model(sun_slice, max_shadow_length_factor=100.0, xyz_type=None):
+    """Build the physical light ray from the sun, through the caster, downward."""
     model = (sun_slice or {}).get("shadow_direction_model") or {}
     try:
         dx, dy = float(model.get("x")), float(model.get("y"))
@@ -63,8 +63,53 @@ def _build_shadow_direction(sun_slice, max_shadow_length_factor=100.0, xyz_type=
     native = maker(*values) if maker is not None else values
     return native, {
         "source": "shadow_direction_model", "x": values[0], "y": values[1], "z": values[2],
+        "meaning": "physical_shadow_ray_model",
         "normalized": True, "true_north_rotation_already_applied": True,
     }
+
+
+def _build_extrusion_analyzer_direction(physical_ray, xyz_type=None):
+    """Convert only at the API boundary to ExtrusionAnalyzer's extrusion direction.
+
+    ExtrusionAnalyzer describes a solid extruded from the measurement plane
+    toward the source geometry.  That is the reverse of the physical downward
+    ray used to project a shadow onto the plane.
+    """
+    try: values = tuple(-float(getattr(physical_ray, key)) for key in ("X", "Y", "Z"))
+    except (TypeError, ValueError, AttributeError): return None, _failure("invalid_physical_shadow_ray_model")
+    maker = xyz_type or XYZ
+    return (maker(*values) if maker is not None else values), {
+        "x": values[0], "y": values[1], "z": values[2], "normalized": True,
+        "conversion": "negative_of_physical_shadow_ray_model_at_revit_api_boundary",
+    }
+
+
+def _build_shadow_direction(sun_slice, max_shadow_length_factor=100.0, xyz_type=None):
+    """Backward-compatible name for the physical-ray builder."""
+    return _build_physical_shadow_ray_model(sun_slice, max_shadow_length_factor, xyz_type)
+
+
+def _expected_quadrant(ray, tolerance=1e-9):
+    x, y = ray["x"], ray["y"]
+    if abs(x) <= tolerance and y > 0: return "north"
+    if x < 0 and y > 0: return "northwest"
+    if x > 0 and y > 0: return "northeast"
+    if abs(x) <= tolerance and y < 0: return "south"
+    return "other"
+
+
+def _validate_direction_contract(physical, analyzer, factor, expected_quadrant=None, tolerance=1e-9):
+    def component(value, key):
+        return float(value.get(key)) if isinstance(value, dict) else float(getattr(value, key.upper()))
+    p = {key: component(physical, key) for key in ("x","y","z")}
+    a = {key: component(analyzer, key) for key in ("x","y","z")}
+    quadrant = _expected_quadrant(p, tolerance)
+    antiparallel = all(abs(p[key] + a[key]) <= tolerance for key in p)
+    length_ok = math.isclose(math.hypot(p["x"], p["y"]) / abs(p["z"]), float(factor), rel_tol=1e-9, abs_tol=tolerance)
+    passed = p["z"] < 0 < a["z"] and antiparallel and length_ok and (expected_quadrant is None or quadrant == expected_quadrant)
+    return passed, {"quadrant": quadrant, "horizontal_projection_length_per_unit_height": math.hypot(p["x"], p["y"]) / abs(p["z"]),
+        "expected_height_times_shadow_length_factor": float(factor), "antiparallel_api_conversion": antiparallel,
+        "reason": "physical ray, API conversion, quadrant, and analytical length agree" if passed else "direction, sign, quadrant, or analytical length mismatch"}
 
 
 def _build_native_measurement_plane(measurement_plane, plane_type=None, xyz_type=None):
@@ -228,13 +273,31 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
     short_tol = settings.get("short_curve_tolerance_internal", 0.0)
     for slice_index, sun_slice in enumerate(slices):
         _runtime_checkpoint("FORMAL_SHADOW_SLICE_BEFORE", "slice_index={0}".format(slice_index))
-        direction, direction_info = _build_shadow_direction(sun_slice, max_factor)
+        physical_direction, physical_info = _build_physical_shadow_ray_model(sun_slice, max_factor)
+        direction, direction_info = (None, None)
+        if physical_direction is not None:
+            direction, direction_info = _build_extrusion_analyzer_direction(physical_direction)
+        expected = _expected_quadrant(physical_info) if physical_info else None
+        validation_passed, validation = (False, {"reason":"direction unavailable"})
+        if direction is not None:
+            validation_passed, validation = _validate_direction_contract(
+                physical_direction, direction, sun_slice.get("shadow_length_factor"), expected)
         slice_out = {"slice_index": slice_index, "input_time": sun_slice.get("input_time"), "true_solar_time": sun_slice.get("true_solar_time"),
-                     "solar_altitude_deg": sun_slice.get("solar_altitude_deg"), "shadow_azimuth_model_deg": sun_slice.get("shadow_azimuth_model_deg"),
-                     "shadow_length_factor": sun_slice.get("shadow_length_factor"), "direction": direction_info if direction is not None else None,
+                     "solar_altitude_deg": sun_slice.get("solar_altitude_deg"), "solar_azimuth_deg": sun_slice.get("solar_azimuth_deg"),
+                     "shadow_azimuth_true_north_deg": sun_slice.get("shadow_azimuth_true_north_deg"),
+                     "shadow_azimuth_model_deg": sun_slice.get("shadow_azimuth_model_deg"),
+                     "shadow_length_factor": sun_slice.get("shadow_length_factor"),
+                     "physical_shadow_ray_model": physical_info, "extrusion_analyzer_input_direction": direction_info,
+                     "expected_shadow_quadrant": expected, "actual_polygon_direction_check": validation,
+                     "direction_validation_passed": validation_passed,
+                     "direction_validation_reason": validation.get("reason"),
+                     "pure_python_verified": validation_passed, "revit_runtime_direction_verified": False,
                      "casters": [], "complete": True, "blockers": [], "warnings": []}
         if direction is None:
-            slice_out["complete"] = False; slice_out["blockers"].append(direction_info); result["slices"].append(slice_out); _runtime_checkpoint("FORMAL_SHADOW_SLICE_AFTER", "failure"); continue
+            slice_out["complete"] = False; slice_out["blockers"].append(direction_info or physical_info); result["slices"].append(slice_out); _runtime_checkpoint("FORMAL_SHADOW_SLICE_AFTER", "failure"); continue
+        if not validation_passed:
+            slice_out["complete"] = False
+            slice_out["blockers"].append({"failure_code":"direction_validation_failed", "reason":validation.get("reason")})
         for caster in split_casters:
             caster_out = {k: caster.get(k) for k in ("caster_index","element_id","source_solid_count")}
             caster_out.update({"split_solid_count":len(caster["solids"]), "complete":True, "polygons":[], "analyzers":[], "blockers":list(caster["blockers"]), "warnings":[]})
@@ -270,7 +333,8 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
                     for polygon in _classify_and_orient(extracted):
                         polygon.update({"polygon_index":len(caster_out["polygons"]), "source_solid_index":split["source_solid_index"],
                                         "split_solid_index":split["split_solid_index"], "generation_method":"revit_extrusion_analyzer_curve_loop_line_exact",
-                                        "direction_sign_validation":"primary_sign_validated_on_measurement_plane"})
+                                        "direction_validation_passed":validation_passed,
+                                        "direction_validation_reason":validation.get("reason")})
                         caster_out["polygons"].append(polygon)
                     if not extracted: ad.update(_failure("no_valid_native_line_shadow_loop"))
                 except BaseException as exc:
@@ -287,7 +351,7 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
             if caster_out["polygons"]: result["successful_slice_caster_count"] += 1
             else: result["failed_slice_caster_count"] += 1
             slice_out["casters"].append(caster_out)
-        slice_out["complete"] = bool(slice_out["casters"]) and all(c["complete"] for c in slice_out["casters"])
+        slice_out["complete"] = validation_passed and bool(slice_out["casters"]) and all(c["complete"] for c in slice_out["casters"])
         if not slice_out["complete"]: slice_out["blockers"].append({"failure_code":"one_or_more_caster_splits_failed"})
         diagnostic_slices = (diagnostic_projection or {}).get("slices") or []
         diagnostic_slice = diagnostic_slices[slice_index] if slice_index < len(diagnostic_slices) else {}

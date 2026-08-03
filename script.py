@@ -257,13 +257,13 @@ def _build_success():
     except BaseException as exc:
         formal_shadow_polygons = {"available": False, "complete": False, "partial_success": False, "engine": "revit_extrusion_analyzer_v1", "formal_geometry": True, "diagnostic_convex_hull_used_as_fallback": False, "blockers": [{"failure_code": "formal_shadow_engine_unhandled_exception", "failure_type": type(exc).__name__, "failure_message": _sanitize_text_for_debug(exc)}], "warnings": [], "slices": []}
     try:
-        shadow_preview = _build_shadow_preview(formal_shadow_polygons, measurement_plane, settings_normalized)
-    except BaseException:
-        shadow_preview = {"enabled": False, "mode": "off", "attempted": True, "available": False, "complete": False, "partial_success": False, "formal_shadow_source_available": bool(formal_shadow_polygons.get("available")), "created_element_count": 0, "deleted_element_count": 0, "created_element_ids": [], "groups": [], "warnings": ["Preview failed non-fatally; formal shadow output remains available."]}
-    try:
         unified_shadow_slices = _build_unified_shadow_slices(formal_shadow_polygons, measurement_plane, settings_normalized)
     except BaseException as exc:
         unified_shadow_slices = {"engine": "revit_boolean_solid_union_v1", "available": False, "complete": False, "partial_success": False, "ready_for_duration_accumulation": False, "slices": [], "blockers": [{"failure_code": "formal_shadow_union_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
+    try:
+        shadow_preview = _build_shadow_preview(unified_shadow_slices, measurement_plane, settings_normalized)
+    except BaseException:
+        shadow_preview = {"enabled": False, "mode": "off", "attempted": True, "available": False, "complete": False, "partial_success": False, "unified_shadow_source_available": bool(unified_shadow_slices.get("available")), "created_element_count": 0, "deleted_element_count": 0, "created_element_ids": [], "groups": [], "warnings": ["Preview failed non-fatally; unified formal shadow output remains available."]}
     pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
@@ -399,6 +399,7 @@ def _build_failure(error_text):
     shadow_projection_diagnostics = None
     shadow_projection_policy = SHADOW_PROJECTION_POLICY
     formal_shadow_polygons = None
+    unified_shadow_slices = None
     shadow_preview = None
     try:
         unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
@@ -430,8 +431,9 @@ def _build_failure(error_text):
         sun_time_slices, sun_position_diagnostics, sun_position_policy, solar_calculation_v1 = _build_sun_position_diagnostics(settings_normalized or {})
         shadow_projection_diagnostics, shadow_projection_policy = _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_plane, sun_time_slices)
         formal_shadow_polygons = _build_formal_shadow_polygons({"casters": []}, measurement_plane, sun_time_slices, settings_normalized or {}, shadow_projection_diagnostics)
-        shadow_preview = _build_shadow_preview(formal_shadow_polygons, measurement_plane, settings_normalized or {})
-        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1)
+        unified_shadow_slices = _build_unified_shadow_slices(formal_shadow_polygons, measurement_plane, settings_normalized or {})
+        shadow_preview = _build_shadow_preview(unified_shadow_slices, measurement_plane, settings_normalized or {})
+        pipeline_readiness = _build_pipeline_readiness(shadow_casters or {}, site_boundary or {}, settings_normalized or {}, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices)
     except Exception:
         pipeline_readiness = None
 

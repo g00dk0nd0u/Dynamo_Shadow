@@ -140,21 +140,19 @@ SETTINGS_DIAGNOSTIC_DEFAULTS = {
     "max_shadow_length_factor": 100.0,
     "max_formal_shadow_loop_points": 2000,
     "preview_mode": "off",
-    "preview_true_solar_times": ["08:00:00", "12:00:00", "16:00:00"],
-    "preview_thickness_mm": 10.0,
-    "preview_vertical_separation_mm": 20.0,
-    "preview_transparency": 45,
+    "preview_true_solar_times": None,
 }
 
 SHADOW_PREVIEW_POLICY = {
-    "purpose": "optional_revit_visual_qa_for_formal_shadow_polygons",
+    "purpose": "optional_revit_visual_qa_for_unified_time_shadow_lines",
     "optional": True, "default_mode": "off", "creates_revit_elements": True,
     "formal_calculation_input": False, "primary_revit_api": "Autodesk.Revit.DB.DirectShape",
-    "geometry_adapter": "GeometryCreationUtilities.CreateExtrusionGeometry",
+    "geometry_adapter": "DirectShape Curve default and optional Plan representation",
     "target_revit_version": "Revit 2024.3",
     "cleanup_ownership_method": "DirectShape.ApplicationId exact match",
     "replaces_previous_owned_preview": True,
-    "graphical_override_scope": "active_view_element_overrides_only",
+    "graphical_override_scope": "active_view projection line color and weight only",
+    "solid_or_mesh_preview_allowed": False,
     "changes_active_view": False, "changes_global_styles": False,
     "legal_output": False, "permit_ready_certified": False,
 }
