@@ -2,7 +2,7 @@
 
 Dynamo Shadow is a Dynamo/Revit diagnostic prototype for studying workflows related to Japanese Building Standard Law Article 56-2 shadow regulations.
 
-This repository is for early-stage research and review. It includes a read-only Revit `ExtrusionAnalyzer` prototype for formal per-solid, per-time-slice shadow polygons within a narrow extrusion-like/Line-loop scope. A Revit-native Boolean prototype unions those polygons once per time slice so overlapping caster shadows are counted only once while separate components and holes remain distinct. Actual two-caster validation in Revit 2024.3 remains required. An optional Revit `DirectShape` visual-QA preview draws the unioned hourly slice boundaries as zero-thickness Curves and is off by default. None of these prototypes is a legal or permit-ready output; duration accumulation, equal-time contours, formal closed site-boundary extraction, 5 m/10 m measurement lines, road/water/elevation-difference relaxations, and legal judgement remain unimplemented.
+This repository is for early-stage research and review. The current pipeline implements prototypes for formal per-solid, per-time-slice shadow polygons, Revit-native union once per time slice, and grid/trapezoidal shadow-duration accumulation v1. The formal polygon scope remains limited to extrusion-like solids and Line-loop serialization, and actual model validation in Revit 2024.3 remains required. Equal-time contour generation, formal closed site-boundary extraction, 5 m/10 m measurement lines, road/water/elevation-difference relaxations, and legal judgement remain unimplemented. These prototypes are not legal or permit-ready output, and `permit_ready_certified` remains `false`.
 
 ## Current diagnostics
 
@@ -20,7 +20,7 @@ The prototype currently focuses on input and readiness diagnostics, including:
 
 ## Preview settings
 
-Preview is visualization-only and defaults to off. The existing settings JSON input accepts, for example:
+Preview is visualization-only. The policy default is `preview_mode="off"`; the current `Shadow.dyn` initial setting is `preview_mode="replace"`. The settings JSON input accepts, for example:
 
 ```json
 {"preview_mode": "off"}
@@ -51,7 +51,8 @@ Existing Walls, Floors, Roofs, equipment, CAD imports, and topography-derived ed
 - `Shadow.dyn` is the Dynamo graph and contains the Python Node bootstrap.
 - `dynamo_loader.py` resolves workspace paths, maps Dynamo `IN[]` values to named `INPUTS`, runs `script.py`, and returns diagnostics.
 - `script.py` orchestrates imports, fallback behavior outside Dynamo, and top-level `OUT` construction.
-- `shadow_*.py` modules contain focused policies, utilities, input diagnostics, settings normalization, measurement-plane diagnostics, geometry diagnostics, footprint diagnostics, formal projection and union adapters, unit conversion, debug logging, and readiness checks.
+- `shadow_duration.py` performs grid sampling and trapezoidal duration accumulation v1.
+- Other `shadow_*.py` modules contain focused policies, utilities, input diagnostics, settings normalization, measurement-plane diagnostics, geometry diagnostics, footprint diagnostics, formal projection and union adapters, unit conversion, debug logging, and readiness checks.
 - `docs/` contains research notes, specifications, and implementation notes.
 
 ## Debug logs

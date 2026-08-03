@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-08-03-half-space-clipped-shadow-direction-v1"
+CODE_BUILD_ID = "2026-08-04-pr66-review-fixes-duration-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -168,11 +168,11 @@ FORMAL_SHADOW_PROJECTION_POLICY = {
     "loop_api": "Autodesk.Revit.DB.Face.GetEdgesAsCurveLoops",
     "target_revit_version": "2024.3",
     "supported_initial_scope": "positive-volume extrusion-like solids with exact Line loops",
-    "unsupported_initial_scope": ["non-Line serialization", "arbitrary complex solids", "2D union", "duration accumulation", "equal-time contours", "legal judgement"],
+    "unsupported_initial_scope": ["non-Line serialization", "arbitrary complex solids", "equal-time contours", "legal judgement"],
     "convex_hull_fallback_allowed": False,
     "bounding_box_used_as_shadow_geometry": False,
-    "union_performed": False,
-    "duration_accumulation_performed": False,
+    "union_performed": True,
+    "duration_accumulation_performed": True,
     "equal_time_contours_generated": False,
     "legal_judgement_generated": False,
     "permit_ready_certified": False,
@@ -252,7 +252,7 @@ SUN_POSITION_POLICY = {
     "numerical_precision": "full float internally, 6-decimal diagnostic serialization",
     "date_based_declination_calculation_supported": True,
     "date_based_equation_of_time_calculation_supported": True,
-    "not_implemented_in_this_pr": ["permit certification", "automatic Revit ProjectLocation extraction", "union", "duration accumulation", "equal-time contours", "legal judgement"],
+    "not_implemented_in_this_pr": ["permit certification", "automatic Revit ProjectLocation extraction", "equal-time contours", "legal judgement"],
 }
 
 SHADOW_PROJECTION_POLICY = {
@@ -383,6 +383,7 @@ SHADOW_CASTER_POLICY = {
     "category_detection_priority": "built_in_category_then_localized_category_name",
     "localized_category_names_are_fallback_only": True,
     "shadow_role_overrides_category": False,
+    "time_slice_union_policy": "logical_union_implemented_prototype_v1",
     "future_time_slice_union_policy": "logical_union",
     "double_count_overlapping_shadows": False,
 }
@@ -438,7 +439,7 @@ FOOTPRINT_EXTRACTION_POLICY = {
     "bounding_box_used_for_footprint": False,
     "bounding_box_used_for_shadow_geometry": False,
     "bounding_box_used_for_legal_judgement": False,
-    "same_site_multiple_buildings_awareness": "buildings_on_same_site_are_treated_as_one_building_in_future_duration_accumulation",
+    "same_site_multiple_buildings_awareness": "buildings_on_same_site_are_treated_as_one_building_by_time_slice_union_before_duration_accumulation",
     "implemented_in_this_stage": [
         "formal diagnostic footprint polygon generation from eligible Line edge loops",
         "segment loop stitching",
@@ -479,7 +480,7 @@ LAW56_2_AWARENESS_POLICY = {
     "outside_target_area_building_awareness": "building_over_10m_outside_target_area_casting_shadow_into_target_area_may_be_treated_as_in_target_area",
     "different_restriction_zones_awareness": "ordinance_and_enforcement_order_required",
     "ordinance_dependent_values": ["target_area", "applicable_building_threshold", "measurement_height_m", "allowed_shadow_duration", "selected_table_row"],
-    "not_implemented_in_this_pr": ["ordinance lookup", "target area mask", "own site exclusion", "beyond 5m judgement range", "5m/10m measurement lines", "relaxation handling", "legal OK/NG judgement", "true solar time calculation", "sun vector calculation", "shadow projection", "equal-time contour generation"],
+    "not_implemented_in_this_pr": ["ordinance lookup", "target area mask", "own site exclusion", "beyond 5m judgement range", "5m/10m measurement lines", "relaxation handling", "legal OK/NG judgement", "equal-time contour generation"],
 }
 
 MEASUREMENT_PLANE_POLICY = {

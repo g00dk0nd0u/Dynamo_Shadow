@@ -296,6 +296,19 @@ def _validate_projection_extents(source_points_m, shadow_polygons, physical_ray,
     return result
 
 
+def _aggregate_runtime_checks(checks):
+    """Return (verified, failed), preserving unexecuted checks as unverified."""
+    verified = bool(checks) and all(
+        check.get("passed") is True
+        and check.get("extent_validation_passed") is True
+        for check in checks)
+    failed = any(
+        (check.get("passed") is False and check.get("section_axis_min_m") is not None)
+        or check.get("extent_validation_passed") is False
+        for check in checks)
+    return verified, failed
+
+
 def _solid_edge_endpoints_m(solid):
     """Read clipped Solid edge endpoints for validation only; never serialize natives."""
     points = []
@@ -562,9 +575,7 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
             slice_out["casters"].append(caster_out)
         checks = [a.get("actual_polygon_direction_check") for c in slice_out["casters"]
             for a in c["analyzers"] if a.get("actual_polygon_direction_check")]
-        verified = bool(checks) and all(check.get("passed") is True and
-            check.get("extent_validation_passed") is True for check in checks)
-        failed_runtime = any(check.get("passed") is False and check.get("section_axis_min_m") is not None for check in checks)
+        verified, failed_runtime = _aggregate_runtime_checks(checks)
         slice_out["actual_polygon_direction_check"] = (checks[0] if len(checks) == 1 else {
             "passed": verified, "reason": ("all runtime polygons verified" if verified else
             ("one or more runtime polygons failed" if failed_runtime else "runtime polygon direction unverified")),

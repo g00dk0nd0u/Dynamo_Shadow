@@ -78,9 +78,14 @@ except Exception:
 # Revit 2024 exposes the plan-specific DirectShape representation, but keep it
 # optional so an older runtime cannot disable the ordinary Curve path.
 try:
-    from Autodesk.Revit.DB import DirectShapeTargetViewType, ViewShapeBuilder
+    from Autodesk.Revit.DB import DirectShapeTargetViewType
 except Exception:
-    DirectShapeTargetViewType = ViewShapeBuilder = None
+    DirectShapeTargetViewType = None
+
+try:
+    from Autodesk.Revit.DB import ViewShapeBuilder
+except Exception:
+    ViewShapeBuilder = None
 
 
 def _has_methods(value, names):
@@ -114,7 +119,13 @@ REVIT_API_CAPABILITIES = {
     "project_location_available": ProjectLocation is not None and SiteLocation is not None,
     "sun_and_shadow_settings_available": SunAndShadowSettings is not None,
     "unit_utils_available": UnitUtils is not None,
-    "direct_shape_plan_representation_available": DirectShapeTargetViewType is not None,
+    "direct_shape_target_view_type_available": DirectShapeTargetViewType is not None,
+    "view_shape_builder_available": ViewShapeBuilder is not None,
+    "direct_shape_plan_representation_available": (
+        DirectShapeTargetViewType is not None
+        and hasattr(DirectShapeTargetViewType, "Plan")
+        and ViewShapeBuilder is not None
+    ),
     "unit_type_id_available": UnitTypeId is not None,
     "legacy_display_unit_type_available": DisplayUnitType is not None,
     "native_curve_loop_path_expected": (

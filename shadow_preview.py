@@ -83,7 +83,10 @@ def _empty(config, unified, elevation):
         "active_view_is_plan": False, "active_view_is_3d": False,
         "direction_readable_as_north_up": False, "non_plan_view_warning": None,
         "view_up_direction_model": None, "true_north_direction_model": None,
-        "plan_representation_available": DirectShapeTargetViewType is not None,
+        "target_view_type_available": DirectShapeTargetViewType is not None,
+        "view_shape_builder_available": ViewShapeBuilder is not None,
+        "plan_representation_available": (DirectShapeTargetViewType is not None
+            and hasattr(DirectShapeTargetViewType, "Plan") and ViewShapeBuilder is not None),
         "graphical_overrides_attempted": False, "graphical_overrides_succeeded": False,
         "groups": [], "failure_reason_counts": {}, "warnings": list(config["warnings"]),
         "failure_stage": None, "failure_code": None, "failure_type": None, "sanitized_failure_message": None,

@@ -1,5 +1,7 @@
 import ast
 import importlib
+
+import pytest
 from pathlib import Path
 
 
@@ -16,7 +18,7 @@ OPTIONAL_NAMES = (
     "CurveLoop", "Plane", "XYZ", "SolidUtils", "ExtrusionAnalyzer",
     "BooleanOperationsUtils", "BooleanOperationsType", "ProjectLocation",
     "SiteLocation", "SunAndShadowSettings",
-    "GeometryCreationUtilities", "Line", "DirectShapeTargetViewType",
+    "GeometryCreationUtilities", "Line", "DirectShapeTargetViewType", "ViewShapeBuilder",
 )
 
 CAPABILITY_KEYS = {
@@ -40,6 +42,8 @@ CAPABILITY_KEYS = {
     "sun_frame_read_path_expected",
     "unit_type_si_ids_expected",
     "formal_shadow_union_api_available",
+    "direct_shape_target_view_type_available",
+    "view_shape_builder_available",
     "direct_shape_plan_representation_available",
 }
 
@@ -79,3 +83,46 @@ def test_revit_2024_capabilities_do_not_require_future_closure_methods():
     source = SOURCE_PATH.read_text(encoding="utf-8")
     assert "ComputeIsGeometricallyClosed" not in source
     assert "ComputeIsTopologicallyClosed" not in source
+
+
+def _execute_preview_optional_imports(available):
+    tree = ast.parse(SOURCE_PATH.read_text(encoding="utf-8"))
+    selected = []
+    for node in tree.body:
+        if not isinstance(node, ast.Try):
+            continue
+        names = {alias.name for child in node.body if isinstance(child, ast.ImportFrom)
+                 for alias in child.names}
+        if names & {"DirectShapeTargetViewType", "ViewShapeBuilder"}:
+            selected.append(node)
+    namespace = {}
+    real_import = __import__
+    class FakeDb:
+        pass
+    for name in available:
+        setattr(FakeDb, name, type(name, (), {"Plan": object()}) if name == "DirectShapeTargetViewType" else type(name, (), {}))
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "Autodesk.Revit.DB":
+            for item in fromlist:
+                if not hasattr(FakeDb, item):
+                    raise ImportError(item)
+            return FakeDb
+        return real_import(name, globals, locals, fromlist, level)
+    namespace["__builtins__"] = dict(vars(__import__("builtins")), __import__=fake_import)
+    exec(compile(ast.Module(body=selected, type_ignores=[]), str(SOURCE_PATH), "exec"), namespace)
+    target = namespace["DirectShapeTargetViewType"]
+    builder = namespace["ViewShapeBuilder"]
+    combined = target is not None and hasattr(target, "Plan") and builder is not None
+    return target, builder, combined
+
+
+@pytest.mark.parametrize("available,target,builder,combined", [
+    ({"DirectShapeTargetViewType"}, True, False, False),
+    ({"ViewShapeBuilder"}, False, True, False),
+    ({"DirectShapeTargetViewType", "ViewShapeBuilder"}, True, True, True),
+])
+def test_preview_optional_imports_are_independent(available, target, builder, combined):
+    actual_target, actual_builder, actual_combined = _execute_preview_optional_imports(available)
+    assert (actual_target is not None) is target
+    assert (actual_builder is not None) is builder
+    assert actual_combined is combined
