@@ -92,21 +92,42 @@ internal units from the configured average-ground plus measurement height, and
 the analyzer ray uses the already-rotated model-XY shadow direction. Primary
 direction-sign validation remains a required Revit runtime checkpoint; an
 opposite-sign probe may diagnose a mismatch but must never be adopted silently.
-Every analyzer and acquired curve loop is disposed deterministically.
+Every analyzer and acquired curve loop is disposed deterministically. Clipping
+retains the positive-Z half space. Independent runtime validation projects every
+clipped-Solid Edge endpoint analytically and compares the down-shadow min/max
+against `ExtrusionAnalyzer` output; direction and extent validation must both
+pass before the runtime direction is marked verified.
 
 The existing point-cloud projection and convex hull remain comparison-only
 diagnostics and are never formal fallbacks. Non-Line serialization, arbitrary
-complex-solid support, volume/caster union, duration accumulation, equal-time
-contours, and legal judgement remain unsupported. This prototype is not
+complex-solid support, equal-time contours, and legal judgement remain unsupported. This prototype is not
 permit-ready or ADS-equivalent.
+
+## Grid duration accumulation v1
+
+**Standard API considered:** Revit Boolean operations remain the primary source
+of already-unified time-slice polygons. Revit 2024.3 and Dynamo standard nodes
+do not provide the required Japanese-regulation time integration across slices.
+**Reason it was not sufficient:** neither exposes point-in-polygon temporal
+integration with outer/inner loop semantics. **Custom fallback scope:**
+`shadow_duration.py` operates only after the native union has completed, at the
+explicit pure-Python calculation-model boundary. It samples the combined bounds
+plus margin, supports multiple components and holes, and applies trapezoidal
+integration. The grid is bounded by `max_duration_grid_points`. **Supported
+Revit version:** Revit 2024.3 with Dynamo CPython3, while pure-Python tests run
+without Revit. **Known limitations:** this is a spatial and normally 30-minute
+temporal approximation; it does not generate contours or legal judgement and is
+never permit-certified.
 
 ## DirectShape visual-QA adapter
 
 The optional preview reads only the outer and inner loops from the completed
 `unified_shadow_slices` output and converts every segment to a Revit DB `Line`.
 It writes one Curve-only `DirectShape` per exact hourly slice. The ordinary
-representation is retained for 3D, and `DirectShapeTargetViewType.Plan` is
-added when the runtime supports it. It never creates a display Solid, Mesh, or
+representation is retained for 3D. When available, a
+`ViewShapeBuilder(DirectShapeTargetViewType.Plan)` validates each Curve before a
+Plan representation is set; any invalid Curve retains only the Default Curve
+representation. It never creates a display Solid, Mesh, or
 thin extrusion and is never an input to calculation.
 
 Preview DirectShapes use the exact `ApplicationId`

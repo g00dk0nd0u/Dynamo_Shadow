@@ -8,7 +8,7 @@ from shadow_policies import SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_units import _meters_to_internal_length
 from shadow_revit_api import (BuiltInCategory, ElementId, XYZ, Line, GeometryObject, DirectShape,
     DirectShapeTargetViewType, FilteredElementCollector, OverrideGraphicSettings,
-    Color, SubTransaction)
+    Color, SubTransaction, ViewShapeBuilder)
 
 try:
     from RevitServices.Persistence import DocumentManager
@@ -80,6 +80,8 @@ def _empty(config, unified, elevation):
         "failed_group_count": 0, "measurement_plane_elevation_m": elevation,
         "geometry_kind": "Curve", "all_curves_on_measurement_plane": True,
         "active_view_id": None, "active_view_type": None, "plan_north_mode": None,
+        "active_view_is_plan": False, "active_view_is_3d": False,
+        "direction_readable_as_north_up": False, "non_plan_view_warning": None,
         "view_up_direction_model": None, "true_north_direction_model": None,
         "plan_representation_available": DirectShapeTargetViewType is not None,
         "graphical_overrides_attempted": False, "graphical_overrides_succeeded": False,
@@ -205,16 +207,59 @@ def _apply_override(view, element_id, style_index):
 
 def _view_diagnostics(view, true_north_deg):
     result = {"active_view_type": None, "plan_north_mode": None, "view_up_direction_model": None,
+        "active_view_is_plan": False, "active_view_is_3d": False,
+        "direction_readable_as_north_up": False, "non_plan_view_warning": None,
         "true_north_direction_model": {"x": math.sin(math.radians(true_north_deg)), "y": math.cos(math.radians(true_north_deg)), "z": 0.0}}
     if view is None: return result
     try: result["active_view_type"] = str(view.ViewType)
     except BaseException: pass
+    view_type = (result["active_view_type"] or "").lower()
+    class_name = type(view).__name__.lower()
+    result["active_view_is_3d"] = "three" in view_type or "3d" in view_type or "view3d" in class_name
+    result["active_view_is_plan"] = ("plan" in view_type or "viewplan" in class_name) and not result["active_view_is_3d"]
     try:
         up = view.UpDirection; result["view_up_direction_model"] = {"x": float(up.X), "y": float(up.Y), "z": float(up.Z)}
     except BaseException: pass
-    try: result["plan_north_mode"] = str(view.GetOrientation())
-    except BaseException: pass
+    if result["active_view_is_plan"]:
+        try: result["plan_north_mode"] = str(view.GetOrientation())
+        except BaseException: pass
+    else:
+        result["non_plan_view_warning"] = "Active view is not a Plan view; Plan North mode is not applicable."
+    up = result.get("view_up_direction_model"); north = result["true_north_direction_model"]
+    if result["active_view_is_plan"] and up:
+        result["direction_readable_as_north_up"] = (up["x"]*north["x"] + up["y"]*north["y"]) >= 0.999
     return result
+
+
+def _set_plan_curve_representation(shape, curves, diag):
+    diag["invalid_plan_curve_indices"] = []
+    if ViewShapeBuilder is None or DirectShapeTargetViewType is None or not hasattr(DirectShapeTargetViewType, "Plan"):
+        diag["plan_representation_set"] = False; return
+    builder = None
+    try:
+        builder = ViewShapeBuilder(DirectShapeTargetViewType.Plan)
+        for index, curve in enumerate(curves):
+            try:
+                valid = bool(builder.ValidateCurve(curve))
+            except BaseException as exc:
+                valid = False; reason = type(exc).__name__ + ": " + _safe_message(exc)
+            else: reason = "ValidateCurve returned false"
+            if not valid:
+                diag["invalid_plan_curve_indices"].append({"index": index, "reason": reason}); continue
+            builder.AddCurve(curve)
+        if diag["invalid_plan_curve_indices"]:
+            diag["plan_representation_set"] = False
+            diag["warnings"].append("One or more Plan curves were invalid; Default Curve representation retained."); return
+        shape.SetShape(builder.Build(), DirectShapeTargetViewType.Plan)
+        diag["plan_representation_set"] = True
+    except BaseException as exc:
+        diag["plan_representation_set"] = False; diag["plan_representation_failure_type"] = type(exc).__name__
+        diag["plan_representation_failure_message"] = _safe_message(exc)
+        diag["warnings"].append("Plan Curve representation failed; Default Curve representation retained.")
+    finally:
+        if builder is not None:
+            try: builder.Dispose()
+            except BaseException: pass
 
 
 def _screen_relative(ray, view_up):
@@ -268,22 +313,7 @@ def build_shadow_preview(unified_shadow_slices, measurement_plane, settings):
                     curves = _curves(group["polygons"], elevation, short); diag["curve_count"] = len(curves)
                     shape = DirectShape.CreateElement(document, ElementId(BuiltInCategory.OST_GenericModel))
                     shape.SetShape(curves)
-                    if DirectShapeTargetViewType is not None and hasattr(DirectShapeTargetViewType, "Plan"):
-                        try:
-                            plan_curves = _geometry_object_list(curves)
-                            diag["plan_representation_valid"] = bool(shape.IsValidShape(plan_curves, DirectShapeTargetViewType.Plan))
-                            if diag["plan_representation_valid"]:
-                                shape.SetShape(plan_curves, DirectShapeTargetViewType.Plan)
-                                diag["plan_representation_set"] = True
-                            else:
-                                diag["plan_representation_set"] = False
-                                diag["warnings"].append("Plan Curve representation is invalid; Default Curve representation retained.")
-                        except BaseException as exc:
-                            diag["plan_representation_set"] = False
-                            diag["plan_representation_failure_type"] = type(exc).__name__
-                            diag["plan_representation_failure_message"] = _safe_message(exc)
-                            diag["warnings"].append("Plan Curve representation failed; Default Curve representation retained.")
-                    else: diag["plan_representation_set"] = False
+                    _set_plan_curve_representation(shape, curves, diag)
                     shape.Name = _preview_element_name(group); shape.ApplicationId = APPLICATION_ID
                     shape.ApplicationDataId = "true_solar_time=%s;slice_index=%s;output_kind=time_shadow_line" % (group["true_solar_time"], group["slice_index"])
                     diag["element_id"] = _element_id(shape); diag["direct_shape_created"] = True; result["created_element_ids"].append(diag["element_id"])

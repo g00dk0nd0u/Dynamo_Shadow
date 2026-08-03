@@ -1,7 +1,7 @@
 # Pipeline readiness diagnostics.
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None):
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
@@ -80,6 +80,8 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "formal_shadow_union_complete": union_complete,
         "blockers_for_formal_shadow_union": list(union.get("blockers") or []),
         "ready_for_duration_accumulation": duration_ready,
+        "shadow_duration_accumulation_complete": (shadow_duration or {}).get("complete") is True,
+        "ready_for_equal_time_contour_generation": (shadow_duration or {}).get("ready_for_equal_time_contour_generation") is True,
         "blockers_for_equal_time_shadow": blockers_equal,
         "blockers_for_footprint_extraction": blockers_fp,
         "blockers_for_future_footprint_polygon_generation": blockers_fp,
@@ -88,6 +90,6 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "blockers_for_future_shadow_projection": blockers_projection,
         "blockers_for_legal_judgement_masks": blockers_legal,
         "blockers_for_boundary_dependent_steps": blockers_boundary,
-        "info": ["ready_for_duration_accumulation confirms complete formal solar, projection, and native per-slice union inputs only; accumulation, contours, and legal masks remain unimplemented."],
-        "next_implementation_steps": ["optional site boundary loop extraction", "legal judgement mask preparation", "shadow duration accumulation", "equal-time contour generation", "site clipping", "own-site exclusion", "5m / 10m legal lines", "legal judgement report"],
+        "info": ["Duration accumulation is a grid/trapezoidal numerical approximation; site_boundary is required only for later legal judgement."],
+        "next_implementation_steps": ["shadow duration accumulation", "equal-time contour generation", "site boundary", "5m / 10m lines", "legal judgement"],
     }

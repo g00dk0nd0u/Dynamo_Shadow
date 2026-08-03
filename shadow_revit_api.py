@@ -78,9 +78,9 @@ except Exception:
 # Revit 2024 exposes the plan-specific DirectShape representation, but keep it
 # optional so an older runtime cannot disable the ordinary Curve path.
 try:
-    from Autodesk.Revit.DB import DirectShapeTargetViewType
+    from Autodesk.Revit.DB import DirectShapeTargetViewType, ViewShapeBuilder
 except Exception:
-    DirectShapeTargetViewType = None
+    DirectShapeTargetViewType = ViewShapeBuilder = None
 
 
 def _has_methods(value, names):

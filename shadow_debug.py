@@ -362,7 +362,7 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
     vector_contract_passed = runtime_verified = runtime_failed = runtime_unverified = 0
     analyzer_ok = analyzer_fail = analyzer_dispose_fail = native_loops = line_loops = non_line_loops = 0
     outer = inner = failed_slices = failed_caster_slices = comparisons = 0
-    per_slice = []
+    per_slice = []; clip_diagnostics = []
     for item in (formal.get("slices") or [])[:17]:
         if (item.get("direction_vector_contract_check") or {}).get("antiparallel_api_conversion") is True:
             vector_contract_passed += 1
@@ -371,6 +371,7 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
         elif runtime_check.get("section_axis_min_m") is not None or runtime_check.get("reason") == "one or more runtime polygons failed": runtime_failed += 1
         else: runtime_unverified += 1
         polygons = 0; failed_casters = 0
+        analyzer_rows = []
         for caster in item.get("casters") or []:
             cps = caster.get("polygons") or []; polygons += len(cps)
             if not cps: failed_casters += 1; failed_caster_slices += 1
@@ -383,12 +384,34 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
             for blocker in caster.get("blockers") or []:
                 code = blocker.get("failure_code") if isinstance(blocker, dict) else str(blocker); reason_counts[code] = reason_counts.get(code, 0) + 1
             for analyzer in caster.get("analyzers") or []:
+                analyzer_rows.append(analyzer)
+                clip_diagnostics.append({key: analyzer.get(key) for key in (
+                    "measurement_plane_elevation_m", "source_volume_m3", "clipped_volume_m3",
+                    "below_plane_volume_removed_m3", "clipped_component_count", "clipped_min_z_m",
+                    "clipped_max_z_m", "retained_side", "disposal_succeeded")})
                 if analyzer.get("create_succeeded"): analyzer_ok += 1
                 else: analyzer_fail += 1
                 if analyzer.get("dispose_attempted") and not analyzer.get("dispose_succeeded"): analyzer_dispose_fail += 1
         if not item.get("complete"): failed_slices += 1
         if item.get("comparison"): comparisons += 1
-        per_slice.append({"slice_index": _debug_int(item.get("slice_index")), "complete": bool(item.get("complete")), "polygon_count": polygons, "failed_caster_count": failed_casters})
+        formal_area = sum(float(p.get("area_m2") or 0.0) * (-1 if p.get("role") == "inner" else 1)
+            for caster in item.get("casters") or [] for p in caster.get("polygons") or [])
+        check = item.get("actual_polygon_direction_check") or {}
+        if check.get("checks"): check = check["checks"][0]
+        per_slice.append({"slice_index": _debug_int(item.get("slice_index")), "complete": bool(item.get("complete")),
+            "true_solar_time": item.get("true_solar_time"), "solar_altitude_deg": item.get("solar_altitude_deg"),
+            "solar_azimuth_deg": item.get("solar_azimuth_deg"), "shadow_length_factor": item.get("shadow_length_factor"),
+            "formal_area_m2": formal_area, "analyzer_start_parameter_m": analyzer_rows[0].get("analyzer_start_parameter_m") if analyzer_rows else None,
+            "analyzer_end_parameter_m": analyzer_rows[0].get("analyzer_end_parameter_m") if analyzer_rows else None,
+            "section_axis_min_m": check.get("section_axis_min_m"), "section_axis_max_m": check.get("section_axis_max_m"),
+            "shadow_axis_min_m": check.get("shadow_axis_min_m"), "shadow_axis_max_m": check.get("shadow_axis_max_m"),
+            "sunward_overflow_m": check.get("sunward_overflow_m"), "downshadow_extension_m": check.get("downshadow_extension_m"),
+            "expected_shadow_axis_min_m": check.get("expected_shadow_axis_min_m"), "expected_shadow_axis_max_m": check.get("expected_shadow_axis_max_m"),
+            "actual_shadow_axis_min_m": check.get("actual_shadow_axis_min_m"), "actual_shadow_axis_max_m": check.get("actual_shadow_axis_max_m"),
+            "extent_error_min_m": check.get("extent_error_min_m"), "extent_error_max_m": check.get("extent_error_max_m"),
+            "extent_validation_tolerance_m": check.get("extent_validation_tolerance_m"), "extent_validation_passed": check.get("extent_validation_passed"),
+            "actual_polygon_direction_check": check, "revit_runtime_direction_verified": item.get("revit_runtime_direction_verified"),
+            "polygon_count": polygons, "failed_caster_count": failed_casters})
     areas = [x for x in areas if x is not None]; point_counts = [x for x in point_counts if x is not None]
     return _sanitize_for_debug({
         "available": bool(formal.get("available")), "complete": bool(formal.get("complete")), "partial_success": bool(formal.get("partial_success")),
@@ -401,7 +424,8 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
         "runtime_polygon_direction_verified_count": runtime_verified,
         "runtime_polygon_direction_failed_count": runtime_failed,
         "runtime_polygon_direction_unverified_count": runtime_unverified,
-        "failure_reason_counts": reason_counts, "per_slice": per_slice,
+        "failure_reason_counts": reason_counts, "runtime_validation_per_slice": per_slice,
+        "clip_diagnostics": clip_diagnostics,
         "minimum_area_m2": min(areas) if areas else None, "maximum_area_m2": max(areas) if areas else None,
         "minimum_point_count": min(point_counts) if point_counts else None, "maximum_point_count": max(point_counts) if point_counts else None,
         "diagnostic_convex_hull_comparison_count": comparisons,
@@ -425,6 +449,13 @@ def _unified_shadow_summary(union):
         "ready_for_duration_accumulation": bool(union.get("ready_for_duration_accumulation")),
         "blockers": union.get("blockers") or [], "warnings": union.get("warnings") or [],
     })
+
+def _duration_summary(duration):
+    value = duration if isinstance(duration, dict) else {}
+    return _sanitize_for_debug({key: value.get(key) for key in (
+        "available", "complete", "method", "temporal_step_minutes", "spatial_resolution_m",
+        "grid_point_count", "maximum_shadow_duration_minutes", "shadowed_point_count",
+        "ready_for_equal_time_contour_generation", "permit_ready_certified", "blockers", "warnings")})
 
 def _summarize_out_for_debug(out_payload):
     out_payload = out_payload or {}
@@ -452,6 +483,7 @@ def _summarize_out_for_debug(out_payload):
         "formal_footprint_summary": _formal_footprint_debug_summary(out_payload.get("footprint_extraction")),
         "formal_shadow_polygon_summary": _formal_shadow_polygon_debug_summary(out_payload.get("formal_shadow_polygons")),
         "unified_shadow_summary": _unified_shadow_summary(out_payload.get("unified_shadow_slices")),
+        "shadow_duration_summary": _duration_summary(out_payload.get("shadow_duration")),
         "shadow_preview": _sanitize_for_debug(out_payload.get("shadow_preview")),
         "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
         "solar_specification_summary": _solar_specification_debug_summary(out_payload.get("solar_calculation_v1")),
@@ -467,7 +499,8 @@ def _summarize_out_for_debug(out_payload):
                                          if item not in ("formal footprint polygon generation",
                                              "formal model-coordinate shadow direction calculation",
                                              "formal time-slice shadow projection per caster",
-                                             "logical union of shadows per time slice")],
+                                             "logical union of shadows per time slice",
+                                             "shadow duration accumulation without double counting")],
         }),
     }
 
@@ -491,6 +524,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "formal_footprint_summary": summary["formal_footprint_summary"],
         "formal_shadow_polygon_summary": summary["formal_shadow_polygon_summary"],
         "unified_shadow_summary": summary["unified_shadow_summary"],
+        "shadow_duration_summary": summary["shadow_duration_summary"],
         "shadow_preview": summary["shadow_preview"],
         "solar_calculation_summary": summary["solar_calculation_summary"],
         "solar_specification_summary": summary["solar_specification_summary"],

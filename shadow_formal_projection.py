@@ -264,6 +264,56 @@ def _validate_actual_polygon_direction(section_polygons, shadow_polygons, physic
     return result
 
 
+def _validate_projection_extents(source_points_m, shadow_polygons, physical_ray,
+                                 shadow_length_factor, measurement_plane_z_m,
+                                 tolerance_m=1e-6):
+    """Independently compare analytical endpoint projection with analyzer output."""
+    result = {"expected_shadow_axis_min_m": None, "expected_shadow_axis_max_m": None,
+        "actual_shadow_axis_min_m": None, "actual_shadow_axis_max_m": None,
+        "extent_error_min_m": None, "extent_error_max_m": None,
+        "extent_validation_tolerance_m": float(tolerance_m),
+        "extent_validation_passed": False}
+    try:
+        dx, dy = float(physical_ray["x"]), float(physical_ray["y"])
+        axis_length = math.hypot(dx, dy)
+        axis = (dx / axis_length, dy / axis_length)
+        factor = float(shadow_length_factor); plane_z = float(measurement_plane_z_m)
+        expected = [float(p["x"]) * axis[0] + float(p["y"]) * axis[1]
+            + (float(p["z"]) - plane_z) * factor for p in source_points_m]
+        actual = [float(p["x"]) * axis[0] + float(p["y"]) * axis[1]
+            for polygon in shadow_polygons for p in polygon.get("points_m", [])]
+    except (TypeError, ValueError, KeyError, ZeroDivisionError, OverflowError):
+        return result
+    if not expected or not actual:
+        return result
+    result.update({"expected_shadow_axis_min_m": min(expected),
+        "expected_shadow_axis_max_m": max(expected), "actual_shadow_axis_min_m": min(actual),
+        "actual_shadow_axis_max_m": max(actual)})
+    result["extent_error_min_m"] = result["actual_shadow_axis_min_m"] - result["expected_shadow_axis_min_m"]
+    result["extent_error_max_m"] = result["actual_shadow_axis_max_m"] - result["expected_shadow_axis_max_m"]
+    result["extent_validation_passed"] = (abs(result["extent_error_min_m"]) <= float(tolerance_m)
+        and abs(result["extent_error_max_m"]) <= float(tolerance_m))
+    return result
+
+
+def _solid_edge_endpoints_m(solid):
+    """Read clipped Solid edge endpoints for validation only; never serialize natives."""
+    points = []
+    try: edges = list(getattr(solid, "Edges"))
+    except BaseException: return points
+    for edge in edges:
+        try:
+            curve = edge.AsCurve()
+            for index in (0, 1):
+                x, y, z = _xyz_components(curve.GetEndPoint(index))
+                mx, _ = _internal_length_to_meters(x); my, _ = _internal_length_to_meters(y)
+                mz, _ = _internal_length_to_meters(z)
+                points.append({"x": mx, "y": my, "z": mz})
+        except BaseException:
+            continue
+    return points
+
+
 def _measurement_section_polygons(solid, measurement_z_internal, settings, short_tolerance):
     """Read the horizontal face introduced by the half-space cut."""
     polygons = []
@@ -336,6 +386,8 @@ def _split_and_clip_runtime_geometry(runtime_geometry, native_plane, measurement
                     "half_space_clip_attempted": True, "half_space_clip_succeeded": False,
                     "source_volume_m3": source_volume_m3, "clipped_volume_m3": None,
                     "below_plane_volume_removed_m3": None, "clipped_component_count": 0,
+                    "clipped_min_z_m": None, "clipped_max_z_m": None,
+                    "retained_side": "positive_z_above_measurement_plane", "disposal_succeeded": None,
                     "analyzer_input_geometry": "clipped_above_measurement_plane",
                     "skipped_because_not_above_measurement_plane": False}
                 try:
@@ -359,6 +411,9 @@ def _split_and_clip_runtime_geometry(runtime_geometry, native_plane, measurement
                         component_raw, _ = _volume_m3(component)
                         if component_raw is not None and component_raw > 0.0: positive.append(component)
                     clip["clipped_component_count"] = len(positive)
+                    endpoint_z = [p["z"] for component in positive for p in _solid_edge_endpoints_m(component)]
+                    clip["clipped_min_z_m"] = min(endpoint_z) if endpoint_z else None
+                    clip["clipped_max_z_m"] = max(endpoint_z) if endpoint_z else None
                     clip["skipped_because_not_above_measurement_plane"] = not positive
                     output["solids"].append(dict(clip, source_solid_index=si,
                         split_solid_index=split_index, components=positive))
@@ -449,6 +504,7 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
                         try: ad[key] = float(getattr(analyzer,name)()); ad[key.replace("internal","m")], _ = _internal_length_to_meters(ad[key])
                         except BaseException: ad[key] = ad[key.replace("internal","m")] = None
                     ad["analyzer_start_parameter_m"] = ad.get("start_parameter_m")
+                    ad["analyzer_end_parameter_m"] = ad.get("end_parameter_m")
                     tolerance_m = float(settings.get("closure_tolerance_m", 1e-6) or 1e-6)
                     ad["analyzer_start_parameter_nonnegative"] = (ad.get("start_parameter_m") is not None
                         and ad["start_parameter_m"] >= -tolerance_m)
@@ -476,6 +532,10 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
                         plane_diag["elevation_internal"], settings, short_tol)
                     polygon_check = _validate_actual_polygon_direction(section, classified,
                         physical_info, tolerance_m)
+                    extent_check = _validate_projection_extents(_solid_edge_endpoints_m(component),
+                        classified, physical_info, sun_slice.get("shadow_length_factor"),
+                        (measurement_plane or {}).get("elevation_m"), tolerance_m)
+                    polygon_check.update(extent_check)
                     for polygon in classified:
                         polygon.update({"polygon_index":len(caster_out["polygons"]), "source_solid_index":split["source_solid_index"],
                                         "split_solid_index":split["split_solid_index"], "generation_method":"revit_extrusion_analyzer_curve_loop_line_exact",
@@ -502,7 +562,8 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
             slice_out["casters"].append(caster_out)
         checks = [a.get("actual_polygon_direction_check") for c in slice_out["casters"]
             for a in c["analyzers"] if a.get("actual_polygon_direction_check")]
-        verified = bool(checks) and all(check.get("passed") is True for check in checks)
+        verified = bool(checks) and all(check.get("passed") is True and
+            check.get("extent_validation_passed") is True for check in checks)
         failed_runtime = any(check.get("passed") is False and check.get("section_axis_min_m") is not None for check in checks)
         slice_out["actual_polygon_direction_check"] = (checks[0] if len(checks) == 1 else {
             "passed": verified, "reason": ("all runtime polygons verified" if verified else
@@ -535,6 +596,11 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
     result["complete"] = bool(result["slices"]) and all(s["complete"] for s in result["slices"])
     result["partial_success"] = result["available"] and not result["complete"]
     result["owned_solid_disposal"] = _dispose_owned_solids(owned_solids)
+    disposal_succeeded = all(item.get("dispose_succeeded") is True
+        for item in result["owned_solid_disposal"])
+    for caster in split_casters:
+        for split in caster.get("solids") or []:
+            split["disposal_succeeded"] = disposal_succeeded
     _runtime_checkpoint("FORMAL_SHADOW_END", "ok" if result["available"] else "failure")
     return result
 
