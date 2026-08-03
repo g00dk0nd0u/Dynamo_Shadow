@@ -8,7 +8,7 @@ SOURCE_PATH = Path(__file__).resolve().parents[1] / "shadow_revit_api.py"
 
 CORE_NAMES = (
     "BuiltInCategory", "Options", "Solid", "GeometryInstance", "Face",
-    "PlanarFace", "Edge", "Curve", "Mesh", "UnitUtils", "Element",
+    "PlanarFace", "Edge", "Curve", "GeometryObject", "Mesh", "UnitUtils", "Element",
     "ElementId", "UnitTypeId", "DisplayUnitType",
 )
 
@@ -28,6 +28,7 @@ CAPABILITY_KEYS = {
     "solid_utils_split_volumes_expected",
     "extrusion_analyzer_available",
     "boolean_operations_available",
+    "boolean_cut_with_half_space_available",
     "project_location_available",
     "sun_and_shadow_settings_available",
     "unit_utils_available",

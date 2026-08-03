@@ -94,3 +94,36 @@ def test_box_projection_length_is_height_times_shadow_factor():
     height=7.0
     projected=height*math.hypot(physical.X,physical.Y)/abs(physical.Z)
     assert projected == pytest.approx(height*2.5)
+
+
+def test_runtime_polygon_direction_rejects_sunward_extension():
+    section = [{"points_m":[{"x":0,"y":0},{"x":1,"y":0},{"x":1,"y":1},{"x":0,"y":1}]}]
+    correct = [{"points_m":[{"x":0,"y":0},{"x":1,"y":0},{"x":1,"y":5},{"x":0,"y":5}]}]
+    wrong = [{"points_m":[{"x":0,"y":-4},{"x":1,"y":-4},{"x":1,"y":1},{"x":0,"y":1}]}]
+    ray = {"x":0,"y":1,"z":-1}
+    assert formal._validate_actual_polygon_direction(section, correct, ray)["passed"] is True
+    failed = formal._validate_actual_polygon_direction(section, wrong, ray)
+    assert failed["passed"] is False and failed["sunward_overflow_m"] == 4
+
+
+def test_half_space_clip_precedes_resplit_and_disposes_owned_solids(monkeypatch):
+    calls=[]
+    class Solid:
+        def __init__(self, volume, name): self.Volume,self.name,self.disposed=volume,name,False
+        def Dispose(self): self.disposed=True; calls.append("dispose:"+self.name)
+    source=Solid(10,"source"); first=Solid(10,"first"); clipped=Solid(6,"clipped"); component=Solid(6,"component")
+    class SU:
+        @staticmethod
+        def SplitVolumes(value):
+            calls.append("split:"+value.name)
+            return [first] if value is source else [component]
+    class BO:
+        @staticmethod
+        def CutWithHalfSpace(value, plane): calls.append("cut:"+value.name); return clipped
+    monkeypatch.setattr(formal,"SolidUtils",SU); monkeypatch.setattr(formal,"BooleanOperationsUtils",BO)
+    casters,_,count,owned=formal._split_and_clip_runtime_geometry(
+        {"casters":[{"caster_index":0,"solids":[{"solid_index":0,"native_solid":source}]}]}, object(), 4)
+    assert calls[:3] == ["split:source","cut:first","split:clipped"]
+    assert casters[0]["solids"][0]["components"] == [component] and count == 1
+    formal._dispose_owned_solids(owned)
+    assert not source.disposed and all(x.disposed for x in (first,clipped,component))
