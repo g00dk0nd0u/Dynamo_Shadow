@@ -1,5 +1,96 @@
 {
   "debug_schema_version": "v1",
+  "equal_time_contour_preview": {
+    "blockers": [],
+    "complete": false,
+    "created_element_count": 0,
+    "deleted_element_count": 0,
+    "groups": [],
+    "mode": "off",
+    "warnings": []
+  },
+  "equal_time_contour_summary": {
+    "available": true,
+    "blockers": [],
+    "closed_contour_count": 8,
+    "complete": true,
+    "contour_count": 8,
+    "generated_levels_minutes": [
+      60.0,
+      120.0,
+      180.0,
+      240.0,
+      300.0,
+      360.0,
+      420.0,
+      480.0
+    ],
+    "method": "marching_squares_linear_interpolation_v1",
+    "open_contour_count": 0,
+    "per_level": {
+      "120.0": {
+        "closed_count": 1,
+        "contour_count": 1,
+        "open_count": 0,
+        "point_count": 202
+      },
+      "180.0": {
+        "closed_count": 1,
+        "contour_count": 1,
+        "open_count": 0,
+        "point_count": 168
+      },
+      "240.0": {
+        "closed_count": 1,
+        "contour_count": 1,
+        "open_count": 0,
+        "point_count": 144
+      },
+      "300.0": {
+        "closed_count": 1,
+        "contour_count": 1,
+        "open_count": 0,
+        "point_count": 142
+      },
+      "360.0": {
+        "closed_count": 1,
+        "contour_count": 1,
+        "open_count": 0,
+        "point_count": 140
+      },
+      "420.0": {
+        "closed_count": 1,
+        "contour_count": 1,
+        "open_count": 0,
+        "point_count": 136
+      },
+      "480.0": {
+        "closed_count": 1,
+        "contour_count": 1,
+        "open_count": 0,
+        "point_count": 104
+      },
+      "60.0": {
+        "closed_count": 1,
+        "contour_count": 1,
+        "open_count": 0,
+        "point_count": 263
+      }
+    },
+    "requested_levels_minutes": [
+      60.0,
+      120.0,
+      180.0,
+      240.0,
+      300.0,
+      360.0,
+      420.0,
+      480.0
+    ],
+    "warnings": [
+      "Contour levels are technical/diagnostic time levels, not statutory thresholds."
+    ]
+  },
   "error_summary": null,
   "footprint_extraction_summary": {
     "closed_loop_candidate_count": 1,
@@ -39,8 +130,8 @@
     "invalid_reason_counts": {},
     "items": [
       {
-        "area_m2": 9134.272549084086,
-        "area_m2_signed": 9134.272549084086,
+        "area_m2": 591.5388023533851,
+        "area_m2_signed": 591.5388023533851,
         "classification_group_key": [
           0,
           1
@@ -88,6 +179,195 @@
     "analyzer_dispose_failure_count": 0,
     "available": true,
     "caster_count": 1,
+    "clip_diagnostics": [
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      },
+      {
+        "below_plane_volume_removed_m3": 2366.155209413524,
+        "clipped_component_count": 1,
+        "clipped_max_z_m": 14.307367774348256,
+        "clipped_min_z_m": 4.0,
+        "clipped_volume_m3": 6097.207988653805,
+        "disposal_succeeded": null,
+        "measurement_plane_elevation_m": 4.0,
+        "retained_side": "positive_z_above_measurement_plane",
+        "source_volume_m3": 8463.363198067329
+      }
+    ],
     "complete": true,
     "diagnostic_convex_hull_comparison_count": 17,
     "engine": "revit_extrusion_analyzer_v1",
@@ -95,124 +375,943 @@
     "failed_slice_count": 0,
     "failure_reason_counts": {},
     "inner_loop_count": 0,
-    "maximum_area_m2": 31809.22705608861,
+    "maximum_area_m2": 3223.4233063064967,
     "maximum_point_count": 14,
-    "minimum_area_m2": 13600.814431381643,
+    "minimum_area_m2": 1150.8393885093392,
     "minimum_point_count": 12,
     "native_line_loop_count": 17,
     "native_loop_count": 17,
     "native_non_line_loop_count": 0,
     "outer_loop_count": 17,
     "partial_success": false,
-    "per_slice": [
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 0
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 1
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 2
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 3
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 4
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 5
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 6
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 7
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 8
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 9
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 10
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 11
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 12
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 13
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 14
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 15
-      },
-      {
-        "complete": true,
-        "failed_caster_count": 0,
-        "polygon_count": 1,
-        "slice_index": 16
-      }
-    ],
     "polygon_count": 17,
     "prototype_scope": "positive_volume_extrusion_like_solids_line_loops",
     "runtime_polygon_direction_failed_count": 0,
     "runtime_polygon_direction_unverified_count": 0,
     "runtime_polygon_direction_verified_count": 17,
+    "runtime_projection_extent_failed_count": 0,
+    "runtime_projection_extent_unverified_count": 0,
+    "runtime_projection_validation_attempted_count": 17,
+    "runtime_validation_per_slice": [
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -132.93611549564446,
+          "actual_shadow_axis_min_m": -239.29157867251868,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 72.57425630667038,
+          "expected_shadow_axis_max_m": -132.93611549564446,
+          "expected_shadow_axis_min_m": -239.29157867251868,
+          "extent_error_max_m": 0.0,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -205.51037180231484,
+          "section_axis_min_m": -239.29157867251868,
+          "shadow_axis_max_m": -132.93611549564446,
+          "shadow_axis_min_m": -239.29157867251868,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -132.93611549564446,
+        "actual_shadow_axis_min_m": -239.29157867251868,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 72.57425630667038,
+        "expected_shadow_axis_max_m": -132.93611549564446,
+        "expected_shadow_axis_min_m": -239.29157867251868,
+        "extent_error_max_m": 0.0,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 3223.4233063064967,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -205.51037180231484,
+        "section_axis_min_m": -239.29157867251868,
+        "shadow_axis_max_m": -132.93611549564446,
+        "shadow_axis_min_m": -239.29157867251868,
+        "shadow_length_factor": 7.041007742760913,
+        "slice_index": 0,
+        "solar_altitude_deg": 8.083379,
+        "solar_azimuth_deg": 126.626834,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "08:00:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -164.5383645736818,
+          "actual_shadow_axis_min_m": -243.64163750957357,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 45.34223828674811,
+          "expected_shadow_axis_max_m": -164.53836457368183,
+          "expected_shadow_axis_min_m": -243.64163750957357,
+          "extent_error_max_m": 2.842170943040401e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -209.88060286042992,
+          "section_axis_min_m": -243.64163750957357,
+          "shadow_axis_max_m": -164.5383645736818,
+          "shadow_axis_min_m": -243.64163750957357,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -164.5383645736818,
+        "actual_shadow_axis_min_m": -243.64163750957357,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 45.34223828674811,
+        "expected_shadow_axis_max_m": -164.53836457368183,
+        "expected_shadow_axis_min_m": -243.64163750957357,
+        "extent_error_max_m": 2.842170943040401e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 2288.1188693673057,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -209.88060286042992,
+        "section_axis_min_m": -243.64163750957357,
+        "shadow_axis_max_m": -164.5383645736818,
+        "shadow_axis_min_m": -243.64163750957357,
+        "shadow_length_factor": 4.399012364688338,
+        "slice_index": 1,
+        "solar_altitude_deg": 12.807046,
+        "solar_azimuth_deg": 131.715396,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "08:30:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -179.36021315247558,
+          "actual_shadow_axis_min_m": -246.18858404681924,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 33.39022460584053,
+          "expected_shadow_axis_max_m": -179.3602131524756,
+          "expected_shadow_axis_min_m": -246.18858404681924,
+          "extent_error_max_m": 2.842170943040401e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -212.7504377583161,
+          "section_axis_min_m": -246.18858404681924,
+          "shadow_axis_max_m": -179.36021315247558,
+          "shadow_axis_min_m": -246.18858404681924,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -179.36021315247558,
+        "actual_shadow_axis_min_m": -246.18858404681924,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 33.39022460584053,
+        "expected_shadow_axis_max_m": -179.3602131524756,
+        "expected_shadow_axis_min_m": -246.18858404681924,
+        "extent_error_max_m": 2.842170943040401e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1869.929498327354,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -212.7504377583161,
+        "section_axis_min_m": -246.18858404681924,
+        "shadow_axis_max_m": -179.36021315247558,
+        "shadow_axis_min_m": -246.18858404681924,
+        "shadow_length_factor": 3.239452141111924,
+        "slice_index": 2,
+        "solar_altitude_deg": 17.155152,
+        "solar_azimuth_deg": 137.237045,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "09:00:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -186.8528524473216,
+          "actual_shadow_axis_min_m": -246.36543220092577,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 26.777203340249628,
+          "expected_shadow_axis_max_m": -186.85285244732162,
+          "expected_shadow_axis_min_m": -246.36543220092577,
+          "extent_error_max_m": 2.842170943040401e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -213.63005578757122,
+          "section_axis_min_m": -246.36543220092577,
+          "shadow_axis_max_m": -186.8528524473216,
+          "shadow_axis_min_m": -246.36543220092577,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -186.8528524473216,
+        "actual_shadow_axis_min_m": -246.36543220092577,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 26.777203340249628,
+        "expected_shadow_axis_max_m": -186.85285244732162,
+        "expected_shadow_axis_min_m": -246.36543220092577,
+        "extent_error_max_m": 2.842170943040401e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1630.268496899631,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -213.63005578757122,
+        "section_axis_min_m": -246.36543220092577,
+        "shadow_axis_max_m": -186.8528524473216,
+        "shadow_axis_min_m": -246.36543220092577,
+        "shadow_length_factor": 2.597870176602169,
+        "slice_index": 3,
+        "solar_altitude_deg": 21.053248,
+        "solar_azimuth_deg": 143.238943,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "09:30:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -189.23386758260665,
+          "actual_shadow_axis_min_m": -243.50507150340428,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 22.703258368987633,
+          "expected_shadow_axis_max_m": -189.23386758260665,
+          "expected_shadow_axis_min_m": -243.50507150340428,
+          "extent_error_max_m": 0.0,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -211.93712595159428,
+          "section_axis_min_m": -243.50507150340428,
+          "shadow_axis_max_m": -189.23386758260665,
+          "shadow_axis_min_m": -243.50507150340428,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -189.23386758260665,
+        "actual_shadow_axis_min_m": -243.50507150340428,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 22.703258368987633,
+        "expected_shadow_axis_max_m": -189.23386758260665,
+        "expected_shadow_axis_min_m": -243.50507150340428,
+        "extent_error_max_m": 0.0,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1473.125737298271,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -211.93712595159428,
+        "section_axis_min_m": -243.50507150340428,
+        "shadow_axis_max_m": -189.23386758260665,
+        "shadow_axis_min_m": -243.50507150340428,
+        "shadow_length_factor": 2.202624265090143,
+        "slice_index": 4,
+        "solar_altitude_deg": 24.418234,
+        "solar_azimuth_deg": 149.747846,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "10:00:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -186.97131535108906,
+          "actual_shadow_axis_min_m": -236.91609680177757,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 20.088616162597106,
+          "expected_shadow_axis_max_m": -186.9713153510891,
+          "expected_shadow_axis_min_m": -236.91609680177757,
+          "extent_error_max_m": 2.842170943040401e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -207.05993151368617,
+          "section_axis_min_m": -236.91609680177757,
+          "shadow_axis_max_m": -186.97131535108906,
+          "shadow_axis_min_m": -236.91609680177757,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -186.97131535108906,
+        "actual_shadow_axis_min_m": -236.91609680177757,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 20.088616162597106,
+        "expected_shadow_axis_max_m": -186.9713153510891,
+        "expected_shadow_axis_min_m": -236.91609680177757,
+        "extent_error_max_m": 2.842170943040401e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1360.783828014739,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -207.05993151368617,
+        "section_axis_min_m": -236.91609680177757,
+        "shadow_axis_max_m": -186.97131535108906,
+        "shadow_axis_min_m": -236.91609680177757,
+        "shadow_length_factor": 1.9489569599516208,
+        "slice_index": 5,
+        "solar_altitude_deg": 27.162131,
+        "solar_azimuth_deg": 156.75735,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "10:30:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -180.03160165652577,
+          "actual_shadow_axis_min_m": -226.02086517770667,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 18.443592915822478,
+          "expected_shadow_axis_max_m": -180.03160165652577,
+          "expected_shadow_axis_min_m": -226.02086517770667,
+          "extent_error_max_m": 0.0,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -198.47519457234824,
+          "section_axis_min_m": -226.02086517770667,
+          "shadow_axis_max_m": -180.03160165652577,
+          "shadow_axis_min_m": -226.02086517770667,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -180.03160165652577,
+        "actual_shadow_axis_min_m": -226.02086517770667,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 18.443592915822478,
+        "expected_shadow_axis_max_m": -180.03160165652577,
+        "expected_shadow_axis_min_m": -226.02086517770667,
+        "extent_error_max_m": 0.0,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1275.3689427802947,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -198.47519457234824,
+        "section_axis_min_m": -226.02086517770667,
+        "shadow_axis_max_m": -180.03160165652577,
+        "shadow_axis_min_m": -226.02086517770667,
+        "shadow_length_factor": 1.789360127589771,
+        "slice_index": 6,
+        "solar_altitude_deg": 29.199034,
+        "solar_azimuth_deg": 164.21496,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "11:00:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -168.37800618164266,
+          "actual_shadow_axis_min_m": -212.5290759222562,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 17.529836697587086,
+          "expected_shadow_axis_max_m": -168.3780061816427,
+          "expected_shadow_axis_min_m": -212.5290759222562,
+          "extent_error_max_m": 2.842170943040401e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -185.90784287922975,
+          "section_axis_min_m": -212.5290759222562,
+          "shadow_axis_max_m": -168.37800618164266,
+          "shadow_axis_min_m": -212.5290759222562,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -168.37800618164266,
+        "actual_shadow_axis_min_m": -212.5290759222562,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 17.529836697587086,
+        "expected_shadow_axis_max_m": -168.3780061816427,
+        "expected_shadow_axis_min_m": -212.5290759222562,
+        "extent_error_max_m": 2.842170943040401e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1207.2772061293108,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -185.90784287922975,
+        "section_axis_min_m": -212.5290759222562,
+        "shadow_axis_max_m": -168.37800618164266,
+        "shadow_axis_min_m": -212.5290759222562,
+        "shadow_length_factor": 1.700709345135935,
+        "slice_index": 7,
+        "solar_altitude_deg": 30.4551,
+        "solar_azimuth_deg": 172.014445,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "11:30:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -152.2431380947413,
+          "actual_shadow_axis_min_m": -195.40725604470865,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 17.23614395297173,
+          "expected_shadow_axis_max_m": -152.2431380947413,
+          "expected_shadow_axis_min_m": -195.40725604470865,
+          "extent_error_max_m": 0.0,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -169.47928204771304,
+          "section_axis_min_m": -195.40725604470865,
+          "shadow_axis_max_m": -152.2431380947413,
+          "shadow_axis_min_m": -195.40725604470865,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -152.2431380947413,
+        "actual_shadow_axis_min_m": -195.40725604470865,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 17.23614395297173,
+        "expected_shadow_axis_max_m": -152.2431380947413,
+        "expected_shadow_axis_min_m": -195.40725604470865,
+        "extent_error_max_m": 0.0,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1150.8393885093392,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -169.47928204771304,
+        "section_axis_min_m": -195.40725604470865,
+        "shadow_axis_max_m": -152.2431380947413,
+        "shadow_axis_min_m": -195.40725604470865,
+        "shadow_length_factor": 1.6722158683293502,
+        "slice_index": 8,
+        "solar_altitude_deg": 30.8798,
+        "solar_azimuth_deg": 180.0,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "12:00:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -131.2893660772799,
+          "actual_shadow_axis_min_m": -176.28765176980426,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 17.529836697587086,
+          "expected_shadow_axis_max_m": -131.28936607727994,
+          "expected_shadow_axis_min_m": -176.28765176980426,
+          "extent_error_max_m": 2.842170943040401e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -148.819202774867,
+          "section_axis_min_m": -176.28765176980426,
+          "shadow_axis_max_m": -131.2893660772799,
+          "shadow_axis_min_m": -176.28765176980426,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -131.2893660772799,
+        "actual_shadow_axis_min_m": -176.28765176980426,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 17.529836697587086,
+        "expected_shadow_axis_max_m": -131.28936607727994,
+        "expected_shadow_axis_min_m": -176.28765176980426,
+        "extent_error_max_m": 2.842170943040401e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1186.2490832627573,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -148.819202774867,
+        "section_axis_min_m": -176.28765176980426,
+        "shadow_axis_max_m": -131.2893660772799,
+        "shadow_axis_min_m": -176.28765176980426,
+        "shadow_length_factor": 1.700709345135935,
+        "slice_index": 9,
+        "solar_altitude_deg": 30.4551,
+        "solar_azimuth_deg": 187.985555,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "12:30:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -107.06599086759087,
+          "actual_shadow_axis_min_m": -154.3100790834757,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 18.443592915822506,
+          "expected_shadow_axis_max_m": -107.06599086759088,
+          "expected_shadow_axis_min_m": -154.3100790834757,
+          "extent_error_max_m": 1.4210854715202004e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -125.50958378341338,
+          "section_axis_min_m": -154.3100790834757,
+          "shadow_axis_max_m": -107.06599086759087,
+          "shadow_axis_min_m": -154.3100790834757,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -107.06599086759087,
+        "actual_shadow_axis_min_m": -154.3100790834757,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 18.443592915822506,
+        "expected_shadow_axis_max_m": -107.06599086759088,
+        "expected_shadow_axis_min_m": -154.3100790834757,
+        "extent_error_max_m": 1.4210854715202004e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1231.828578364044,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -125.50958378341338,
+        "section_axis_min_m": -154.3100790834757,
+        "shadow_axis_max_m": -107.06599086759087,
+        "shadow_axis_min_m": -154.3100790834757,
+        "shadow_length_factor": 1.789360127589771,
+        "slice_index": 10,
+        "solar_altitude_deg": 29.199034,
+        "solar_azimuth_deg": 195.78504,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "13:00:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -78.65418702850998,
+          "actual_shadow_axis_min_m": -130.6196895601054,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 20.088616162597063,
+          "expected_shadow_axis_max_m": -78.65418702850997,
+          "expected_shadow_axis_min_m": -130.6196895601054,
+          "extent_error_max_m": -1.4210854715202004e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -98.74280319110704,
+          "section_axis_min_m": -130.6196895601054,
+          "shadow_axis_max_m": -78.65418702850998,
+          "shadow_axis_min_m": -130.6196895601054,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -78.65418702850998,
+        "actual_shadow_axis_min_m": -130.6196895601054,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 20.088616162597063,
+        "expected_shadow_axis_max_m": -78.65418702850997,
+        "expected_shadow_axis_min_m": -130.6196895601054,
+        "extent_error_max_m": -1.4210854715202004e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1291.393410637511,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -98.74280319110704,
+        "section_axis_min_m": -130.6196895601054,
+        "shadow_axis_max_m": -78.65418702850998,
+        "shadow_axis_min_m": -130.6196895601054,
+        "shadow_length_factor": 1.9489569599516208,
+        "slice_index": 11,
+        "solar_altitude_deg": 27.162131,
+        "solar_azimuth_deg": 203.24265,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "13:30:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -49.34947993113383,
+          "actual_shadow_axis_min_m": -106.33034384046167,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 22.70325836898766,
+          "expected_shadow_axis_max_m": -49.34947993113384,
+          "expected_shadow_axis_min_m": -106.33034384046167,
+          "extent_error_max_m": 1.4210854715202004e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -72.05273830012149,
+          "section_axis_min_m": -106.33034384046167,
+          "shadow_axis_max_m": -49.34947993113383,
+          "shadow_axis_min_m": -106.33034384046167,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -49.34947993113383,
+        "actual_shadow_axis_min_m": -106.33034384046167,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 22.70325836898766,
+        "expected_shadow_axis_max_m": -49.34947993113384,
+        "expected_shadow_axis_min_m": -106.33034384046167,
+        "extent_error_max_m": 1.4210854715202004e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1377.4271153356767,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -72.05273830012149,
+        "section_axis_min_m": -106.33034384046167,
+        "shadow_axis_max_m": -49.34947993113383,
+        "shadow_axis_min_m": -106.33034384046167,
+        "shadow_length_factor": 2.202624265090143,
+        "slice_index": 12,
+        "solar_altitude_deg": 24.418234,
+        "solar_azimuth_deg": 210.252154,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "14:00:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": -19.518405714988134,
+          "actual_shadow_axis_min_m": -82.34432411808068,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 26.7772033402496,
+          "expected_shadow_axis_max_m": -19.518405714988127,
+          "expected_shadow_axis_min_m": -82.34432411808068,
+          "extent_error_max_m": -7.105427357601002e-15,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -46.29560905523773,
+          "section_axis_min_m": -82.34432411808068,
+          "shadow_axis_max_m": -19.518405714988134,
+          "shadow_axis_min_m": -82.34432411808068,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": -19.518405714988134,
+        "actual_shadow_axis_min_m": -82.34432411808068,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 26.7772033402496,
+        "expected_shadow_axis_max_m": -19.518405714988127,
+        "expected_shadow_axis_min_m": -82.34432411808068,
+        "extent_error_max_m": -7.105427357601002e-15,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1517.9380907803898,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -46.29560905523773,
+        "section_axis_min_m": -82.34432411808068,
+        "shadow_axis_max_m": -19.518405714988134,
+        "shadow_axis_min_m": -82.34432411808068,
+        "shadow_length_factor": 2.597870176602169,
+        "slice_index": 13,
+        "solar_altitude_deg": 21.053248,
+        "solar_azimuth_deg": 216.761057,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "14:30:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": 11.382096436818728,
+          "actual_shadow_axis_min_m": -59.278586135706675,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 33.39022460584049,
+          "expected_shadow_axis_max_m": 11.382096436818742,
+          "expected_shadow_axis_min_m": -59.278586135706675,
+          "extent_error_max_m": -1.4210854715202004e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": -22.00812816902176,
+          "section_axis_min_m": -59.278586135706675,
+          "shadow_axis_max_m": 11.382096436818728,
+          "shadow_axis_min_m": -59.278586135706675,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": 11.382096436818728,
+        "actual_shadow_axis_min_m": -59.278586135706675,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 33.39022460584049,
+        "expected_shadow_axis_max_m": 11.382096436818742,
+        "expected_shadow_axis_min_m": -59.278586135706675,
+        "extent_error_max_m": -1.4210854715202004e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 1738.6889617956585,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": -22.00812816902176,
+        "section_axis_min_m": -59.278586135706675,
+        "shadow_axis_max_m": 11.382096436818728,
+        "shadow_axis_min_m": -59.278586135706675,
+        "shadow_length_factor": 3.239452141111924,
+        "slice_index": 14,
+        "solar_altitude_deg": 17.155152,
+        "solar_azimuth_deg": 222.762955,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "15:00:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": 45.89761988391659,
+          "actual_shadow_axis_min_m": -37.47843191808539,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 45.342238286748085,
+          "expected_shadow_axis_max_m": 45.8976198839166,
+          "expected_shadow_axis_min_m": -37.47843191808539,
+          "extent_error_max_m": -7.105427357601002e-15,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": 0.5553815971685054,
+          "section_axis_min_m": -37.47843191808539,
+          "shadow_axis_max_m": 45.89761988391659,
+          "shadow_axis_min_m": -37.47843191808539,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": 45.89761988391659,
+        "actual_shadow_axis_min_m": -37.47843191808539,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 45.342238286748085,
+        "expected_shadow_axis_max_m": 45.8976198839166,
+        "expected_shadow_axis_min_m": -37.47843191808539,
+        "extent_error_max_m": -7.105427357601002e-15,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 2124.7835715442197,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": 0.5553815971685054,
+        "section_axis_min_m": -37.47843191808539,
+        "shadow_axis_max_m": 45.89761988391659,
+        "shadow_axis_min_m": -37.47843191808539,
+        "shadow_length_factor": 4.399012364688338,
+        "slice_index": 15,
+        "solar_altitude_deg": 12.807046,
+        "solar_azimuth_deg": 228.284604,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "15:30:00"
+      },
+      {
+        "actual_polygon_direction_check": {
+          "actual_shadow_axis_max_m": 93.92368206897672,
+          "actual_shadow_axis_min_m": -17.075458941383673,
+          "direction_validation_attempted": true,
+          "direction_validation_passed": true,
+          "direction_validation_reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "direction_validation_status": "passed",
+          "downshadow_extension_m": 72.5742563066704,
+          "expected_shadow_axis_max_m": 93.9236820689767,
+          "expected_shadow_axis_min_m": -17.075458941383673,
+          "extent_error_max_m": 1.4210854715202004e-14,
+          "extent_error_min_m": 0.0,
+          "extent_validation_attempted": true,
+          "extent_validation_passed": true,
+          "extent_validation_reason": "projection_extent_compared",
+          "extent_validation_status": "passed",
+          "extent_validation_tolerance_m": 0.01,
+          "passed": true,
+          "reason": "shadow polygon stays out of the sunward side and extends down-shadow",
+          "section_axis_max_m": 21.34942576230631,
+          "section_axis_min_m": -17.075458941383673,
+          "shadow_axis_max_m": 93.92368206897672,
+          "shadow_axis_min_m": -17.075458941383673,
+          "sunward_overflow_m": 0.0
+        },
+        "actual_shadow_axis_max_m": 93.92368206897672,
+        "actual_shadow_axis_min_m": -17.075458941383673,
+        "analyzer_end_parameter_m": null,
+        "analyzer_start_parameter_m": null,
+        "complete": true,
+        "downshadow_extension_m": 72.5742563066704,
+        "expected_shadow_axis_max_m": 93.9236820689767,
+        "expected_shadow_axis_min_m": -17.075458941383673,
+        "extent_error_max_m": 1.4210854715202004e-14,
+        "extent_error_min_m": 0.0,
+        "extent_validation_passed": true,
+        "extent_validation_tolerance_m": 0.01,
+        "failed_caster_count": 0,
+        "formal_area_m2": 2988.3620149679264,
+        "polygon_count": 1,
+        "revit_runtime_direction_verified": true,
+        "runtime_validation_status": "verified",
+        "section_axis_max_m": 21.34942576230631,
+        "section_axis_min_m": -17.075458941383673,
+        "shadow_axis_max_m": 93.92368206897672,
+        "shadow_axis_min_m": -17.075458941383673,
+        "shadow_length_factor": 7.041007742760913,
+        "slice_index": 16,
+        "solar_altitude_deg": 8.083379,
+        "solar_azimuth_deg": 233.373166,
+        "sunward_overflow_m": 0.0,
+        "true_solar_time": "16:00:00"
+      }
+    ],
     "split_solid_count": 1,
     "time_slice_count": 17,
     "vector_contract_passed_count": 17
@@ -302,28 +1401,19 @@
       "Level reference is present but is not used as average ground level or measurement plane."
     ]
   },
-  "message": "Dynamo_Shadow Revit-native formal time-slice shadow and per-slice union prototype with optional DirectShape visual QA. No duration accumulation, equal-time c...",
+  "message": "Dynamo_Shadow formal time-slice polygons, per-slice union, duration accumulation v1, and equal-time contours v1. Legal judgement is not implemented.",
   "not_implemented_summary": {
     "footprint_extraction": [
-      "boolean union across casters",
-      "split-Solid polygon union",
-      "duration accumulation",
       "site boundary clipping",
       "own-site exclusion",
       "beyond-5m legal range",
       "5m / 10m legal lines",
-      "equal-time contour generation",
       "legal OK/NG judgement"
     ],
     "planned_pipeline_pending": [
-      "pipeline readiness diagnostics",
-      "optional site boundary loop extraction",
-      "legal judgement mask preparation",
-      "optional 5m / 10m measurement line generation when site_boundary is available",
-      "formal technical solar specification v1",
-      "shadow duration accumulation without double counting",
-      "equal-time contour generation",
-      "legal judgement report"
+      "site boundary",
+      "5m / 10m lines",
+      "legal judgement"
     ]
   },
   "pipeline_readiness": {
@@ -344,6 +1434,7 @@
     ],
     "blockers_for_measurement_plane": [],
     "boundary_dependent_steps_ready": false,
+    "equal_time_contours_complete": true,
     "equal_time_shadow_calculation_ready": true,
     "footprint_diagnostics_ready": true,
     "footprint_extraction_ready": true,
@@ -359,7 +1450,7 @@
     "future_projection_context_ready": true,
     "future_shadow_projection_ready": true,
     "info": [
-      "ready_for_duration_accumulation confirms complete formal solar, projection, and native per-slice union inputs only; accumulation, contours, and legal masks r..."
+      "Duration accumulation is a grid/trapezoidal numerical approximation; site_boundary is required only for later legal judgement."
     ],
     "input_diagnostics_ready": true,
     "legal_judgement_masks_ready": false,
@@ -367,21 +1458,18 @@
     "measurement_plane_constructed": true,
     "measurement_plane_ready": true,
     "next_implementation_steps": [
-      "optional site boundary loop extraction",
-      "legal judgement mask preparation",
-      "shadow duration accumulation",
-      "equal-time contour generation",
-      "site clipping",
-      "own-site exclusion",
-      "5m / 10m legal lines",
-      "legal judgement report"
+      "site boundary",
+      "5m / 10m lines",
+      "legal judgement"
     ],
     "permit_ready_certified": false,
     "ready_for_duration_accumulation": true,
+    "ready_for_equal_time_contour_generation": true,
     "regulatory_profile_resolved": true,
     "settings_ready_for_equal_time_shadow": true,
     "shadow_caster_geometry_ready": true,
     "shadow_caster_ready": true,
+    "shadow_duration_accumulation_complete": true,
     "site_boundary_ready_for_boundary_dependent_steps": false,
     "site_boundary_required_for_equal_time_shadow": false,
     "solar_coordinate_convention_resolved": true,
@@ -389,8 +1477,8 @@
   },
   "runtime_code_diagnostics": {
     "all_local_modules_from_workspace": true,
-    "cached_module_count_removed": 17,
-    "code_build_id": "2026-08-03-half-space-clipped-shadow-direction-v1",
+    "cached_module_count_removed": 19,
+    "code_build_id": "2026-08-04-equal-time-contour-preview-v1",
     "import_caches_invalidated": true,
     "loader_bootstrap_received": true,
     "loader_build_id": "2026-07-28-loader-module-isolation-v1",
@@ -398,8 +1486,26 @@
       {
         "loaded_from_workspace": true,
         "module_file_available": true,
+        "module_filename": "shadow_contour_preview.py",
+        "module_name": "shadow_contour_preview"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_contours.py",
+        "module_name": "shadow_contours"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
         "module_filename": "shadow_debug.py",
         "module_name": "shadow_debug"
+      },
+      {
+        "loaded_from_workspace": true,
+        "module_file_available": true,
+        "module_filename": "shadow_duration.py",
+        "module_name": "shadow_duration"
       },
       {
         "loaded_from_workspace": true,
@@ -499,7 +1605,9 @@
       }
     ],
     "removed_cached_modules": [
+      "shadow_contours",
       "shadow_debug",
+      "shadow_duration",
       "shadow_footprint",
       "shadow_formal_projection",
       "shadow_geometry",
@@ -526,14 +1634,18 @@
   "settings_summary": {
     "defaults_applied": [
       "preview_true_solar_times",
+      "equal_time_contour_preview_mode",
       "standard_meridian_deg",
       "grid_resolution_m",
       "analysis_margin_m",
       "closure_tolerance_m",
       "max_shadow_length_factor",
+      "equal_time_contour_interval_minutes",
       "max_diagnostic_source_points_per_caster",
       "max_projected_points_output_per_slice",
-      "max_formal_shadow_loop_points"
+      "max_formal_shadow_loop_points",
+      "max_duration_grid_points",
+      "max_equal_time_contour_levels"
     ],
     "invalid_keys": [],
     "missing_required_keys": [],
@@ -547,11 +1659,16 @@
       "debug_log_dir": "debug_logs",
       "debug_log_enabled": true,
       "debug_log_filename": "latest_debug.json",
+      "equal_time_contour_interval_minutes": 60.0,
+      "equal_time_contour_levels_minutes": null,
+      "equal_time_contour_preview_mode": "off",
       "equation_of_time_minutes": null,
       "grid_resolution_m": 1.0,
       "latitude": 35.6812,
       "longitude": 139.7671,
       "max_diagnostic_source_points_per_caster": 1000,
+      "max_duration_grid_points": 250000,
+      "max_equal_time_contour_levels": 100,
       "max_formal_shadow_loop_points": 2000,
       "max_projected_points_output_per_slice": 300,
       "max_shadow_length_factor": 100.0,
@@ -871,44 +1988,63 @@
       "ShadowRole parameter is missing or empty; this is a warning only for v1 diagnostics."
     ]
   },
+  "shadow_duration_summary": {
+    "available": true,
+    "blockers": [],
+    "complete": true,
+    "grid_point_count": 21090,
+    "maximum_shadow_duration_minutes": 480.0,
+    "method": "grid_trapezoidal_time_integration_v1",
+    "permit_ready_certified": false,
+    "ready_for_equal_time_contour_generation": true,
+    "shadowed_point_count": 5806,
+    "spatial_resolution_m": 1.0,
+    "temporal_step_minutes": 30.0,
+    "warnings": [
+      "Duration values are a grid/trapezoidal numerical approximation at the configured temporal interval."
+    ]
+  },
   "shadow_preview": {
     "active_view_id": 6344845,
+    "active_view_is_3d": true,
+    "active_view_is_plan": false,
     "active_view_type": "4",
     "all_curves_on_measurement_plane": true,
     "attempted": true,
     "available": true,
-    "cleanup_candidate_count": 9,
+    "cleanup_candidate_count": 0,
     "cleanup_collection_attempted": true,
     "cleanup_collection_attempts": [
       {
-        "candidate_count": 9,
+        "candidate_count": 0,
         "collector_method": "of_class_direct_shape",
         "failure_type": null,
         "fallback_used": false,
-        "owned_count": 9,
+        "owned_count": 0,
         "succeeded": true
       }
     ],
     "cleanup_collection_succeeded": true,
     "cleanup_collector_fallback_used": false,
     "cleanup_collector_method": "of_class_direct_shape",
-    "cleanup_delete_attempted": true,
+    "cleanup_delete_attempted": false,
     "cleanup_delete_succeeded": true,
-    "cleanup_owned_count": 9,
+    "cleanup_owned_count": 0,
     "complete": true,
     "created_element_count": 9,
     "created_element_ids": [
-      6346279,
-      6346280,
-      6346281,
-      6346282,
-      6346283,
-      6346284,
-      6346285,
-      6346286,
-      6346287
+      6345679,
+      6345680,
+      6345681,
+      6345682,
+      6345683,
+      6345684,
+      6345685,
+      6345686,
+      6345687
     ],
-    "deleted_element_count": 9,
+    "deleted_element_count": 0,
+    "direction_readable_as_north_up": false,
     "enabled": true,
     "failed_delete_count": 0,
     "failed_group_count": 0,
@@ -924,198 +2060,695 @@
       {
         "curve_count": 14,
         "direct_shape_created": true,
-        "element_id": 6346279,
+        "element_id": 6345679,
         "geometry_kind": "Curve",
         "inner_loop_count": 0,
+        "invalid_plan_curve_indices": [
+          {
+            "index": 0,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 1,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 2,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 3,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 4,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 5,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 6,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 7,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 8,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 9,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 10,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 11,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 12,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 13,
+            "reason": "ValidateCurve returned false"
+          }
+        ],
         "outer_loop_count": 1,
         "plan_representation_set": false,
-        "plan_representation_valid": false,
         "screen_relative_shadow_direction": {
           "note": "screen direction is distinct from true north",
-          "right": -0.8142835743509853,
-          "up": -0.07896799006732547
+          "right": -0.7945645235345163,
+          "up": 0.5906732699859031
         },
         "slice_index": 0,
         "style_index": 0,
         "true_solar_time": "08:00:00",
         "warnings": [
-          "Plan Curve representation is invalid; Default Curve representation retained."
+          "One or more Plan curves were invalid; Default Curve representation retained."
         ],
         "z_elevation_m": 4.0
       },
       {
         "curve_count": 14,
         "direct_shape_created": true,
-        "element_id": 6346280,
+        "element_id": 6345680,
         "geometry_kind": "Curve",
         "inner_loop_count": 0,
+        "invalid_plan_curve_indices": [
+          {
+            "index": 0,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 1,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 2,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 3,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 4,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 5,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 6,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 7,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 8,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 9,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 10,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 11,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 12,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 13,
+            "reason": "ValidateCurve returned false"
+          }
+        ],
         "outer_loop_count": 1,
         "plan_representation_set": false,
-        "plan_representation_valid": false,
         "screen_relative_shadow_direction": {
           "note": "screen direction is distinct from true north",
-          "right": -0.7864600361948169,
-          "up": 0.06978949951001495
+          "right": -0.6487592167924001,
+          "up": 0.7015054842059747
         },
         "slice_index": 2,
         "style_index": 1,
         "true_solar_time": "09:00:00",
         "warnings": [
-          "Plan Curve representation is invalid; Default Curve representation retained."
+          "One or more Plan curves were invalid; Default Curve representation retained."
         ],
         "z_elevation_m": 4.0
       },
       {
         "curve_count": 14,
         "direct_shape_created": true,
-        "element_id": 6346281,
+        "element_id": 6345681,
         "geometry_kind": "Curve",
         "inner_loop_count": 0,
+        "invalid_plan_curve_indices": [
+          {
+            "index": 0,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 1,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 2,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 3,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 4,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 5,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 6,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 7,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 8,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 9,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 10,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 11,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 12,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 13,
+            "reason": "ValidateCurve returned false"
+          }
+        ],
         "outer_loop_count": 1,
         "plan_representation_set": false,
-        "plan_representation_valid": false,
         "screen_relative_shadow_direction": {
           "note": "screen direction is distinct from true north",
-          "right": -0.7172540998880585,
-          "up": 0.2272767102129753
+          "right": -0.4587420415511799,
+          "up": 0.786550033314501
         },
         "slice_index": 4,
         "style_index": 2,
         "true_solar_time": "10:00:00",
         "warnings": [
-          "Plan Curve representation is invalid; Default Curve representation retained."
+          "One or more Plan curves were invalid; Default Curve representation retained."
         ],
         "z_elevation_m": 4.0
       },
       {
         "curve_count": 14,
         "direct_shape_created": true,
-        "element_id": 6346282,
+        "element_id": 6345682,
         "geometry_kind": "Curve",
         "inner_loop_count": 0,
+        "invalid_plan_curve_indices": [
+          {
+            "index": 0,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 1,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 2,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 3,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 4,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 5,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 6,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 7,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 8,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 9,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 10,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 11,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 12,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 13,
+            "reason": "ValidateCurve returned false"
+          }
+        ],
         "outer_loop_count": 1,
         "plan_representation_set": false,
-        "plan_representation_valid": false,
         "screen_relative_shadow_direction": {
           "note": "screen direction is distinct from true north",
-          "right": -0.6113820356217983,
-          "up": 0.3827611488920709
+          "right": -0.23746235428531468,
+          "up": 0.8400112718324989
         },
         "slice_index": 6,
         "style_index": 3,
         "true_solar_time": "11:00:00",
         "warnings": [
-          "Plan Curve representation is invalid; Default Curve representation retained."
+          "One or more Plan curves were invalid; Default Curve representation retained."
         ],
         "z_elevation_m": 4.0
       },
       {
         "curve_count": 12,
         "direct_shape_created": true,
-        "element_id": 6346283,
+        "element_id": 6345683,
         "geometry_kind": "Curve",
         "inner_loop_count": 0,
+        "invalid_plan_curve_indices": [
+          {
+            "index": 0,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 1,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 2,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 3,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 4,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 5,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 6,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 7,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 8,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 9,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 10,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 11,
+            "reason": "ValidateCurve returned false"
+          }
+        ],
         "outer_loop_count": 1,
         "plan_representation_set": false,
-        "plan_representation_valid": false,
         "screen_relative_shadow_direction": {
           "note": "screen direction is distinct from true north",
-          "right": -0.4760588496139229,
-          "up": 0.5256468080015048
+          "right": 0.0,
+          "up": 0.8582459047038403
         },
         "slice_index": 8,
         "style_index": 4,
         "true_solar_time": "12:00:00",
         "warnings": [
-          "Plan Curve representation is invalid; Default Curve representation retained."
+          "One or more Plan curves were invalid; Default Curve representation retained."
         ],
         "z_elevation_m": 4.0
       },
       {
         "curve_count": 14,
         "direct_shape_created": true,
-        "element_id": 6346284,
+        "element_id": 6345684,
         "geometry_kind": "Curve",
         "inner_loop_count": 0,
+        "invalid_plan_curve_indices": [
+          {
+            "index": 0,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 1,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 2,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 3,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 4,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 5,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 6,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 7,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 8,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 9,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 10,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 11,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 12,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 13,
+            "reason": "ValidateCurve returned false"
+          }
+        ],
         "outer_loop_count": 1,
         "plan_representation_set": false,
-        "plan_representation_valid": false,
         "screen_relative_shadow_direction": {
           "note": "screen direction is distinct from true north",
-          "right": -0.32050659335873033,
-          "up": 0.6461962660026854
+          "right": 0.237462354285315,
+          "up": 0.8400112718324988
         },
         "slice_index": 10,
         "style_index": 5,
         "true_solar_time": "13:00:00",
         "warnings": [
-          "Plan Curve representation is invalid; Default Curve representation retained."
+          "One or more Plan curves were invalid; Default Curve representation retained."
         ],
         "z_elevation_m": 4.0
       },
       {
-        "curve_count": 14,
+        "curve_count": 12,
         "direct_shape_created": true,
-        "element_id": 6346285,
+        "element_id": 6345685,
         "geometry_kind": "Curve",
         "inner_loop_count": 0,
+        "invalid_plan_curve_indices": [
+          {
+            "index": 0,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 1,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 2,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 3,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 4,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 5,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 6,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 7,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 8,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 9,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 10,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 11,
+            "reason": "ValidateCurve returned false"
+          }
+        ],
         "outer_loop_count": 1,
         "plan_representation_set": false,
-        "plan_representation_valid": false,
         "screen_relative_shadow_direction": {
           "note": "screen direction is distinct from true north",
-          "right": -0.1553258960577551,
-          "up": 0.7361942765502305
+          "right": 0.4587420415511799,
+          "up": 0.786550033314501
         },
         "slice_index": 12,
         "style_index": 6,
         "true_solar_time": "14:00:00",
         "warnings": [
-          "Plan Curve representation is invalid; Default Curve representation retained."
+          "One or more Plan curves were invalid; Default Curve representation retained."
         ],
         "z_elevation_m": 4.0
       },
       {
         "curve_count": 14,
         "direct_shape_created": true,
-        "element_id": 6346286,
+        "element_id": 6345686,
         "geometry_kind": "Curve",
         "inner_loop_count": 0,
+        "invalid_plan_curve_indices": [
+          {
+            "index": 0,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 1,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 2,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 3,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 4,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 5,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 6,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 7,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 8,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 9,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 10,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 11,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 12,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 13,
+            "reason": "ValidateCurve returned false"
+          }
+        ],
         "outer_loop_count": 1,
         "plan_representation_set": false,
-        "plan_representation_valid": false,
         "screen_relative_shadow_direction": {
           "note": "screen direction is distinct from true north",
-          "right": 0.008226450741950886,
-          "up": 0.7895076239540701
+          "right": 0.6487592167924003,
+          "up": 0.7015054842059747
         },
         "slice_index": 14,
         "style_index": 7,
         "true_solar_time": "15:00:00",
         "warnings": [
-          "Plan Curve representation is invalid; Default Curve representation retained."
+          "One or more Plan curves were invalid; Default Curve representation retained."
         ],
         "z_elevation_m": 4.0
       },
       {
         "curve_count": 14,
         "direct_shape_created": true,
-        "element_id": 6346287,
+        "element_id": 6345687,
         "geometry_kind": "Curve",
         "inner_loop_count": 0,
+        "invalid_plan_curve_indices": [
+          {
+            "index": 0,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 1,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 2,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 3,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 4,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 5,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 6,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 7,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 8,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 9,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 10,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 11,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 12,
+            "reason": "ValidateCurve returned false"
+          },
+          {
+            "index": 13,
+            "reason": "ValidateCurve returned false"
+          }
+        ],
         "outer_loop_count": 1,
         "plan_representation_set": false,
-        "plan_representation_valid": false,
         "screen_relative_shadow_direction": {
           "note": "screen direction is distinct from true north",
-          "right": 0.15900462488902023,
-          "up": 0.8025030916931046
+          "right": 0.7945645235345163,
+          "up": 0.590673269985903
         },
         "slice_index": 16,
         "style_index": 8,
         "true_solar_time": "16:00:00",
         "warnings": [
-          "Plan Curve representation is invalid; Default Curve representation retained."
+          "One or more Plan curves were invalid; Default Curve representation retained."
         ],
         "z_elevation_m": 4.0
       }
@@ -1133,10 +2766,11 @@
     ],
     "measurement_plane_elevation_m": 4.0,
     "mode": "replace",
+    "non_plan_view_warning": "Active view is not a Plan view; Plan North mode is not applicable.",
     "partial_success": false,
-    "plan_north_mode": "Autodesk.Revit.DB.ViewOrientation3D",
+    "plan_north_mode": null,
     "plan_representation_available": true,
-    "requested_delete_count": 9,
+    "requested_delete_count": 0,
     "requested_true_solar_times": [
       "08:00:00",
       "09:00:00",
@@ -1149,7 +2783,8 @@
       "16:00:00"
     ],
     "sanitized_failure_message": null,
-    "successful_delete_count": 9,
+    "successful_delete_count": 0,
+    "target_view_type_available": true,
     "transaction_begin_attempted": true,
     "transaction_begin_succeeded": true,
     "transaction_close_attempted": true,
@@ -1160,13 +2795,14 @@
       "z": 0.0
     },
     "unified_shadow_source_available": true,
+    "view_shape_builder_available": true,
     "view_up_direction_model": {
-      "x": 0.5546881692120619,
-      "y": 0.6124664331289674,
-      "z": 0.5632103543317108
+      "x": 0.0,
+      "y": 1.0,
+      "z": -2.3549911884742086e-16
     },
     "warnings": [
-      "Plan Curve representation is invalid; Default Curve representation retained."
+      "One or more Plan curves were invalid; Default Curve representation retained."
     ]
   },
   "site_boundary_skipped": true,
@@ -1254,9 +2890,9 @@
     "ready_for_duration_accumulation": true,
     "successful_slice_count": 17,
     "time_slice_count": 17,
-    "total_input_area_m2": 307546.66842188884,
-    "total_overlap_removed_area_m2": 6.912159733474255e-11,
-    "total_unified_area_m2": 307546.6684218887,
+    "total_input_area_m2": 28935.806100320922,
+    "total_overlap_removed_area_m2": 0.0,
+    "total_unified_area_m2": 28935.806100320922,
     "warnings": []
   },
   "unit_conversion_summary": {
@@ -1291,7 +2927,7 @@
     "site_boundary is not required for measurement plane construction, but is required for future beyond-5m and own-site legal judgement masks.",
     "Level reference is present but is not used as average ground level or measurement plane.",
     "zero/unknown-volume Solid was retained as a geometry object but excluded from formal Solid and face counts.",
-    "Plan Curve representation is invalid; Default Curve representation retained.",
+    "One or more Plan curves were invalid; Default Curve representation retained.",
     "legal judgement masks not implemented",
     "site_boundary / own site / target area masks required for legal judgement but not constructed in this PR",
     "site_boundary is missing or not usable as a closed boundary; future legal judgement masks such as beyond-5m range and own-site exclusion are blocked.",
