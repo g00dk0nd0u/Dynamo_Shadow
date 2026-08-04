@@ -8,7 +8,7 @@ from shadow_policies import SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_units import _meters_to_internal_length
 from shadow_revit_api import (BuiltInCategory, ElementId, XYZ, Line, GeometryObject, DirectShape,
     DirectShapeTargetViewType, FilteredElementCollector, OverrideGraphicSettings,
-    Color, SubTransaction, ViewShapeBuilder)
+    Color, SubTransaction, ViewShapeBuilder, REVIT_API_CAPABILITIES)
 
 try:
     from RevitServices.Persistence import DocumentManager
@@ -83,10 +83,9 @@ def _empty(config, unified, elevation):
         "active_view_is_plan": False, "active_view_is_3d": False,
         "direction_readable_as_north_up": False, "non_plan_view_warning": None,
         "view_up_direction_model": None, "true_north_direction_model": None,
-        "target_view_type_available": DirectShapeTargetViewType is not None,
-        "view_shape_builder_available": ViewShapeBuilder is not None,
-        "plan_representation_available": (DirectShapeTargetViewType is not None
-            and hasattr(DirectShapeTargetViewType, "Plan") and ViewShapeBuilder is not None),
+        "target_view_type_available": REVIT_API_CAPABILITIES["direct_shape_target_view_type_available"],
+        "view_shape_builder_available": REVIT_API_CAPABILITIES["view_shape_builder_available"],
+        "plan_representation_available": REVIT_API_CAPABILITIES["direct_shape_plan_representation_available"],
         "graphical_overrides_attempted": False, "graphical_overrides_succeeded": False,
         "groups": [], "failure_reason_counts": {}, "warnings": list(config["warnings"]),
         "failure_stage": None, "failure_code": None, "failure_type": None, "sanitized_failure_message": None,

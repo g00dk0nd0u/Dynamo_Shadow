@@ -92,6 +92,23 @@ def _has_methods(value, names):
     return value is not None and all(hasattr(value, name) for name in names)
 
 
+def _build_preview_api_capabilities(target_view_type, view_shape_builder):
+    target_available = target_view_type is not None
+    builder_available = view_shape_builder is not None
+    plan_member_available = target_available and hasattr(target_view_type, "Plan")
+    return {
+        "direct_shape_target_view_type_available": target_available,
+        "view_shape_builder_available": builder_available,
+        "direct_shape_plan_member_available": plan_member_available,
+        "direct_shape_plan_representation_available": (
+            plan_member_available and builder_available),
+    }
+
+
+_PREVIEW_API_CAPABILITIES = _build_preview_api_capabilities(
+    DirectShapeTargetViewType, ViewShapeBuilder)
+
+
 # "expected" capabilities describe import-time class/member availability only;
 # they do not guarantee that a path will succeed with a particular Revit model.
 REVIT_API_CAPABILITIES = {
@@ -119,13 +136,7 @@ REVIT_API_CAPABILITIES = {
     "project_location_available": ProjectLocation is not None and SiteLocation is not None,
     "sun_and_shadow_settings_available": SunAndShadowSettings is not None,
     "unit_utils_available": UnitUtils is not None,
-    "direct_shape_target_view_type_available": DirectShapeTargetViewType is not None,
-    "view_shape_builder_available": ViewShapeBuilder is not None,
-    "direct_shape_plan_representation_available": (
-        DirectShapeTargetViewType is not None
-        and hasattr(DirectShapeTargetViewType, "Plan")
-        and ViewShapeBuilder is not None
-    ),
+    **_PREVIEW_API_CAPABILITIES,
     "unit_type_id_available": UnitTypeId is not None,
     "legacy_display_unit_type_available": DisplayUnitType is not None,
     "native_curve_loop_path_expected": (

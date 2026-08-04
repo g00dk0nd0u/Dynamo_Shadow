@@ -44,6 +44,7 @@ CAPABILITY_KEYS = {
     "formal_shadow_union_api_available",
     "direct_shape_target_view_type_available",
     "view_shape_builder_available",
+    "direct_shape_plan_member_available",
     "direct_shape_plan_representation_available",
 }
 
@@ -112,17 +113,25 @@ def _execute_preview_optional_imports(available):
     exec(compile(ast.Module(body=selected, type_ignores=[]), str(SOURCE_PATH), "exec"), namespace)
     target = namespace["DirectShapeTargetViewType"]
     builder = namespace["ViewShapeBuilder"]
-    combined = target is not None and hasattr(target, "Plan") and builder is not None
-    return target, builder, combined
+    return namespace["DirectShapeTargetViewType"], namespace["ViewShapeBuilder"]
 
 
 @pytest.mark.parametrize("available,target,builder,combined", [
+    (set(), False, False, False),
     ({"DirectShapeTargetViewType"}, True, False, False),
     ({"ViewShapeBuilder"}, False, True, False),
     ({"DirectShapeTargetViewType", "ViewShapeBuilder"}, True, True, True),
 ])
-def test_preview_optional_imports_are_independent(available, target, builder, combined):
-    actual_target, actual_builder, actual_combined = _execute_preview_optional_imports(available)
-    assert (actual_target is not None) is target
-    assert (actual_builder is not None) is builder
-    assert actual_combined is combined
+def test_preview_optional_imports_feed_implementation_capability_helper(available, target, builder, combined):
+    actual_target, actual_builder = _execute_preview_optional_imports(available)
+    capabilities = MODULE._build_preview_api_capabilities(actual_target, actual_builder)
+    assert capabilities["direct_shape_target_view_type_available"] is target
+    assert capabilities["view_shape_builder_available"] is builder
+    assert capabilities["direct_shape_plan_representation_available"] is combined
+
+
+def test_target_without_plan_member_is_not_plan_representation_capable():
+    capabilities = MODULE._build_preview_api_capabilities(type("Target", (), {}), type("Builder", (), {}))
+    assert capabilities["direct_shape_target_view_type_available"] is True
+    assert capabilities["direct_shape_plan_member_available"] is False
+    assert capabilities["direct_shape_plan_representation_available"] is False
