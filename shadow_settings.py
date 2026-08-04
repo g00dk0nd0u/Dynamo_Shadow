@@ -262,9 +262,10 @@ def _normalize_settings(settings, level=None):
     raw_contour_levels = settings_dict.get("equal_time_contour_levels_minutes")
     if raw_contour_levels is None:
         normalized["equal_time_contour_levels_minutes"] = None
-    elif isinstance(raw_contour_levels, (list, tuple)):
+    elif _is_sequence(raw_contour_levels):
+        raw_levels = list(raw_contour_levels)
         parsed_levels = []
-        for raw_level in raw_contour_levels:
+        for raw_level in raw_levels:
             value, warn = _parse_float(raw_level, "equal_time_contour_levels_minutes")
             if warn or value is None or value <= 0:
                 warnings.append(warn or "settings.equal_time_contour_levels_minutes values must be positive.")

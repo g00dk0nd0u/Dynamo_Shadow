@@ -1,5 +1,6 @@
 """Deterministic pure-Python equal-time contour generation v1."""
 import math
+from shadow_utils import _is_sequence
 
 METHOD = "marching_squares_linear_interpolation_v1"
 SOURCE_METHOD = "grid_trapezoidal_time_integration_v1"
@@ -21,6 +22,18 @@ def _block(result, code):
     return result
 
 
+def _positive_grid_count(value):
+    if isinstance(value, bool):
+        raise ValueError("boolean_grid_count")
+    numeric = float(value)
+    if not math.isfinite(numeric) or numeric != int(numeric):
+        raise ValueError("invalid_grid_count")
+    result = int(numeric)
+    if result < 2:
+        raise ValueError("invalid_grid_count")
+    return result
+
+
 def _levels(settings, maximum):
     normalized = (settings or {}).get("normalized") or settings or {}
     invalid = set((settings or {}).get("invalid_keys") or [])
@@ -31,9 +44,9 @@ def _levels(settings, maximum):
     limit = int(normalized.get("max_equal_time_contour_levels", 100))
     explicit = normalized.get("equal_time_contour_levels_minutes")
     if explicit is not None:
-        if not isinstance(explicit, (list, tuple)):
+        if not _is_sequence(explicit):
             raise ValueError("invalid")
-        values = [float(value) for value in explicit]
+        values = [float(value) for value in list(explicit)]
     else:
         interval = float(normalized.get("equal_time_contour_interval_minutes", 60.0))
         if not math.isfinite(interval) or interval <= 0:
@@ -108,11 +121,20 @@ def build_equal_time_contours(shadow_duration, settings=None):
     result = _empty(); duration = shadow_duration or {}
     if duration.get("complete") is not True:
         return _block(result, "complete_shadow_duration_required")
+    if duration.get("method") != SOURCE_METHOD:
+        return _block(result, "unsupported_shadow_duration_method")
     spec = duration.get("grid_spec") or {}; grid = duration.get("duration_grid") or []
     try:
-        nx, ny = int(spec["x_count"]), int(spec["y_count"])
+        nx, ny = _positive_grid_count(spec["x_count"]), _positive_grid_count(spec["y_count"])
         ox, oy, resolution = float(spec["origin_x_m"]), float(spec["origin_y_m"]), float(spec["resolution_m"])
-        if nx < 2 or ny < 2 or resolution <= 0 or spec.get("ordering") != "row_major_y_then_x": raise ValueError()
+        if (not math.isfinite(ox) or not math.isfinite(oy)
+                or not math.isfinite(resolution) or resolution <= 0
+                or spec.get("ordering") != "row_major_y_then_x"):
+            raise ValueError()
+        max_x = ox + (nx - 1) * resolution
+        max_y = oy + (ny - 1) * resolution
+        if not math.isfinite(max_x) or not math.isfinite(max_y):
+            raise ValueError()
     except (KeyError, TypeError, ValueError, OverflowError):
         return _block(result, "duration_grid_spec_missing_or_invalid")
     if len(grid) != nx * ny: return _block(result, "duration_grid_size_mismatch")
@@ -136,6 +158,9 @@ def build_equal_time_contours(shadow_duration, settings=None):
         for line in _stitch(segments):
             closed = len(line) > 2 and line[0] == line[-1]
             length = sum(math.hypot(b[0]-a[0], b[1]-a[1]) for a, b in zip(line, line[1:]))
+            if (not math.isfinite(length)
+                    or any(not math.isfinite(coordinate) for point in line for coordinate in point)):
+                return _block(_empty(), "duration_grid_spec_missing_or_invalid")
             contours.append({"level_minutes": level, "contour_index": 0, "closed": closed,
                              "point_count": len(line), "length_m": length,
                              "points_m": [{"x": p[0], "y": p[1]} for p in line]})
