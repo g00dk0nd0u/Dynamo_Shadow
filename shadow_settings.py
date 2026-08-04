@@ -168,6 +168,8 @@ def _range_warning(key, value):
         "max_diagnostic_source_points_per_caster": (1.0, None, True, True),
         "max_projected_points_output_per_slice": (1.0, None, True, True),
         "max_duration_grid_points": (1.0, None, True, True),
+        "equal_time_contour_interval_minutes": (0.0, None, False, True),
+        "max_equal_time_contour_levels": (1.0, None, True, True),
     }
     if key not in ranges:
         return None
@@ -185,7 +187,7 @@ def _normalize_settings(settings, level=None):
     invalid_keys = []
     info = []
     preview_keys = ["preview_mode", "preview_true_solar_times"]
-    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "equation_of_time_minutes", "solar_parameter_mode", "calculation_date", "standard_meridian_deg", "time_basis", "analysis_start_time", "analysis_end_time", "true_solar_start_time", "true_solar_end_time", "sun_time_step_minutes", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename", "max_diagnostic_source_points_per_caster", "max_projected_points_output_per_slice", "max_shadow_length_factor", "max_formal_shadow_loop_points", "max_duration_grid_points"] + preview_keys)
+    known = set(["profile", "average_ground_level_elevation_m", "measurement_height_m", "measurement_plane_elevation_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "solar_declination_deg", "equation_of_time_minutes", "solar_parameter_mode", "calculation_date", "standard_meridian_deg", "time_basis", "analysis_start_time", "analysis_end_time", "true_solar_start_time", "true_solar_end_time", "sun_time_step_minutes", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "debug_log_enabled", "debug_log_dir", "debug_log_filename", "max_diagnostic_source_points_per_caster", "max_projected_points_output_per_slice", "max_shadow_length_factor", "max_formal_shadow_loop_points", "max_duration_grid_points", "equal_time_contour_interval_minutes", "equal_time_contour_levels_minutes", "max_equal_time_contour_levels"] + preview_keys)
     ignored_keys = sorted([_safe_text(k) for k in settings_dict.keys() if k not in known])
     if ignored_keys:
         info.append("Unknown settings keys are ignored by v1 diagnostics: {0}".format(", ".join(ignored_keys)))
@@ -230,7 +232,7 @@ def _normalize_settings(settings, level=None):
             normalized[key] = list(value) if isinstance(value, list) else value
             defaults_applied.append(key)
 
-    for key in ["average_ground_level_elevation_m", "measurement_height_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "standard_meridian_deg", "equation_of_time_minutes", "solar_declination_deg", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "max_shadow_length_factor"]:
+    for key in ["average_ground_level_elevation_m", "measurement_height_m", "latitude", "longitude", "site_latitude_deg", "site_longitude_deg", "standard_meridian_deg", "equation_of_time_minutes", "solar_declination_deg", "true_north_deg", "grid_resolution_m", "analysis_margin_m", "closure_tolerance_m", "max_shadow_length_factor", "equal_time_contour_interval_minutes"]:
         value, warn = _parse_float(settings_dict.get(key), key)
         range_warn = _range_warning(key, value)
         if warn or range_warn:
@@ -245,7 +247,7 @@ def _normalize_settings(settings, level=None):
             defaults_applied.append(key)
         normalized[key] = value
 
-    for key in ["max_diagnostic_source_points_per_caster", "max_projected_points_output_per_slice", "max_formal_shadow_loop_points", "max_duration_grid_points"]:
+    for key in ["max_diagnostic_source_points_per_caster", "max_projected_points_output_per_slice", "max_formal_shadow_loop_points", "max_duration_grid_points", "max_equal_time_contour_levels"]:
         value, warn = _parse_int(settings_dict.get(key), key)
         range_warn = _range_warning(key, value)
         if warn or range_warn:
@@ -256,6 +258,26 @@ def _normalize_settings(settings, level=None):
             value = SETTINGS_DIAGNOSTIC_DEFAULTS[key]
             defaults_applied.append(key)
         normalized[key] = value
+
+    raw_contour_levels = settings_dict.get("equal_time_contour_levels_minutes")
+    if raw_contour_levels is None:
+        normalized["equal_time_contour_levels_minutes"] = None
+    elif _is_sequence(raw_contour_levels):
+        raw_levels = list(raw_contour_levels)
+        parsed_levels = []
+        for raw_level in raw_levels:
+            value, warn = _parse_float(raw_level, "equal_time_contour_levels_minutes")
+            if warn or value is None or value <= 0:
+                warnings.append(warn or "settings.equal_time_contour_levels_minutes values must be positive.")
+                invalid_keys.append("equal_time_contour_levels_minutes")
+                parsed_levels = None
+                break
+            parsed_levels.append(value)
+        normalized["equal_time_contour_levels_minutes"] = parsed_levels
+    else:
+        warnings.append("settings.equal_time_contour_levels_minutes must be a list of positive finite numbers.")
+        invalid_keys.append("equal_time_contour_levels_minutes")
+        normalized["equal_time_contour_levels_minutes"] = []
 
     if normalized.get("site_latitude_deg") is None and normalized.get("latitude") is not None:
         normalized["site_latitude_deg"] = normalized.get("latitude")

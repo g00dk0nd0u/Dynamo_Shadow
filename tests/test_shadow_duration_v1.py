@@ -19,6 +19,8 @@ def test_static_rectangle_accumulates_full_interval():
         {"grid_resolution_m": 1, "analysis_margin_m": 0, "max_duration_grid_points": 100})
     assert result["complete"] and result["maximum_shadow_duration_minutes"] == 30
     assert result["shadowed_point_count"] == 9
+    assert result["grid_spec"]["ordering"] == "row_major_y_then_x"
+    assert result["grid_spec"]["x_count"] * result["grid_spec"]["y_count"] == len(result["duration_grid"])
 
 
 def test_entering_or_leaving_point_uses_trapezoidal_half_interval():

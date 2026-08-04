@@ -2,8 +2,8 @@
 # Dynamo_Shadow v1 input diagnostics orchestration.
 #
 # This script orchestrates the current solar, formal time-slice shadow polygon,
-# per-slice union, and grid/trapezoidal duration prototype modules and constructs
-# OUT. Equal-time contours and legal judgement remain unimplemented.
+# per-slice union, duration, and equal-time contour v1 modules and constructs
+# OUT. Legal judgement remains unimplemented.
 
 import os
 import sys
@@ -87,6 +87,7 @@ try:
         FORMAL_SHADOW_PROJECTION_POLICY,
         FORMAL_SHADOW_UNION_POLICY,
         SHADOW_PREVIEW_POLICY,
+        EQUAL_TIME_CONTOUR_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
     from shadow_settings import _normalize_settings
@@ -102,6 +103,7 @@ try:
     from shadow_preview import _build_shadow_preview
     from shadow_union import _build_unified_shadow_slices
     from shadow_duration import _build_shadow_duration
+    from shadow_contours import _build_equal_time_contours
 except BaseException:
     _IMPORT_ERROR_TEXT = traceback.format_exc()
 else:
@@ -266,10 +268,14 @@ def _build_success():
     except BaseException as exc:
         shadow_duration = {"available": False, "complete": False, "method": "grid_trapezoidal_time_integration_v1", "permit_ready_certified": False, "blockers": [{"failure_code": "shadow_duration_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
     try:
+        equal_time_contours = _build_equal_time_contours(shadow_duration, settings_normalized)
+    except BaseException as exc:
+        equal_time_contours = {"available": False, "complete": False, "method": "marching_squares_linear_interpolation_v1", "source_duration_method": "grid_trapezoidal_time_integration_v1", "requested_levels_minutes": [], "generated_levels_minutes": [], "contour_count": 0, "closed_contour_count": 0, "open_contour_count": 0, "contours": [], "permit_ready_certified": False, "blockers": [{"failure_code": "equal_time_contours_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
+    try:
         shadow_preview = _build_shadow_preview(unified_shadow_slices, measurement_plane, settings_normalized)
     except BaseException:
         shadow_preview = {"enabled": False, "mode": "off", "attempted": True, "available": False, "complete": False, "partial_success": False, "unified_shadow_source_available": bool(unified_shadow_slices.get("available")), "created_element_count": 0, "deleted_element_count": 0, "created_element_ids": [], "groups": [], "warnings": ["Preview failed non-fatally; unified formal shadow output remains available."]}
-    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration)
+    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
     warnings.extend(settings_normalized.get("warnings", []))
@@ -301,7 +307,7 @@ def _build_success():
         "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
-        "message": "Dynamo_Shadow Revit-native formal time-slice shadows, per-slice union, and grid/trapezoidal duration accumulation v1. Equal-time contours and legal judgement are not performed.",
+        "message": "Dynamo_Shadow formal time-slice polygons, per-slice union, duration accumulation v1, and equal-time contours v1. Legal judgement is not implemented.",
         "legal_constants": LEGAL_CONSTANTS,
         "unit_conversion_diagnostics": unit_conversion_diagnostics,
         "unit_conversion_policy": UNIT_CONVERSION_POLICY,
@@ -328,6 +334,8 @@ def _build_success():
         "formal_shadow_projection_policy": FORMAL_SHADOW_PROJECTION_POLICY,
         "unified_shadow_slices": unified_shadow_slices,
         "shadow_duration": shadow_duration,
+        "equal_time_contours": equal_time_contours,
+        "equal_time_contour_policy": EQUAL_TIME_CONTOUR_POLICY,
         "formal_shadow_union_policy": FORMAL_SHADOW_UNION_POLICY,
         "shadow_preview": shadow_preview,
         "shadow_preview_policy": SHADOW_PREVIEW_POLICY,

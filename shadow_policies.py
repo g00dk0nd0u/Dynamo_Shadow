@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-08-04-pr66-review-fixes-duration-v1"
+CODE_BUILD_ID = "2026-08-04-equal-time-contours-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -139,8 +139,20 @@ SETTINGS_DIAGNOSTIC_DEFAULTS = {
     "max_shadow_length_factor": 100.0,
     "max_formal_shadow_loop_points": 2000,
     "max_duration_grid_points": 250000,
+    "equal_time_contour_interval_minutes": 60.0,
+    "equal_time_contour_levels_minutes": None,
+    "max_equal_time_contour_levels": 100,
     "preview_mode": "off",
     "preview_true_solar_times": None,
+}
+
+EQUAL_TIME_CONTOUR_POLICY = {
+    "purpose": "technical_diagnostic_equal_time_contours",
+    "method": "marching_squares_linear_interpolation_v1",
+    "source": "grid_trapezoidal_time_integration_v1",
+    "statutory_thresholds": False,
+    "legal_judgement_generated": False,
+    "permit_ready_certified": False,
 }
 
 SHADOW_PREVIEW_POLICY = {
@@ -168,12 +180,12 @@ FORMAL_SHADOW_PROJECTION_POLICY = {
     "loop_api": "Autodesk.Revit.DB.Face.GetEdgesAsCurveLoops",
     "target_revit_version": "2024.3",
     "supported_initial_scope": "positive-volume extrusion-like solids with exact Line loops",
-    "unsupported_initial_scope": ["non-Line serialization", "arbitrary complex solids", "equal-time contours", "legal judgement"],
+    "unsupported_initial_scope": ["non-Line serialization", "arbitrary complex solids", "legal judgement"],
     "convex_hull_fallback_allowed": False,
     "bounding_box_used_as_shadow_geometry": False,
     "union_performed": True,
     "duration_accumulation_performed": True,
-    "equal_time_contours_generated": False,
+    "equal_time_contours_generated": True,
     "legal_judgement_generated": False,
     "permit_ready_certified": False,
 }
