@@ -64,12 +64,14 @@ Existing Walls, Floors, Roofs, equipment, CAD imports, and topography-derived ed
 - `script.py` orchestrates imports, fallback behavior outside Dynamo, and top-level `OUT` construction.
 - `shadow_duration.py` performs grid sampling and trapezoidal duration accumulation v1.
 - `shadow_contours.py` generates deterministic equal-time polylines with Marching Squares and linear edge interpolation.
+- `shadow_contour_preview.py` creates and manages the optional equal-time contour DirectShape preview.
+- `tests/fixtures/debug_logs/` contains fixed, sanitized samples used by the privacy check; runtime output under `debug_logs/` remains ignored.
 - Other `shadow_*.py` modules contain focused policies, utilities, input diagnostics, settings normalization, measurement-plane diagnostics, geometry diagnostics, footprint diagnostics, formal projection and union adapters, unit conversion, debug logging, and readiness checks.
 - `docs/` contains research notes, specifications, and implementation notes.
 
 ## Debug logs
 
-Debug logging is disabled by default. Committed debug logs, when used for review, must stay under `debug_logs/`, remain small, and be sanitized. Logs must not contain local paths, usernames, email addresses, client or project names, personal cloud paths, raw Revit object representations, or large geometry payloads.
+Debug logging is disabled by default. Runtime files are written under the ignored `debug_logs/` directory and must not be committed. Fixed samples needed by tests or repository checks belong under `tests/fixtures/debug_logs/`, must remain small and sanitized, and must not contain local paths, usernames, email addresses, client or project names, personal cloud paths, raw Revit object representations, or large geometry payloads.
 
 ## Units
 

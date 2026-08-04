@@ -132,7 +132,7 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 14. measurement plane readiness check
 15. measurement plane construction diagnostics
 16. pipeline readiness diagnostics
-17. formal footprint polygon generation — `Face.GetEdgesAsCurveLoops` / `CurveLoop` first (planned; not yet implemented; requires Revit 2024.3 runtime validation)
+17. formal footprint polygon generation — `Face.GetEdgesAsCurveLoops` / `CurveLoop` first (implemented prototype; requires Revit 2024.3 runtime validation)
 18. optional site boundary loop extraction
 19. legal judgement mask preparation
 20. optional 5m / 10m measurement line generation when site_boundary is available
@@ -151,7 +151,7 @@ The engine strategy is Revit-native geometry first, Dynamo standard nodes for UI
 
 The existing NOAA calculation remains the primary auditable solar candidate because it makes true solar time explicit and does not depend on view state. Revit `SunAndShadowSettings` is planned only as an independent comparison. Existing point projection and convex hull output remains diagnostic-only, comparison-only, and potentially an over-approximation; it is not a formal shadow polygon.
 
-Formal footprint extraction is planned to use `Face.GetEdgesAsCurveLoops` and native `CurveLoop` validation before manual stitching. Formal time-slice shadow prototyping is planned to split independent volumes with `SolidUtils.SplitVolumes` and evaluate `ExtrusionAnalyzer` on simple boxes first. These paths are not implemented by this specification update and require Revit 2024.3 runtime validation. Future 2D time-slice union remains a separate, undecided architecture; `BooleanOperationsUtils` must not be assumed to provide it.
+The current prototype uses `Face.GetEdgesAsCurveLoops` and native `CurveLoop` validation before manual stitching for formal footprint extraction. Formal time-slice shadows split independent volumes with `SolidUtils.SplitVolumes` and use `ExtrusionAnalyzer`; per-slice union uses temporary in-memory solids and `BooleanOperationsUtils`. Duration accumulation, equal-time contours, and contour preview are also implemented. These paths still require Revit 2024.3 runtime validation. Site-boundary masks, 5 m / 10 m lines, legal judgement, and permit certification remain unimplemented.
 
 ## 非スコープ
 

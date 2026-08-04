@@ -1,5 +1,7 @@
 # Unit conversion diagnostics v1
 
+> Historical stage note: this document describes the original unit-conversion stage. The current pipeline now includes later formal calculation prototypes; see `README.md` for current status.
+
 This project reads Revit geometry values in Revit internal units, normally feet. Legal settings and the Article 56-2 measurement plane are represented in SI meters.
 
 This version adds diagnostics only:

@@ -6,6 +6,8 @@ This repository is an experimental Dynamo / Revit tool for studying equal-time s
 
 The project is still in an early development stage. The current files must not be treated as a complete building permit calculation tool.
 
+The current seven-input Dynamo graph includes independent Player inputs for regulatory preset, latitude, and longitude. Formal footprint extraction, formal solar specification, formal time-slice polygons, per-slice union, duration accumulation, equal-time contours, and contour preview are implemented as technical prototypes. Site-boundary masks, 5 m / 10 m lines, legal judgement, and permit certification remain unimplemented.
+
 ## File roles
 
 ### Shadow.dyn
@@ -235,9 +237,9 @@ For PRs containing geometry processing, also confirm:
 
 ## Development debug log rules
 
-- Development debug logs may be committed when they are small, sanitized, and review-oriented.
-- Keep committed debug logs under `debug_logs/`.
-- Prefer fixed filenames such as `latest_debug.json` and `sample_*.json`.
+- Runtime debug logs must not be committed; keep `debug_logs/` ignored.
+- Fixed, sanitized samples required by tests or review checks belong under `tests/fixtures/debug_logs/`.
+- Prefer fixed fixture names such as `sample_*.json`.
 - Do not create unlimited timestamped run logs.
 - Do not log raw Revit objects, client/project names, personal paths, or huge geometry payloads.
 - Debug logging must be disabled by default.

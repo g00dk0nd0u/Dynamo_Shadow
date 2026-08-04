@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Development debug logging provides a small, sanitized JSON artifact for Codex / ChatGPT / GitHub review before formal footprint polygon generation, unit conversion, and geometry processing are implemented.
+Development debug logging provides a small, sanitized JSON artifact for local diagnostics and review. Formal geometry and calculation prototypes now exist, but debug output remains diagnostic-only.
 
-This is review support only. It does not implement formal footprint polygons, CurveLoop creation, Revit unit conversion, site boundary loop extraction, true solar time, sun vectors, shadow projection, legal judgement, or Revit element creation.
+This is review support only and is not an input to the calculation pipeline. It does not implement site-boundary masks, 5 m / 10 m lines, legal judgement, or permit certification.
 
 ## Enablement
 
@@ -44,11 +44,10 @@ Both success and failure outputs include:
 
 ## Committed review artifacts
 
-Small sanitized review samples under `debug_logs/` may be committed, for example:
+Runtime files under `debug_logs/` are ignored and must not be committed. Fixed sanitized samples required by tests or repository checks belong under `tests/fixtures/debug_logs/`, for example:
 
-- `debug_logs/latest_debug.json`
-- `debug_logs/sample_no_inputs.json`
-- `debug_logs/sample_basic_settings.json`
+- `tests/fixtures/debug_logs/sample_no_inputs.json`
+- `tests/fixtures/debug_logs/sample_basic_settings.json`
 
 Do not commit raw Revit object dumps, client/project names, personal paths, huge geometry payloads, or timestamp-growth logs.
 
@@ -58,7 +57,7 @@ Committed debug logs must be sanitized more strictly than runtime-only diagnosti
 
 String-level redaction is mandatory, not only dictionary-key filtering. Warnings, error summaries, traceback-like strings, object summaries, and fallback messages must pass through privacy redaction before they can appear in a debug log.
 
-Forbidden content includes local user paths, usernames, email addresses, client/project names, OneDrive paths, common user folders, UNC/network paths, raw Revit objects, and Dynamo/Revit object repr strings. Privacy scan failures in committed `debug_logs/*.json` artifacts are merge blockers.
+Forbidden content includes local user paths, usernames, email addresses, client/project names, OneDrive paths, common user folders, UNC/network paths, raw Revit objects, and Dynamo/Revit object repr strings. Privacy scan failures in committed fixture JSON artifacts are merge blockers.
 
 ## Unit conversion summary in debug logs
 
