@@ -45,7 +45,9 @@ def test_unavailable_extent_inputs_are_unverified(kwargs, reason):
 
 
 def check(direction=True, extent_passed=True, extent_attempted=True):
-    return {"passed": direction, "direction_validation_attempted": True,
+    return {"passed": direction, "reason": "direction_check_passed",
+        "direction_validation_reason": "direction_check_passed",
+        "direction_validation_attempted": True,
         "direction_validation_passed": direction,
         "extent_validation_attempted": extent_attempted,
         "extent_validation_passed": extent_passed if extent_attempted else None,
@@ -66,6 +68,22 @@ def test_runtime_check_aggregation_is_tri_state(checks, status, passed):
     assert result["passed"] is passed
     assert result["check_count"] == len(checks)
     assert result["checks"] == checks
+
+
+@pytest.mark.parametrize("item,expected_status,expected_passed,expected_reason", [
+    (check(extent_passed=False), "failed", False,
+        "one_or_more_runtime_projection_checks_failed"),
+    (check(extent_attempted=False), "unverified", None,
+        "one_or_more_runtime_projection_checks_unverified"),
+    (check(), "verified", True, "all_runtime_projection_checks_verified"),
+])
+def test_single_check_preserves_aggregate_reason(item, expected_status,
+                                                  expected_passed, expected_reason):
+    result = _aggregate_runtime_checks([item])
+    assert result["passed"] is expected_passed
+    assert result["runtime_validation_status"] == expected_status
+    assert result["reason"] == expected_reason
+    assert result["direction_validation_reason"] == "direction_check_passed"
 
 
 @pytest.mark.parametrize("aggregate,code", [

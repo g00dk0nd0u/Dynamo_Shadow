@@ -354,8 +354,17 @@ def _aggregate_runtime_checks(checks):
         "failed_check_count": states.count("failed"), "unverified_check_count": states.count("unverified"),
         "checks": checks}
     if len(checks) == 1:
-        for key, value in checks[0].items():
-            if key != "passed": result[key] = value
+        diagnostic_keys = ("section_axis_min_m", "section_axis_max_m", "shadow_axis_min_m",
+            "shadow_axis_max_m", "sunward_overflow_m", "downshadow_extension_m",
+            "expected_shadow_axis_min_m", "expected_shadow_axis_max_m",
+            "actual_shadow_axis_min_m", "actual_shadow_axis_max_m", "extent_error_min_m",
+            "extent_error_max_m", "extent_validation_tolerance_m",
+            "extent_validation_attempted", "extent_validation_passed",
+            "extent_validation_status", "extent_validation_reason",
+            "direction_validation_attempted", "direction_validation_passed",
+            "direction_validation_status", "direction_validation_reason")
+        for key in diagnostic_keys:
+            if key in checks[0]: result[key] = checks[0][key]
     return result
 
 
@@ -606,6 +615,7 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
                         plane_diag["elevation_internal"], settings, short_tol)
                     polygon_check = _validate_actual_polygon_direction(section, classified,
                         physical_info, tolerance_m)
+                    polygon_check["direction_validation_reason"] = polygon_check.get("reason")
                     direction_attempted = (polygon_check.get("section_axis_min_m") is not None
                         and polygon_check.get("shadow_axis_min_m") is not None)
                     polygon_check.update({"direction_validation_attempted": direction_attempted,
