@@ -87,6 +87,7 @@ try:
         FORMAL_SHADOW_PROJECTION_POLICY,
         FORMAL_SHADOW_UNION_POLICY,
         SHADOW_PREVIEW_POLICY,
+        EQUAL_TIME_CONTOUR_PREVIEW_POLICY,
         EQUAL_TIME_CONTOUR_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
@@ -101,6 +102,7 @@ try:
     from shadow_projection import _build_shadow_projection_diagnostics
     from shadow_formal_projection import _build_formal_shadow_polygons
     from shadow_preview import _build_shadow_preview
+    from shadow_contour_preview import _build_equal_time_contour_preview
     from shadow_union import _build_unified_shadow_slices
     from shadow_duration import _build_shadow_duration
     from shadow_contours import _build_equal_time_contours
@@ -216,6 +218,8 @@ def _minimal_import_failure(error_text):
         "shadow_projection_policy": globals().get("SHADOW_PROJECTION_POLICY"),
         "shadow_preview": {"enabled": False, "mode": "off", "attempted": False, "available": False, "created_element_count": 0, "deleted_element_count": 0, "warnings": ["Preview unavailable because module imports failed."]},
         "shadow_preview_policy": globals().get("SHADOW_PREVIEW_POLICY"),
+        "equal_time_contour_preview": {"enabled": False, "mode": "off", "attempted": False, "available": False, "complete": False, "created_element_count": 0, "deleted_element_count": 0, "warnings": ["Contour preview unavailable because module imports failed."]},
+        "equal_time_contour_preview_policy": globals().get("EQUAL_TIME_CONTOUR_PREVIEW_POLICY"),
         "debug_log_policy": {
             "purpose": "development_review_debug_log",
             "enabled_by_default": False,
@@ -275,6 +279,18 @@ def _build_success():
         shadow_preview = _build_shadow_preview(unified_shadow_slices, measurement_plane, settings_normalized)
     except BaseException:
         shadow_preview = {"enabled": False, "mode": "off", "attempted": True, "available": False, "complete": False, "partial_success": False, "unified_shadow_source_available": bool(unified_shadow_slices.get("available")), "created_element_count": 0, "deleted_element_count": 0, "created_element_ids": [], "groups": [], "warnings": ["Preview failed non-fatally; unified formal shadow output remains available."]}
+    try:
+        equal_time_contour_preview = _build_equal_time_contour_preview(
+            equal_time_contours, measurement_plane, settings_normalized)
+    except BaseException:
+        equal_time_contour_preview = {"enabled": False, "mode": "off", "attempted": True,
+            "available": False, "complete": False, "partial_success": False,
+            "source_available": bool(equal_time_contours.get("available")),
+            "created_element_count": 0, "deleted_element_count": 0,
+            "created_element_ids": [], "groups": [], "blockers":
+            [{"failure_code": "contour_preview_unhandled_exception"}],
+            "warnings": ["Contour preview failed non-fatally; equal-time contour output remains available."],
+            "permit_ready_certified": False}
     pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
@@ -287,6 +303,7 @@ def _build_success():
     warnings.extend(shadow_projection_diagnostics.get("warnings", []))
     warnings.extend(formal_shadow_polygons.get("warnings", []))
     warnings.extend(shadow_preview.get("warnings", []))
+    warnings.extend(equal_time_contour_preview.get("warnings", []))
     warnings.extend(pipeline_readiness.get("blockers_for_equal_time_shadow", []))
     warnings.extend(pipeline_readiness.get("blockers_for_footprint_extraction", []))
     warnings.extend(pipeline_readiness.get("blockers_for_measurement_plane", []))
@@ -339,6 +356,8 @@ def _build_success():
         "formal_shadow_union_policy": FORMAL_SHADOW_UNION_POLICY,
         "shadow_preview": shadow_preview,
         "shadow_preview_policy": SHADOW_PREVIEW_POLICY,
+        "equal_time_contour_preview": equal_time_contour_preview,
+        "equal_time_contour_preview_policy": EQUAL_TIME_CONTOUR_PREVIEW_POLICY,
         "law56_2_awareness": law56_2_awareness,
         "measurement_plane": measurement_plane,
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
