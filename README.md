@@ -2,7 +2,7 @@
 
 Dynamo Shadow is a Dynamo/Revit diagnostic prototype for studying workflows related to Japanese Building Standard Law Article 56-2 shadow regulations.
 
-This repository is for early-stage research and review. The current pipeline implements prototypes for formal per-solid, per-time-slice shadow polygons, Revit-native union once per time slice, and grid/trapezoidal shadow-duration accumulation v1. The formal polygon scope remains limited to extrusion-like solids and Line-loop serialization, and actual model validation in Revit 2024.3 remains required. Equal-time contour generation, formal closed site-boundary extraction, 5 m/10 m measurement lines, road/water/elevation-difference relaxations, and legal judgement remain unimplemented. These prototypes are not legal or permit-ready output, and `permit_ready_certified` remains `false`.
+This repository is for early-stage research and review. The current pipeline implements prototypes for formal per-solid, per-time-slice shadow polygons, Revit-native union once per time slice, grid/trapezoidal shadow-duration accumulation v1, and pure-Python equal-time contours v1. The formal polygon scope remains limited to extrusion-like solids and Line-loop serialization, and actual model validation in Revit 2024.3 remains required. Formal closed site-boundary extraction, 5 m/10 m measurement lines, road/water/elevation-difference relaxations, and legal judgement remain unimplemented. These prototypes are not legal or permit-ready output, and `permit_ready_certified` remains `false`.
 
 ## Current diagnostics
 
@@ -52,6 +52,7 @@ Existing Walls, Floors, Roofs, equipment, CAD imports, and topography-derived ed
 - `dynamo_loader.py` resolves workspace paths, maps Dynamo `IN[]` values to named `INPUTS`, runs `script.py`, and returns diagnostics.
 - `script.py` orchestrates imports, fallback behavior outside Dynamo, and top-level `OUT` construction.
 - `shadow_duration.py` performs grid sampling and trapezoidal duration accumulation v1.
+- `shadow_contours.py` generates deterministic equal-time polylines with Marching Squares and linear edge interpolation.
 - Other `shadow_*.py` modules contain focused policies, utilities, input diagnostics, settings normalization, measurement-plane diagnostics, geometry diagnostics, footprint diagnostics, formal projection and union adapters, unit conversion, debug logging, and readiness checks.
 - `docs/` contains research notes, specifications, and implementation notes.
 
@@ -89,3 +90,8 @@ The required Revit runtime check uses true north 0 degrees, a simple box above a
 ## Shadow duration accumulation v1
 
 Complete `unified_shadow_slices` can be sampled on a bounded meter grid and integrated between adjacent slices with the trapezoidal rule. Outer/inner loops and multiple components are supported, and `max_duration_grid_points` stops oversized grids before allocation. The result remains a numerical approximation at the configured temporal step (normally 30 minutes), works without a site boundary, and is not permit-certified; site-boundary-dependent legal judgement remains blocked.
+
+
+## Equal-time contours v1
+
+`shadow_contours.py` reconstructs the row-major duration grid from `grid_spec`, resolves ambiguous Marching Squares cases deterministically from the cell mean, removes duplicate or zero-length segments, and joins segments into ordered open or closed polylines. Explicit `equal_time_contour_levels_minutes` take priority; otherwise levels use `equal_time_contour_interval_minutes=60`. `max_equal_time_contour_levels=100` bounds output work. These are technical/diagnostic levels, not statutory thresholds, and legal judgement remains unimplemented.

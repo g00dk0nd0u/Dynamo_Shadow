@@ -472,6 +472,19 @@ def _duration_summary(duration):
         "grid_point_count", "maximum_shadow_duration_minutes", "shadowed_point_count",
         "ready_for_equal_time_contour_generation", "permit_ready_certified", "blockers", "warnings")})
 
+def _contour_summary(value):
+    value = value if isinstance(value, dict) else {}
+    levels = {}
+    for contour in value.get("contours") or []:
+        key = str(contour.get("level_minutes")); item = levels.setdefault(key, {"contour_count": 0, "open_count": 0, "closed_count": 0, "point_count": 0})
+        item["contour_count"] += 1; item["point_count"] += int(contour.get("point_count") or 0)
+        item["closed_count" if contour.get("closed") else "open_count"] += 1
+    return _sanitize_for_debug({"available": value.get("available"), "complete": value.get("complete"),
+        "method": value.get("method"), "requested_levels_minutes": value.get("requested_levels_minutes"),
+        "generated_levels_minutes": value.get("generated_levels_minutes"), "contour_count": value.get("contour_count"),
+        "closed_contour_count": value.get("closed_contour_count"), "open_contour_count": value.get("open_contour_count"),
+        "per_level": levels, "blockers": value.get("blockers"), "warnings": value.get("warnings")})
+
 def _summarize_out_for_debug(out_payload):
     out_payload = out_payload or {}
     settings = out_payload.get("settings_normalized") or {}
@@ -499,6 +512,7 @@ def _summarize_out_for_debug(out_payload):
         "formal_shadow_polygon_summary": _formal_shadow_polygon_debug_summary(out_payload.get("formal_shadow_polygons")),
         "unified_shadow_summary": _unified_shadow_summary(out_payload.get("unified_shadow_slices")),
         "shadow_duration_summary": _duration_summary(out_payload.get("shadow_duration")),
+        "equal_time_contour_summary": _contour_summary(out_payload.get("equal_time_contours")),
         "shadow_preview": _sanitize_for_debug(out_payload.get("shadow_preview")),
         "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
         "solar_specification_summary": _solar_specification_debug_summary(out_payload.get("solar_calculation_v1")),
@@ -540,6 +554,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "formal_shadow_polygon_summary": summary["formal_shadow_polygon_summary"],
         "unified_shadow_summary": summary["unified_shadow_summary"],
         "shadow_duration_summary": summary["shadow_duration_summary"],
+        "equal_time_contour_summary": summary["equal_time_contour_summary"],
         "shadow_preview": summary["shadow_preview"],
         "solar_calculation_summary": summary["solar_calculation_summary"],
         "solar_specification_summary": summary["solar_specification_summary"],

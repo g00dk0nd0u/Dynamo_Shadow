@@ -1,7 +1,7 @@
 # Pipeline readiness diagnostics.
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None):
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None, equal_time_contours=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
@@ -48,8 +48,9 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
                       and union.get("ready_for_duration_accumulation") is True
                       and union.get("time_slice_count") == solar.get("slice_count"))
     duration_complete = (shadow_duration or {}).get("complete") is True
-    next_steps = (["equal-time contour generation"] if duration_complete else
-                  ["shadow duration accumulation", "equal-time contour generation"])
+    contours_complete = (equal_time_contours or {}).get("complete") is True
+    next_steps = ([] if contours_complete else (["equal-time contour generation"] if duration_complete else
+                  ["shadow duration accumulation", "equal-time contour generation"]))
     next_steps.extend(["site boundary", "5m / 10m lines", "legal judgement"])
     return {
         "input_diagnostics_ready": True,
@@ -86,6 +87,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "ready_for_duration_accumulation": duration_ready,
         "shadow_duration_accumulation_complete": duration_complete,
         "ready_for_equal_time_contour_generation": (shadow_duration or {}).get("ready_for_equal_time_contour_generation") is True,
+        "equal_time_contours_complete": contours_complete,
         "blockers_for_equal_time_shadow": blockers_equal,
         "blockers_for_footprint_extraction": blockers_fp,
         "blockers_for_future_footprint_polygon_generation": blockers_fp,

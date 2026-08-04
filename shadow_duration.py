@@ -14,7 +14,8 @@ def _empty():
         "temporal_step_minutes": None, "spatial_resolution_m": None,
         "grid_point_count": 0, "maximum_shadow_duration_minutes": 0.0,
         "shadowed_point_count": 0, "ready_for_equal_time_contour_generation": False,
-        "permit_ready_certified": False, "duration_grid": [], "blockers": [],
+        "permit_ready_certified": False, "duration_grid": [], "grid_spec": None,
+        "bounds_m": None, "blockers": [],
         "warnings": ["Duration values are a grid/trapezoidal numerical approximation at the configured temporal interval."]}
 
 
@@ -90,7 +91,13 @@ def build_shadow_duration(unified_shadow_slices, settings=None):
             grid.append({"x_m": x, "y_m": y, "shadow_duration_minutes": duration})
     result.update({"available": True, "complete": True, "maximum_shadow_duration_minutes": max_duration,
         "shadowed_point_count": shadowed, "ready_for_equal_time_contour_generation": True,
-        "duration_grid": grid})
+        "duration_grid": grid,
+        "grid_spec": {"x_count": nx, "y_count": ny, "origin_x_m": min_x,
+            "origin_y_m": min_y, "resolution_m": resolution,
+            "ordering": "row_major_y_then_x"},
+        "bounds_m": {"min_x": min_x, "min_y": min_y,
+            "max_x": min_x + (nx - 1) * resolution,
+            "max_y": min_y + (ny - 1) * resolution}})
     return result
 
 

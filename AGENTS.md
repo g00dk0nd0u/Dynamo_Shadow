@@ -269,3 +269,9 @@ For PRs containing geometry processing, also confirm:
 - When raw/internal comparison is needed, convert the measurement plane to `elevation_internal_candidate` and compare raw z values against that internal candidate.
 - Meter comparison must use converted meter fields and the meter-based measurement plane elevation.
 - Debug logs may include compact unit conversion summaries, but they must remain sanitized.
+
+## Equal-time contour v1 rules
+
+- Equal-time contours are technical/diagnostic outputs generated from the duration grid; their levels are not statutory thresholds.
+- Keep contour generation pure Python and independent of Revit API objects.
+- Site-boundary processing, 5 m / 10 m lines, legal judgement, and permit certification remain later work.
