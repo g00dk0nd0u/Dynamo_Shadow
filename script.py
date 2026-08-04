@@ -1,9 +1,9 @@
 # script.py
 # Dynamo_Shadow v1 input diagnostics orchestration.
 #
-# This script intentionally does not perform shadow, sun-position, shadow
-# polygon, grid accumulation, or equal-time contour calculations yet. It only
-# orchestrates diagnostics implemented in shadow_*.py modules and constructs OUT.
+# This script orchestrates the current solar, formal time-slice shadow polygon,
+# per-slice union, and grid/trapezoidal duration prototype modules and constructs
+# OUT. Equal-time contours and legal judgement remain unimplemented.
 
 import os
 import sys

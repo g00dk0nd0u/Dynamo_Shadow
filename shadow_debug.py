@@ -360,6 +360,7 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
     formal = formal_shadow if isinstance(formal_shadow, dict) else {}
     reason_counts = {}; areas = []; point_counts = []
     vector_contract_passed = runtime_verified = runtime_failed = runtime_unverified = 0
+    runtime_attempted = runtime_extent_failed = runtime_extent_unverified = 0
     analyzer_ok = analyzer_fail = analyzer_dispose_fail = native_loops = line_loops = non_line_loops = 0
     outer = inner = failed_slices = failed_caster_slices = comparisons = 0
     per_slice = []; clip_diagnostics = []
@@ -367,9 +368,17 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
         if (item.get("direction_vector_contract_check") or {}).get("antiparallel_api_conversion") is True:
             vector_contract_passed += 1
         runtime_check = item.get("actual_polygon_direction_check") or {}
-        if item.get("revit_runtime_direction_verified") is True: runtime_verified += 1
+        runtime_status = runtime_check.get("runtime_validation_status")
+        if runtime_status == "verified": runtime_verified += 1
+        elif runtime_status == "failed": runtime_failed += 1
+        elif runtime_status == "unverified": runtime_unverified += 1
+        elif item.get("revit_runtime_direction_verified") is True: runtime_verified += 1
         elif runtime_check.get("section_axis_min_m") is not None or runtime_check.get("reason") == "one or more runtime polygons failed": runtime_failed += 1
         else: runtime_unverified += 1
+        runtime_checks = runtime_check.get("checks") or ([runtime_check] if runtime_check else [])
+        runtime_attempted += sum(check.get("extent_validation_attempted") is True for check in runtime_checks)
+        runtime_extent_failed += sum(check.get("extent_validation_status") == "failed" for check in runtime_checks)
+        runtime_extent_unverified += sum(check.get("extent_validation_status") == "unverified" for check in runtime_checks)
         polygons = 0; failed_casters = 0
         analyzer_rows = []
         for caster in item.get("casters") or []:
@@ -396,7 +405,8 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
         if item.get("comparison"): comparisons += 1
         formal_area = sum(float(p.get("area_m2") or 0.0) * (-1 if p.get("role") == "inner" else 1)
             for caster in item.get("casters") or [] for p in caster.get("polygons") or [])
-        check = item.get("actual_polygon_direction_check") or {}
+        aggregate_check = item.get("actual_polygon_direction_check") or {}
+        check = aggregate_check
         if check.get("checks"): check = check["checks"][0]
         per_slice.append({"slice_index": _debug_int(item.get("slice_index")), "complete": bool(item.get("complete")),
             "true_solar_time": item.get("true_solar_time"), "solar_altitude_deg": item.get("solar_altitude_deg"),
@@ -410,7 +420,9 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
             "actual_shadow_axis_min_m": check.get("actual_shadow_axis_min_m"), "actual_shadow_axis_max_m": check.get("actual_shadow_axis_max_m"),
             "extent_error_min_m": check.get("extent_error_min_m"), "extent_error_max_m": check.get("extent_error_max_m"),
             "extent_validation_tolerance_m": check.get("extent_validation_tolerance_m"), "extent_validation_passed": check.get("extent_validation_passed"),
-            "actual_polygon_direction_check": check, "revit_runtime_direction_verified": item.get("revit_runtime_direction_verified"),
+            "actual_polygon_direction_check": check,
+            "runtime_validation_status": aggregate_check.get("runtime_validation_status"),
+            "revit_runtime_direction_verified": item.get("revit_runtime_direction_verified"),
             "polygon_count": polygons, "failed_caster_count": failed_casters})
     areas = [x for x in areas if x is not None]; point_counts = [x for x in point_counts if x is not None]
     return _sanitize_for_debug({
@@ -424,6 +436,9 @@ def _formal_shadow_polygon_debug_summary(formal_shadow):
         "runtime_polygon_direction_verified_count": runtime_verified,
         "runtime_polygon_direction_failed_count": runtime_failed,
         "runtime_polygon_direction_unverified_count": runtime_unverified,
+        "runtime_projection_validation_attempted_count": runtime_attempted,
+        "runtime_projection_extent_failed_count": runtime_extent_failed,
+        "runtime_projection_extent_unverified_count": runtime_extent_unverified,
         "failure_reason_counts": reason_counts, "runtime_validation_per_slice": per_slice,
         "clip_diagnostics": clip_diagnostics,
         "minimum_area_m2": min(areas) if areas else None, "maximum_area_m2": max(areas) if areas else None,

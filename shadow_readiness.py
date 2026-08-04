@@ -47,6 +47,10 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
                       and formal.get("complete") is True and union_complete
                       and union.get("ready_for_duration_accumulation") is True
                       and union.get("time_slice_count") == solar.get("slice_count"))
+    duration_complete = (shadow_duration or {}).get("complete") is True
+    next_steps = (["equal-time contour generation"] if duration_complete else
+                  ["shadow duration accumulation", "equal-time contour generation"])
+    next_steps.extend(["site boundary", "5m / 10m lines", "legal judgement"])
     return {
         "input_diagnostics_ready": True,
         "shadow_caster_ready": shadow_ready,
@@ -80,7 +84,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "formal_shadow_union_complete": union_complete,
         "blockers_for_formal_shadow_union": list(union.get("blockers") or []),
         "ready_for_duration_accumulation": duration_ready,
-        "shadow_duration_accumulation_complete": (shadow_duration or {}).get("complete") is True,
+        "shadow_duration_accumulation_complete": duration_complete,
         "ready_for_equal_time_contour_generation": (shadow_duration or {}).get("ready_for_equal_time_contour_generation") is True,
         "blockers_for_equal_time_shadow": blockers_equal,
         "blockers_for_footprint_extraction": blockers_fp,
@@ -91,5 +95,5 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "blockers_for_legal_judgement_masks": blockers_legal,
         "blockers_for_boundary_dependent_steps": blockers_boundary,
         "info": ["Duration accumulation is a grid/trapezoidal numerical approximation; site_boundary is required only for later legal judgement."],
-        "next_implementation_steps": ["shadow duration accumulation", "equal-time contour generation", "site boundary", "5m / 10m lines", "legal judgement"],
+        "next_implementation_steps": next_steps,
     }

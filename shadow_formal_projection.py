@@ -271,29 +271,112 @@ def _validate_projection_extents(source_points_m, shadow_polygons, physical_ray,
     result = {"expected_shadow_axis_min_m": None, "expected_shadow_axis_max_m": None,
         "actual_shadow_axis_min_m": None, "actual_shadow_axis_max_m": None,
         "extent_error_min_m": None, "extent_error_max_m": None,
-        "extent_validation_tolerance_m": float(tolerance_m),
-        "extent_validation_passed": False}
+        "extent_validation_tolerance_m": None,
+        "extent_validation_attempted": False, "extent_validation_passed": None,
+        "extent_validation_status": "unverified",
+        "extent_validation_reason": "source_points_unavailable"}
+    try:
+        tolerance = float(tolerance_m)
+        if not math.isfinite(tolerance): raise ValueError("non-finite tolerance")
+        result["extent_validation_tolerance_m"] = tolerance
+    except (TypeError, ValueError, OverflowError):
+        result["extent_validation_reason"] = "numeric_conversion_failed"
+        return result
+    if not source_points_m:
+        return result
+    polygon_points = [p for polygon in (shadow_polygons or [])
+        for p in polygon.get("points_m", [])]
+    if not polygon_points:
+        result["extent_validation_reason"] = "shadow_polygon_points_unavailable"
+        return result
     try:
         dx, dy = float(physical_ray["x"]), float(physical_ray["y"])
         axis_length = math.hypot(dx, dy)
+        if not math.isfinite(axis_length) or axis_length == 0:
+            result["extent_validation_reason"] = "physical_ray_unavailable_or_invalid"
+            return result
         axis = (dx / axis_length, dy / axis_length)
+    except (TypeError, ValueError, KeyError, ZeroDivisionError, OverflowError):
+        result["extent_validation_reason"] = "physical_ray_unavailable_or_invalid"
+        return result
+    try:
         factor = float(shadow_length_factor); plane_z = float(measurement_plane_z_m)
+        if not math.isfinite(factor) or not math.isfinite(plane_z):
+            result["extent_validation_reason"] = "measurement_plane_or_factor_invalid"
+            return result
+    except (TypeError, ValueError, OverflowError):
+        result["extent_validation_reason"] = "measurement_plane_or_factor_invalid"
+        return result
+    try:
         expected = [float(p["x"]) * axis[0] + float(p["y"]) * axis[1]
             + (float(p["z"]) - plane_z) * factor for p in source_points_m]
         actual = [float(p["x"]) * axis[0] + float(p["y"]) * axis[1]
-            for polygon in shadow_polygons for p in polygon.get("points_m", [])]
+            for p in polygon_points]
     except (TypeError, ValueError, KeyError, ZeroDivisionError, OverflowError):
+        result["extent_validation_reason"] = "numeric_conversion_failed"
         return result
-    if not expected or not actual:
+    if not expected or not actual or not all(math.isfinite(value) for value in expected + actual):
+        result["extent_validation_reason"] = "numeric_conversion_failed"
         return result
+    result["extent_validation_attempted"] = True
     result.update({"expected_shadow_axis_min_m": min(expected),
         "expected_shadow_axis_max_m": max(expected), "actual_shadow_axis_min_m": min(actual),
         "actual_shadow_axis_max_m": max(actual)})
     result["extent_error_min_m"] = result["actual_shadow_axis_min_m"] - result["expected_shadow_axis_min_m"]
     result["extent_error_max_m"] = result["actual_shadow_axis_max_m"] - result["expected_shadow_axis_max_m"]
-    result["extent_validation_passed"] = (abs(result["extent_error_min_m"]) <= float(tolerance_m)
-        and abs(result["extent_error_max_m"]) <= float(tolerance_m))
+    result["extent_validation_passed"] = (abs(result["extent_error_min_m"]) <= tolerance
+        and abs(result["extent_error_max_m"]) <= tolerance)
+    result["extent_validation_status"] = ("passed" if result["extent_validation_passed"] else "failed")
+    result["extent_validation_reason"] = "projection_extent_compared"
     return result
+
+
+def _aggregate_runtime_checks(checks):
+    """Build one stable tri-state result for any analyzer count."""
+    states = []
+    for check in checks:
+        direction_attempted = check.get("direction_validation_attempted") is True
+        extent_attempted = check.get("extent_validation_attempted") is True
+        failed = ((direction_attempted and check.get("direction_validation_passed") is False)
+                  or (extent_attempted and check.get("extent_validation_passed") is False))
+        verified = (direction_attempted and check.get("direction_validation_passed") is True
+                    and extent_attempted and check.get("extent_validation_passed") is True)
+        states.append("failed" if failed else ("verified" if verified else "unverified"))
+    status = "failed" if "failed" in states else (
+        "verified" if states and all(state == "verified" for state in states) else "unverified")
+    result = {"passed": True if status == "verified" else (False if status == "failed" else None),
+        "reason": {"verified":"all_runtime_projection_checks_verified",
+                   "failed":"one_or_more_runtime_projection_checks_failed",
+                   "unverified":"one_or_more_runtime_projection_checks_unverified"}[status],
+        "runtime_validation_status": status, "runtime_validation_verified": status == "verified",
+        "runtime_validation_failed": status == "failed", "runtime_validation_unverified": status == "unverified",
+        "check_count": len(checks), "verified_check_count": states.count("verified"),
+        "failed_check_count": states.count("failed"), "unverified_check_count": states.count("unverified"),
+        "checks": checks}
+    if len(checks) == 1:
+        diagnostic_keys = ("section_axis_min_m", "section_axis_max_m", "shadow_axis_min_m",
+            "shadow_axis_max_m", "sunward_overflow_m", "downshadow_extension_m",
+            "expected_shadow_axis_min_m", "expected_shadow_axis_max_m",
+            "actual_shadow_axis_min_m", "actual_shadow_axis_max_m", "extent_error_min_m",
+            "extent_error_max_m", "extent_validation_tolerance_m",
+            "extent_validation_attempted", "extent_validation_passed",
+            "extent_validation_status", "extent_validation_reason",
+            "direction_validation_attempted", "direction_validation_passed",
+            "direction_validation_status", "direction_validation_reason")
+        for key in diagnostic_keys:
+            if key in checks[0]: result[key] = checks[0][key]
+    return result
+
+
+def _runtime_validation_blocker(aggregate, runtime_check_required):
+    if not runtime_check_required or aggregate["runtime_validation_status"] == "verified":
+        return None
+    code = ("runtime_projection_validation_failed" if aggregate["runtime_validation_failed"]
+        else "runtime_projection_validation_unverified")
+    return {"failure_code": code,
+        "runtime_validation_status": aggregate["runtime_validation_status"],
+        "failed_check_count": aggregate["failed_check_count"],
+        "unverified_check_count": aggregate["unverified_check_count"]}
 
 
 def _solid_edge_endpoints_m(solid):
@@ -532,6 +615,13 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
                         plane_diag["elevation_internal"], settings, short_tol)
                     polygon_check = _validate_actual_polygon_direction(section, classified,
                         physical_info, tolerance_m)
+                    polygon_check["direction_validation_reason"] = polygon_check.get("reason")
+                    direction_attempted = (polygon_check.get("section_axis_min_m") is not None
+                        and polygon_check.get("shadow_axis_min_m") is not None)
+                    polygon_check.update({"direction_validation_attempted": direction_attempted,
+                        "direction_validation_passed": (polygon_check.get("passed") if direction_attempted else None),
+                        "direction_validation_status": (("passed" if polygon_check.get("passed") else "failed")
+                            if direction_attempted else "unverified")})
                     extent_check = _validate_projection_extents(_solid_edge_endpoints_m(component),
                         classified, physical_info, sun_slice.get("shadow_length_factor"),
                         (measurement_plane or {}).get("elevation_m"), tolerance_m)
@@ -562,18 +652,23 @@ def _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_
             slice_out["casters"].append(caster_out)
         checks = [a.get("actual_polygon_direction_check") for c in slice_out["casters"]
             for a in c["analyzers"] if a.get("actual_polygon_direction_check")]
-        verified = bool(checks) and all(check.get("passed") is True and
-            check.get("extent_validation_passed") is True for check in checks)
-        failed_runtime = any(check.get("passed") is False and check.get("section_axis_min_m") is not None for check in checks)
-        slice_out["actual_polygon_direction_check"] = (checks[0] if len(checks) == 1 else {
-            "passed": verified, "reason": ("all runtime polygons verified" if verified else
-            ("one or more runtime polygons failed" if failed_runtime else "runtime polygon direction unverified")),
-            "checks": checks})
-        slice_out["revit_runtime_direction_verified"] = verified
+        aggregate = _aggregate_runtime_checks(checks)
+        slice_out["actual_polygon_direction_check"] = aggregate
+        slice_out["revit_runtime_direction_verified"] = aggregate["runtime_validation_verified"]
         runtime_check_required = any(split.get("components") for caster in split_casters for split in caster["solids"])
-        slice_out["complete"] = (validation_passed and (verified or not runtime_check_required)
-            and bool(slice_out["casters"]) and all(c["complete"] for c in slice_out["casters"]))
-        if not slice_out["complete"]: slice_out["blockers"].append({"failure_code":"one_or_more_caster_splits_failed"})
+        caster_pipeline_complete = (bool(slice_out["casters"])
+            and all(caster.get("complete") is True for caster in slice_out["casters"]))
+        runtime_validation_complete = (aggregate["runtime_validation_status"] == "verified"
+            or not runtime_check_required)
+        slice_out["complete"] = (validation_passed and caster_pipeline_complete
+            and runtime_validation_complete)
+        blocker_codes = {b.get("failure_code") for b in slice_out["blockers"] if isinstance(b, dict)}
+        runtime_blocker = _runtime_validation_blocker(aggregate, runtime_check_required)
+        if runtime_blocker and runtime_blocker["failure_code"] not in blocker_codes:
+            slice_out["blockers"].append(runtime_blocker)
+            blocker_codes.add(runtime_blocker["failure_code"])
+        if not caster_pipeline_complete and "one_or_more_caster_or_analyzer_operations_failed" not in blocker_codes:
+            slice_out["blockers"].append({"failure_code":"one_or_more_caster_or_analyzer_operations_failed"})
         diagnostic_slices = (diagnostic_projection or {}).get("slices") or []
         diagnostic_slice = diagnostic_slices[slice_index] if slice_index < len(diagnostic_slices) else {}
         hull = diagnostic_slice.get("convex_shadow_envelope_v0") or {}
