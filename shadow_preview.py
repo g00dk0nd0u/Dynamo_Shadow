@@ -263,7 +263,9 @@ def _set_plan_curve_representation(shape, curves, diag):
         if diag["invalid_plan_curve_indices"]:
             diag["plan_representation_set"] = False
             diag["warnings"].append("One or more Plan curves were invalid; Default Curve representation retained."); return
-        shape.SetShape(builder.Build(), DirectShapeTargetViewType.Plan)
+        # ViewShapeBuilder is itself the ShapeBuilder passed to DirectShape;
+        # its constructor already records the Plan target representation.
+        shape.SetShape(builder)
         diag["plan_representation_set"] = True
     except BaseException as exc:
         diag["plan_representation_set"] = False; diag["plan_representation_failure_type"] = type(exc).__name__

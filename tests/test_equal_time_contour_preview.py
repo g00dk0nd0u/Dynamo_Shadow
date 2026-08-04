@@ -194,22 +194,75 @@ def test_debug_summary_omits_coordinates_and_uses_readiness_pending():
     assert summary["not_implemented_summary"]["planned_pipeline_pending"] == ["site boundary"]
 
 
-def test_plan_validate_overload_failure_uses_addcurve_and_keeps_plan(monkeypatch):
-    calls = []
+def test_plan_builder_is_passed_directly_after_validated_curves(monkeypatch):
     class Builder:
-        def __init__(self, target): pass
+        instances = []
+        def __init__(self, target):
+            self.target, self.curves = target, []
+            self.build_called = False
+            self.instances.append(self)
         @staticmethod
-        def ValidateCurve(curve, target): raise TypeError("overload")
-        def AddCurve(self, curve): calls.append(curve)
-        def Build(self): return calls
+        def ValidateCurve(curve, target): return True
+        def AddCurve(self, curve): self.curves.append(curve)
+        def Build(self): self.build_called = True; raise AssertionError("Build must not be called")
         def Dispose(self): pass
     class ShapeWithPlan:
-        def SetShape(self, *args): calls.append(args)
+        def __init__(self): self.set_shape_args = None
+        def SetShape(self, *args): self.set_shape_args = args
     monkeypatch.setattr(shadow_preview, "ViewShapeBuilder", Builder)
     monkeypatch.setattr(shadow_preview, "DirectShapeTargetViewType", types.SimpleNamespace(Plan="Plan"))
+    shape = ShapeWithPlan()
     diag = {"warnings": []}
-    shadow_preview._set_plan_curve_representation(ShapeWithPlan(), ["curve"], diag)
+    shadow_preview._set_plan_curve_representation(shape, ["first", "second"], diag)
+    builder = Builder.instances[0]
+    assert shape.set_shape_args == (builder,)
+    assert builder.curves == ["first", "second"] and builder.build_called is False
     assert diag["plan_representation_set"] is True and not diag["warnings"]
+
+
+def test_plan_validate_bind_failure_uses_addcurve_fallback(monkeypatch):
+    class Builder:
+        instances = []
+        def __init__(self, target): self.curves = []; self.instances.append(self)
+        @staticmethod
+        def ValidateCurve(curve, target): raise TypeError("overload")
+        def AddCurve(self, curve): self.curves.append(curve)
+        def Dispose(self): pass
+    class ShapeWithPlan:
+        def SetShape(self, *args): self.args = args
+    monkeypatch.setattr(shadow_preview, "ViewShapeBuilder", Builder)
+    monkeypatch.setattr(shadow_preview, "DirectShapeTargetViewType", types.SimpleNamespace(Plan="Plan"))
+    shape = ShapeWithPlan(); diag = {"warnings": []}
+    shadow_preview._set_plan_curve_representation(shape, ["curve"], diag)
+    assert Builder.instances[0].curves == ["curve"]
+    assert shape.args == (Builder.instances[0],)
+    assert diag["plan_representation_set"] is True
+
+
+def test_plan_set_shape_failure_keeps_default_and_records_diagnostics(monkeypatch):
+    class Builder:
+        def __init__(self, target): self.curves = []
+        @staticmethod
+        def ValidateCurve(curve, target): return True
+        def AddCurve(self, curve): self.curves.append(curve)
+        def Dispose(self): pass
+    class ShapeWithDefault:
+        def __init__(self): self.default_shape = ["default curve"]
+        def SetShape(self, builder): raise RuntimeError("plan failed")
+    monkeypatch.setattr(shadow_preview, "ViewShapeBuilder", Builder)
+    monkeypatch.setattr(shadow_preview, "DirectShapeTargetViewType", types.SimpleNamespace(Plan="Plan"))
+    shape = ShapeWithDefault(); diag = {"warnings": []}
+    shadow_preview._set_plan_curve_representation(shape, ["curve"], diag)
+    assert shape.default_shape == ["default curve"]
+    assert diag["plan_representation_set"] is False
+    assert diag["plan_representation_failure_type"] == "RuntimeError"
+    assert diag["plan_representation_failure_message"] == "plan failed"
+    assert diag["warnings"] == ["Plan Curve representation failed; Default Curve representation retained."]
+
+
+def test_time_and_contour_previews_share_plan_helper():
+    assert preview._set_plan_curve_representation is shadow_preview._set_plan_curve_representation
+    assert shadow_preview.build_shadow_preview.__globals__["_set_plan_curve_representation"] is shadow_preview._set_plan_curve_representation
 
 
 def test_preview_exception_contract_is_nonfatal_in_script_source():
