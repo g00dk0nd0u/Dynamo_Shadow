@@ -9,7 +9,7 @@ import pytest
 import shadow_policies
 import shadow_utils
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def node_code():

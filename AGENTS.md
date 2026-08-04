@@ -43,7 +43,7 @@ The current seven-input Dynamo graph includes independent Player inputs for regu
 ### docs/
 
 - Research notes and specifications.
-- Check `docs/spec_v0.md` before implementing shadow calculation logic.
+- Check `docs/development/spec_v0.md` before implementing shadow calculation logic.
 
 ## Dynamo / Revit rules
 

@@ -36,7 +36,7 @@ measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_h
 
 `grid_resolution_m`、`analysis_margin_m`、`closure_tolerance_m` は計算用パラメータであり、安全な diagnostic default を持てます。一方、`average_ground_level_elevation_m` や `measurement_height_m` には法規・案件条件上の意味があるため、Dynamo_Shadow が勝手な default を与えません。
 
-settings schema の詳細は `docs/settings_schema_v1.md` を参照してください。
+settings schema の詳細は `../specifications/settings_schema_v1.md` を参照してください。
 
 ## 4. Shadow caster / 影を落とすプロキシ要素
 
@@ -69,7 +69,7 @@ bottom face candidate は、将来の footprint extraction の候補として診
 
 BoundingBox は diagnostic summary または future analysis extent estimation のみに使い、shadow geometry や shadow judgement には使いません。Revit geometry の座標単位は `revit_raw_internal_units` として扱い、正式な meters 変換は後続 PR で実装します。
 
-詳細は `docs/geometry_extraction_v1.md` を参照してください。
+詳細は `../development/geometry_extraction_v1.md` を参照してください。
 
 ## 6. Site boundary / 敷地境界
 
@@ -142,7 +142,7 @@ measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_h
 - site_boundary is not required to construct the measurement plane.
 - If site_boundary is missing, future legal judgement ranges such as beyond-5m range and own-site exclusion are not constructed.
 
-See `docs/measurement_plane_v1.md` for the detailed measurement plane diagnostics policy.
+See `../specifications/measurement_plane_v1.md` for the detailed measurement plane diagnostics policy.
 
 ## Footprint extraction diagnostics guidance
 
@@ -150,7 +150,7 @@ For future footprint extraction, model shadow caster proxies as user-selected Ma
 
 Avoid overly complex, curved, or self-intersecting proxy shapes where possible. This stage only diagnoses bottom face candidates, edge loop candidates, raw endpoint closure, and horizontal candidates. It does not create formal polygons, offsets, booleans, CurveLoops, shadow projections, 5m / 10m lines, or legal judgement outputs.
 
-`site_boundary` is not required for footprint diagnostics. It will be needed later for own-site exclusion, beyond-5m ranges, target-area masks, and legal judgement masks. See [`footprint_extraction_v1.md`](footprint_extraction_v1.md).
+`site_boundary` is not required for footprint diagnostics. It will be needed later for own-site exclusion, beyond-5m ranges, target-area masks, and legal judgement masks. See [`footprint_extraction_v1.md`](../specifications/footprint_extraction_v1.md).
 
 ## 9. Implementation roadmap
 

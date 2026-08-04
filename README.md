@@ -67,7 +67,8 @@ Existing Walls, Floors, Roofs, equipment, CAD imports, and topography-derived ed
 - `shadow_contour_preview.py` creates and manages the optional equal-time contour DirectShape preview.
 - `tests/fixtures/debug_logs/` contains fixed, sanitized samples used by the privacy check; runtime output under `debug_logs/` remains ignored.
 - Other `shadow_*.py` modules contain focused policies, utilities, input diagnostics, settings normalization, measurement-plane diagnostics, geometry diagnostics, footprint diagnostics, formal projection and union adapters, unit conversion, debug logging, and readiness checks.
-- `docs/` contains research notes, specifications, and implementation notes.
+- `docs/` groups user guidance, runtime notes, specifications, and development notes by role.
+- `tests/` groups unit, integration, and contract suites; fixed test data remains under `tests/fixtures/`.
 
 ## Debug logs
 
@@ -79,15 +80,15 @@ Revit geometry values are preserved as raw internal units, normally feet. Settin
 
 ## Documentation
 
-- Research notes: `docs/research_shadow_diagram.md`
-- v0 specification: `docs/spec_v0.md`
-- Revit input modeling guide: `docs/revit_input_modeling_guide.md`
-- Settings schema: `docs/settings_schema_v1.md`
-- Measurement plane notes: `docs/measurement_plane_v1.md`
-- Geometry extraction notes: `docs/geometry_extraction_v1.md`
-- Footprint extraction notes: `docs/footprint_extraction_v1.md`
-- Debug logging notes: `docs/debug_logging_v1.md`
-- Unit conversion notes: `docs/unit_conversion_v1.md`
+- Research notes: `docs/development/research_shadow_diagram.md`
+- v0 specification: `docs/development/spec_v0.md`
+- Revit input modeling guide: `docs/user/revit_input_modeling_guide.md`
+- Settings schema: `docs/specifications/settings_schema_v1.md`
+- Measurement plane notes: `docs/specifications/measurement_plane_v1.md`
+- Geometry extraction notes: `docs/development/geometry_extraction_v1.md`
+- Footprint extraction notes: `docs/specifications/footprint_extraction_v1.md`
+- Debug logging notes: `docs/runtime/debug_logging_v1.md`
+- Unit conversion notes: `docs/specifications/unit_conversion_v1.md`
 - Contributor and agent rules: `AGENTS.md`
 
 ## Scope warning

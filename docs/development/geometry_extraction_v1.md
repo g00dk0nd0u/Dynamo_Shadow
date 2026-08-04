@@ -85,7 +85,7 @@ The geometry diagnostics now continue from bottom face candidates to edge loop c
 
 Edge loop closure is checked only by raw endpoint comparison when endpoints are readable. Arc, spline, ellipse, or other non-Line curves are reported by type and endpoint availability; formal discretization is not implemented. These footprint candidates are not yet used for shadow projection or legal judgement.
 
-See [`footprint_extraction_v1.md`](footprint_extraction_v1.md) for the detailed policy.
+See [`footprint_extraction_v1.md`](../specifications/footprint_extraction_v1.md) for the detailed policy.
 
 ## Unit conversion diagnostics
 
