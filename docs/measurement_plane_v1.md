@@ -1,5 +1,7 @@
 # Measurement plane v1 diagnostics
 
+> Historical stage note: this document describes the original measurement-plane stage. The current pipeline now includes later formal calculation prototypes; see `README.md` for current status.
+
 ## 目的
 
 v1 measurement plane diagnostics は、建築基準法56条の2の日影時間評価で参照する「平均地盤面から指定高さの水平面」を、Revit 要素ではなく Python dict の内部診断データとして安全に構築するための仕様です。

@@ -28,5 +28,5 @@ Thumbs.db
 *.tmp
 *.temp
 
-# Debug review logs: keep fixed/sample JSON files tracked, ignore growth/private dumps only.
+# Runtime debug output; fixed sanitized fixtures live under tests/fixtures/debug_logs/.
 debug_logs/

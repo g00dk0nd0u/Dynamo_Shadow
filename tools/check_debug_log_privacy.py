@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEBUG_LOG_DIR = ROOT / "debug_logs"
+FIXTURE_DIR = ROOT / "tests" / "fixtures" / "debug_logs"
 PATTERNS = [
     ("windows_user_backslash", re.compile(r"C:\\Users", re.IGNORECASE)),
     ("windows_user_slash", re.compile(r"C:/Users", re.IGNORECASE)),
@@ -23,7 +23,7 @@ PATTERNS = [
 
 
 def main():
-    files = sorted(DEBUG_LOG_DIR.glob("*.json"))
+    files = sorted(FIXTURE_DIR.glob("*.json"))
     failures = []
     for path in files:
         text = path.read_text(encoding="utf-8")
@@ -34,7 +34,7 @@ def main():
         for rel_path, label in failures:
             print("privacy scan failed: {0}: {1}".format(rel_path, label), file=sys.stderr)
         return 1
-    print("privacy scan passed: {0} debug log JSON file(s) checked".format(len(files)))
+    print("privacy scan passed: {0} debug log fixture(s) checked".format(len(files)))
     return 0
 
 

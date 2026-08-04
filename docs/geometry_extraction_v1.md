@@ -1,5 +1,7 @@
 # Geometry Extraction v1 Diagnostics
 
+> Historical stage note: this document describes the original geometry-diagnostics scope. The current pipeline now includes later formal calculation prototypes; see `README.md` for current status.
+
 ## 目的
 
 このドキュメントは、将来の等時間日影計算に向けた v1 shadow caster geometry extraction diagnostics の範囲を定義します。今回の段階では Revit geometry を読み取り専用で診断し、日影計算本体は実装しません。

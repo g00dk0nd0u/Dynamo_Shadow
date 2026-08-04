@@ -11,6 +11,20 @@ CLR_REFLECTION_ENABLED = False
 TOOL_NAME = "Dynamo_Shadow"
 STAGE_NAME = "v1_formal_shadow_visual_validation"
 
+CURRENT_IMPLEMENTATION_STATUS = {
+    "dynamo_python_node_input_count": 7,
+    "player_independent_inputs": ["regulatory_shadow_preset", "site_latitude_deg", "site_longitude_deg"],
+    "implemented_technical_prototypes": [
+        "formal_footprint", "formal_solar_specification", "formal_time_slice_shadow_polygons",
+        "per_slice_union", "duration_accumulation", "equal_time_contours",
+        "equal_time_contour_preview",
+    ],
+    "not_implemented": [
+        "site_boundary_legal_masks", "5m_10m_measurement_lines", "legal_judgement",
+        "permit_certification",
+    ],
+}
+
 LEGAL_CONSTANTS = {
     "date_basis": "winter_solstice",
     "standard_start_time": "08:00",

@@ -190,4 +190,4 @@ The Dynamo entry point remains `script.py`, but it now primarily orchestrates di
 
 For GitHub review of diagnostics without exposing raw Revit data, set `settings.debug_log_enabled` to `true`. The script writes a small sanitized JSON summary to `debug_logs/latest_debug.json` by default and overwrites that fixed file on each enabled run.
 
-Committed sample logs under `debug_logs/sample_*.json` are allowed when they remain small, sanitized, and review-oriented. Do not include raw Revit objects, full geometry arrays, project/client names, personal paths, or timestamped run logs.
+Runtime logs under `debug_logs/` are ignored and must not be committed. Fixed samples required by tests or repository checks belong under `tests/fixtures/debug_logs/` and must remain small, sanitized, and review-oriented. Do not include raw Revit objects, full geometry arrays, project/client names, personal paths, or timestamped run logs.

@@ -48,7 +48,7 @@ duration accumulation while leaving formal source polygons available.
 The supported target is Revit 2024.3 with Dynamo CPython3. The prototype still
 requires actual two-caster overlap, contact, containment, hole, concavity,
 retry, and disposal validation in that runtime. Duration accumulation and
-equal-time contours remain unimplemented, and permit readiness remains false.
+equal-time contours and their optional DirectShape preview are implemented as technical prototypes; site-boundary masks, legal judgement, and permit certification remain unimplemented.
 
 ## ExtrusionAnalyzer constraints
 

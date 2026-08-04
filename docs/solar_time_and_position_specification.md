@@ -76,7 +76,7 @@ NOAA/NREL references do not certify this implementation for Japanese confirmatio
 
 ## 16. Certification limitations
 
-`permit_ready_certified` and `legal_judgement_ready` are always false. No municipality ordinance lookup, union, duration accumulation, contours, boundary clipping, 5m/10m lines, or legal OK/NG result is provided. Authority/checker verification is required before submission use.
+`permit_ready_certified` and `legal_judgement_ready` are always false. Downstream per-slice union, duration accumulation, and technical equal-time contours are implemented, but no municipality ordinance lookup, boundary clipping, 5 m / 10 m lines, or legal OK/NG result is provided. Authority/checker verification is required before submission use.
 
 ## 17. Backward compatibility
 

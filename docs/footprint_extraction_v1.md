@@ -1,5 +1,7 @@
 # Footprint extraction diagnostics v1
 
+> Historical stage note: this document describes the original diagnostics-v1 scope. The current pipeline now includes formal footprint, solar, time-slice polygon, union, duration, and equal-time contour prototypes; see `README.md` for current status.
+
 ## Purpose
 
 This stage adds diagnostic-only footprint extraction readiness for the user-selected shadow caster proxy elements. It is intended to inspect whether a future implementation can safely derive footprint information from Revit geometry, not to produce a formal legal footprint.
