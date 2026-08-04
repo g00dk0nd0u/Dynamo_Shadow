@@ -121,7 +121,7 @@ def _is_direct_shape(element):
     except BaseException: return False
 
 
-def _collect_owned_preview_ids(document):
+def _collect_owned_preview_ids(document, application_id=APPLICATION_ID):
     result = {"succeeded": False, "element_ids": [], "collector_method": None, "scanned_element_count": 0,
         "direct_shape_candidate_count": 0, "owned_element_count": 0, "fallback_used": False, "attempts": [],
         "failure_code": None, "failure_type": None, "failure_message": None}
@@ -132,7 +132,7 @@ def _collect_owned_preview_ids(document):
             collector = collector.OfCategory(BuiltInCategory.OST_GenericModel) if fallback else collector.OfClass(DirectShape)
             elements = list(collector.WhereElementIsNotElementType().ToElements())
             candidates = [item for item in elements if _is_direct_shape(item)]
-            owned = [item.Id for item in candidates if getattr(item, "ApplicationId", None) == APPLICATION_ID]
+            owned = [item.Id for item in candidates if getattr(item, "ApplicationId", None) == application_id]
             result.update({"succeeded": True, "element_ids": owned, "collector_method": method,
                 "scanned_element_count": len(elements), "direct_shape_candidate_count": len(candidates),
                 "owned_element_count": len(owned), "fallback_used": fallback})
@@ -242,9 +242,20 @@ def _set_plan_curve_representation(shape, curves, diag):
         builder = ViewShapeBuilder(DirectShapeTargetViewType.Plan)
         for index, curve in enumerate(curves):
             try:
-                valid = bool(builder.ValidateCurve(curve))
+                # Revit 2024.3 exposes this as the static two-argument overload.
+                valid = bool(ViewShapeBuilder.ValidateCurve(
+                    curve, DirectShapeTargetViewType.Plan))
             except BaseException as exc:
-                valid = False; reason = type(exc).__name__ + ": " + _safe_message(exc)
+                # Some CPython/pythonnet builds cannot bind ValidateCurve.  Let
+                # AddCurve perform the per-curve validation in that case.
+                try:
+                    builder.AddCurve(curve)
+                    continue
+                except BaseException as add_exc:
+                    valid = False
+                    reason = (type(exc).__name__ + ": " + _safe_message(exc)
+                              + "; AddCurve " + type(add_exc).__name__ + ": "
+                              + _safe_message(add_exc))
             else: reason = "ValidateCurve returned false"
             if not valid:
                 diag["invalid_plan_curve_indices"].append({"index": index, "reason": reason}); continue
@@ -252,7 +263,9 @@ def _set_plan_curve_representation(shape, curves, diag):
         if diag["invalid_plan_curve_indices"]:
             diag["plan_representation_set"] = False
             diag["warnings"].append("One or more Plan curves were invalid; Default Curve representation retained."); return
-        shape.SetShape(builder.Build(), DirectShapeTargetViewType.Plan)
+        # ViewShapeBuilder is itself the ShapeBuilder passed to DirectShape;
+        # its constructor already records the Plan target representation.
+        shape.SetShape(builder)
         diag["plan_representation_set"] = True
     except BaseException as exc:
         diag["plan_representation_set"] = False; diag["plan_representation_failure_type"] = type(exc).__name__

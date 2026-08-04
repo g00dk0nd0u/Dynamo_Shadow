@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-08-04-equal-time-contours-v1"
+CODE_BUILD_ID = "2026-08-04-equal-time-contour-preview-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -144,6 +144,7 @@ SETTINGS_DIAGNOSTIC_DEFAULTS = {
     "max_equal_time_contour_levels": 100,
     "preview_mode": "off",
     "preview_true_solar_times": None,
+    "equal_time_contour_preview_mode": "off",
 }
 
 EQUAL_TIME_CONTOUR_POLICY = {
@@ -167,6 +168,18 @@ SHADOW_PREVIEW_POLICY = {
     "solid_or_mesh_preview_allowed": False,
     "changes_active_view": False, "changes_global_styles": False,
     "legal_output": False, "permit_ready_certified": False,
+}
+
+EQUAL_TIME_CONTOUR_PREVIEW_POLICY = {
+    "purpose": "optional_revit_visual_qa_for_equal_time_contours",
+    "optional": True, "default_mode": "off", "creates_revit_elements": True,
+    "formal_calculation_input": False,
+    "primary_revit_api": "Autodesk.Revit.DB.DirectShape Curve",
+    "target_revit_version": "Revit 2024.3",
+    "cleanup_ownership_method": "DirectShape.ApplicationId exact match",
+    "application_id": "Dynamo_Shadow.EqualTimeContourPreview",
+    "implemented_as_legal_judgement": False,
+    "permit_ready_certified": False,
 }
 
 FORMAL_SHADOW_PROJECTION_POLICY = {
@@ -460,8 +473,7 @@ FOOTPRINT_EXTRACTION_POLICY = {
     ],
     "not_implemented_in_this_pr": [
         "site boundary clipping", "own-site exclusion", "beyond-5m legal range",
-        "5m / 10m legal lines",
-        "equal-time contour generation", "legal OK/NG judgement",
+        "5m / 10m legal lines", "legal OK/NG judgement",
     ],
 }
 
@@ -492,7 +504,7 @@ LAW56_2_AWARENESS_POLICY = {
     "outside_target_area_building_awareness": "building_over_10m_outside_target_area_casting_shadow_into_target_area_may_be_treated_as_in_target_area",
     "different_restriction_zones_awareness": "ordinance_and_enforcement_order_required",
     "ordinance_dependent_values": ["target_area", "applicable_building_threshold", "measurement_height_m", "allowed_shadow_duration", "selected_table_row"],
-    "not_implemented_in_this_pr": ["ordinance lookup", "target area mask", "own site exclusion", "beyond 5m judgement range", "5m/10m measurement lines", "relaxation handling", "legal OK/NG judgement", "equal-time contour generation"],
+    "not_implemented_in_this_pr": ["ordinance lookup", "target area mask", "own site exclusion", "beyond 5m judgement range", "5m/10m measurement lines", "relaxation handling", "legal OK/NG judgement"],
 }
 
 MEASUREMENT_PLANE_POLICY = {

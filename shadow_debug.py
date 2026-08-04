@@ -485,6 +485,18 @@ def _contour_summary(value):
         "closed_contour_count": value.get("closed_contour_count"), "open_contour_count": value.get("open_contour_count"),
         "per_level": levels, "blockers": value.get("blockers"), "warnings": value.get("warnings")})
 
+def _contour_preview_summary(value):
+    value = value if isinstance(value, dict) else {}
+    return _sanitize_for_debug({
+        "mode": value.get("mode"), "complete": value.get("complete"),
+        "created_element_count": value.get("created_element_count"),
+        "deleted_element_count": value.get("deleted_element_count"),
+        "groups": [{"level_minutes": group.get("level_minutes"),
+                    "contour_count": group.get("contour_count"),
+                    "curve_count": group.get("curve_count")}
+                   for group in (value.get("groups") or [])],
+        "warnings": value.get("warnings"), "blockers": value.get("blockers")})
+
 def _summarize_out_for_debug(out_payload):
     out_payload = out_payload or {}
     settings = out_payload.get("settings_normalized") or {}
@@ -514,6 +526,7 @@ def _summarize_out_for_debug(out_payload):
         "shadow_duration_summary": _duration_summary(out_payload.get("shadow_duration")),
         "equal_time_contour_summary": _contour_summary(out_payload.get("equal_time_contours")),
         "shadow_preview": _sanitize_for_debug(out_payload.get("shadow_preview")),
+        "equal_time_contour_preview": _contour_preview_summary(out_payload.get("equal_time_contour_preview")),
         "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
         "solar_specification_summary": _solar_specification_debug_summary(out_payload.get("solar_calculation_v1")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
@@ -524,12 +537,8 @@ def _summarize_out_for_debug(out_payload):
         "error_summary": _sanitize_for_debug(out_payload.get("error")),
         "not_implemented_summary": _sanitize_for_debug({
             "footprint_extraction": (out_payload.get("footprint_extraction_policy") or {}).get("not_implemented_in_this_pr"),
-            "planned_pipeline_pending": [item for item in (out_payload.get("planned_pipeline") or [])[16:]
-                                         if item not in ("formal footprint polygon generation",
-                                             "formal model-coordinate shadow direction calculation",
-                                             "formal time-slice shadow projection per caster",
-                                             "logical union of shadows per time slice",
-                                             "shadow duration accumulation without double counting")],
+            "planned_pipeline_pending": (out_payload.get("pipeline_readiness") or {}).get(
+                "next_implementation_steps") or [],
         }),
     }
 
@@ -556,6 +565,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "shadow_duration_summary": summary["shadow_duration_summary"],
         "equal_time_contour_summary": summary["equal_time_contour_summary"],
         "shadow_preview": summary["shadow_preview"],
+        "equal_time_contour_preview": summary["equal_time_contour_preview"],
         "solar_calculation_summary": summary["solar_calculation_summary"],
         "solar_specification_summary": summary["solar_specification_summary"],
         "pipeline_readiness": summary["pipeline_readiness"],
