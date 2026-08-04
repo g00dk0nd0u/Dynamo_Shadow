@@ -47,3 +47,5 @@ def test_grid_limit_stops_before_allocation():
         {"grid_resolution_m": .01, "analysis_margin_m": 0, "max_duration_grid_points": 10})
     assert not result["available"] and result["duration_grid"] == []
     assert result["blockers"][0]["failure_code"] == "max_duration_grid_points_exceeded"
+    assert result["requested_grid_point_count"] > result["maximum_grid_point_count"]
+    assert result["spatial_resolution_m"] == .01

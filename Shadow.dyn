@@ -130,6 +130,15 @@
           "Level": 2,
           "UseLevels": false,
           "KeepListStructure": false
+        },
+        {
+          "Id": "a4444444444444444444444444444444",
+          "Name": "IN[7]",
+          "Description": "Input #7",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
         }
       ],
       "Outputs": [
@@ -355,6 +364,40 @@
       ],
       "Replication": "Disabled",
       "Description": "Site longitude in degrees."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.CustomSelection, CoreNodeModels",
+      "SelectedIndex": 1,
+      "Items": [
+        {
+          "Name": "高速・ラフ｜0.5m・30分",
+          "Value": "rough"
+        },
+        {
+          "Name": "標準｜0.5m・15分",
+          "Value": "standard"
+        },
+        {
+          "Name": "高精度｜0.25m・15分",
+          "Value": "high"
+        }
+      ],
+      "Id": "b4444444444444444444444444444444",
+      "NodeType": "ExtensionNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c4444444444444444444444444444444",
+          "Name": "",
+          "Description": "Selected value",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Select duration-grid and solar-time calculation accuracy."
     }
   ],
   "Connectors": [
@@ -404,6 +447,12 @@
       "Start": "c3333333333333333333333333333333",
       "End": "a3333333333333333333333333333333",
       "Id": "d3333333333333333333333333333333",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "c4444444444444444444444444444444",
+      "End": "a4444444444444444444444444444444",
+      "Id": "d4444444444444444444444444444444",
       "IsHidden": "False"
     }
   ],
@@ -495,7 +544,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -246.25093313007994,
-        "Y": 437.35781420856165
+        "Y": 80
       },
       {
         "Id": "af2519f73dff436c8aba2f16c3788bf3",
@@ -505,7 +554,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -258.004212107366,
-        "Y": 147.2575225783957
+        "Y": 200
       },
       {
         "Id": "f688e0f729b946d0b8ac25514f4531da",
@@ -525,7 +574,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 620.0
+        "Y": 340
       },
       {
         "Id": "b2222222222222222222222222222222",
@@ -535,7 +584,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 780.0
+        "Y": 660
       },
       {
         "Id": "b3333333333333333333333333333333",
@@ -545,7 +594,17 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 900.0
+        "Y": 780
+      },
+      {
+        "Id": "b4444444444444444444444444444444",
+        "Name": "Calculation Accuracy / 計算精度",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -320.0,
+        "Y": 500.0
       }
     ],
     "Annotations": [],

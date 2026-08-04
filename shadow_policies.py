@@ -12,8 +12,8 @@ TOOL_NAME = "Dynamo_Shadow"
 STAGE_NAME = "v1_formal_shadow_visual_validation"
 
 CURRENT_IMPLEMENTATION_STATUS = {
-    "dynamo_python_node_input_count": 7,
-    "player_independent_inputs": ["regulatory_shadow_preset", "site_latitude_deg", "site_longitude_deg"],
+    "dynamo_python_node_input_count": 8,
+    "player_independent_inputs": ["regulatory_shadow_preset", "calculation_accuracy_preset", "site_latitude_deg", "site_longitude_deg"],
     "implemented_technical_prototypes": [
         "formal_footprint", "formal_solar_specification", "formal_time_slice_shadow_polygons",
         "per_slice_union", "duration_accumulation", "equal_time_contours",
@@ -77,6 +77,7 @@ INPUT_KEYS = [
     "regulatory_shadow_preset",
     "site_latitude_deg",
     "site_longitude_deg",
+    "calculation_accuracy_preset",
 ]
 
 SUPPORTED_CATEGORY_NAMES = set([
@@ -171,6 +172,18 @@ EQUAL_TIME_CONTOUR_POLICY = {
     "statutory_thresholds": False,
     "legal_judgement_generated": False,
     "permit_ready_certified": False,
+    "smoothing_performed": False,
+    "canonical_geometry": "raw_marching_squares_polylines",
+}
+
+ANALYSIS_BOUNDS_POLICY = {
+    "duration_grid_clipped_to_site_boundary": False,
+    "current_bounds": "all_unified_shadow_polygon_bounds_plus_analysis_safety_margin",
+    "future_bounds_when_site_boundary_geometry_is_available": (
+        "union(all unified shadow polygon bounds, site boundary bounds expanded by at least 10m) "
+        "plus analysis safety margin"
+    ),
+    "site_boundary_role": "legal_evaluation_mask_not_duration_grid_clipping_boundary",
 }
 
 SHADOW_PREVIEW_POLICY = {

@@ -44,8 +44,9 @@ Preview is visualization-only. The policy default is `preview_mode="off"`; the c
 - `site_boundary`: optional; intended to come from Revit Property Line / Site Property inputs when boundary-dependent diagnostics are needed.
 - `settings`: optional for diagnostics, but future Article 56-2 calculation work requires explicit values such as average ground level, measurement height, latitude, longitude, and true north.
 
-In Dynamo Player, the regulatory shadow preset, site latitude, and site longitude are
-separate inputs; the retained settings JSON is internal and hidden. Player values take
+In Dynamo Player, the regulatory shadow preset, calculation accuracy, site latitude, and site longitude are
+separate inputs; the retained settings JSON is internal and hidden. The accuracy choices are rough
+(0.5 m / 30 minutes), standard (0.5 m / 15 minutes, default), and high (0.25 m / 15 minutes). Player values take
 priority over settings JSON, which takes priority over Python diagnostic defaults. The
 preset only makes candidate values appearing in Appended Table 4 easier to select; the
 actually applicable classification must be confirmed in the relevant municipal ordinance.
@@ -63,6 +64,7 @@ Existing Walls, Floors, Roofs, equipment, CAD imports, and topography-derived ed
 - `dynamo_loader.py` resolves workspace paths, maps Dynamo `IN[]` values to named `INPUTS`, runs `script.py`, and returns diagnostics.
 - `script.py` orchestrates imports, fallback behavior outside Dynamo, and top-level `OUT` construction.
 - `shadow_duration.py` performs grid sampling and trapezoidal duration accumulation v1.
+- `shadow_accuracy_presets.py` resolves the three Player accuracy presets without changing legacy pure-Python defaults.
 - `shadow_contours.py` generates deterministic equal-time polylines with Marching Squares and linear edge interpolation.
 - `shadow_contour_preview.py` creates and manages the optional equal-time contour DirectShape preview.
 - `tests/fixtures/debug_logs/` contains fixed, sanitized samples used by the privacy check; runtime output under `debug_logs/` remains ignored.
