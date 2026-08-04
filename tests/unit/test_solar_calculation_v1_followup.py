@@ -101,7 +101,7 @@ def test_invalid_solar_numeric_ranges_are_reported(key, value):
 
 
 def test_external_solar_fixture_is_loaded_and_matches_implementation():
-    fixture_path = Path(__file__).parent / "fixtures" / "solar_formula_regression_cases.json"
+    fixture_path = Path(__file__).parent.parent / "fixtures" / "solar_formula_regression_cases.json"
     cases = json.loads(fixture_path.read_text())
     assert cases
     for case in cases:

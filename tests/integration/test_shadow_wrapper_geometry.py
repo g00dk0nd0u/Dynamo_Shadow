@@ -176,7 +176,7 @@ def test_debug_log_sanitizes_private_text():
 
 def _load_loader_definitions():
     """Load the real loader helpers without invoking its Dynamo OUT assignment."""
-    loader_path = os.path.join(os.path.dirname(__file__), 'dynamo_loader.py')
+    loader_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'dynamo_loader.py')
     namespace = {
         '__file__': loader_path,
         '__name__': '__loader_test__',
@@ -263,7 +263,7 @@ def test_loader_consecutive_exec_reads_updated_workspace_module(tmp_path):
 
 
 def test_script_reports_local_module_source_mismatch(tmp_path):
-    script_path = os.path.join(os.path.dirname(__file__), 'script.py')
+    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'script.py')
     previous = sys.modules.get('shadow_settings')
     outside_module = types.ModuleType('shadow_settings')
     outside_module.__dict__.update(previous.__dict__)

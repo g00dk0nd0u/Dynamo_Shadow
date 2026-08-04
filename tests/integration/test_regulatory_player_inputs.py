@@ -7,7 +7,7 @@ from shadow_policies import INPUT_KEYS, SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_regulatory_presets import PRESETS, overlay_player_settings, resolve_regulatory_shadow_preset
 from shadow_settings import _normalize_settings
 
-ROOT = Path(__file__).parents[1]
+ROOT = Path(__file__).parents[2]
 
 
 def graph():

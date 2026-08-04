@@ -179,9 +179,9 @@ The current prototype uses `Face.GetEdgesAsCurveLoops` and native `CurveLoop` va
 
 ## 関連資料
 
-- 調査メモ: `docs/research_shadow_diagram.md`
-- Revit入力モデル方針: `docs/revit_input_modeling_guide.md`
-- Settings schema: `docs/settings_schema_v1.md`
+- 調査メモ: `research_shadow_diagram.md`
+- Revit入力モデル方針: `../user/revit_input_modeling_guide.md`
+- Settings schema: `../specifications/settings_schema_v1.md`
 
 ## Code organization note
 

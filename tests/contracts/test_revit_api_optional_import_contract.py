@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 MODULE = importlib.import_module("shadow_revit_api")
-SOURCE_PATH = Path(__file__).resolve().parents[1] / "shadow_revit_api.py"
+SOURCE_PATH = Path(__file__).resolve().parents[2] / "shadow_revit_api.py"
 
 CORE_NAMES = (
     "BuiltInCategory", "Options", "Solid", "GeometryInstance", "Face",

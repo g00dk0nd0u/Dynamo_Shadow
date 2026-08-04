@@ -131,7 +131,7 @@ def test_policy_contract_is_mode_specific():
 
 
 def test_provisional_fixture_is_nonempty_complete_in_coverage_and_uses_seconds():
-    cases = json.loads((Path(__file__).parent / "fixtures/solar_provisional_cross_check_cases.json").read_text())
+    cases = json.loads((Path(__file__).parent.parent / "fixtures/solar_provisional_cross_check_cases.json").read_text())
     required = {("Tokyo", "08:00:00"), ("Tokyo", "12:00:00"), ("Tokyo", "16:00:00"),
                 ("Kagoshima", "12:00:00"), ("Sapporo", "09:00:00"),
                 ("Sapporo", "12:00:00"), ("Sapporo", "15:00:00")}
