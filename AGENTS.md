@@ -275,3 +275,11 @@ For PRs containing geometry processing, also confirm:
 - Equal-time contours are technical/diagnostic outputs generated from the duration grid; their levels are not statutory thresholds.
 - Keep contour generation pure Python and independent of Revit API objects.
 - Site-boundary processing, 5 m / 10 m lines, legal judgement, and permit certification remain later work.
+
+## Regulatory preset UI rules
+
+- Regulatory presets only expose candidate values appearing in Appended Table 4; the applicable classification must be confirmed against the relevant municipal ordinance.
+- `standard_all` is the initial QA display for areas such as Tokyo, Osaka, Kyoto, and Kyushu.
+- Hokkaido-area presets use 09:00–15:00 and include the 1.5-hour candidate.
+- Do not add a six-hour contour to statutory-time presets, but preserve technical generation of explicitly requested 360–480 minute contours.
+- Longitude does not directly affect calculations in true-solar-time mode.

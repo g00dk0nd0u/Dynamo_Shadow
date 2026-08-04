@@ -44,6 +44,17 @@ Preview is visualization-only. The policy default is `preview_mode="off"`; the c
 - `site_boundary`: optional; intended to come from Revit Property Line / Site Property inputs when boundary-dependent diagnostics are needed.
 - `settings`: optional for diagnostics, but future Article 56-2 calculation work requires explicit values such as average ground level, measurement height, latitude, longitude, and true north.
 
+In Dynamo Player, the regulatory shadow preset, site latitude, and site longitude are
+separate inputs; the retained settings JSON is internal and hidden. Player values take
+priority over settings JSON, which takes priority over Python diagnostic defaults. The
+preset only makes candidate values appearing in Appended Table 4 easier to select; the
+actually applicable classification must be confirmed in the relevant municipal ordinance.
+`standard_all` is the initial QA display intended for areas such as Tokyo, Osaka, Kyoto,
+and Kyushu. The Hokkaido-area choices use 09:00–15:00 and include the 1.5-hour candidate.
+Six-hour contours are intentionally excluded from statutory-time presets, while the
+technical ability to generate explicitly requested 360–480 minute contours remains.
+Longitude does not directly change results in true-solar-time mode.
+
 Existing Walls, Floors, Roofs, equipment, CAD imports, and topography-derived edges are not auto-used as shadow casters or site boundaries.
 
 ## Project structure

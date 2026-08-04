@@ -111,6 +111,9 @@ INPUTS = {
     "site_boundary": get_in(1),
     "level": get_in(2),
     "settings": get_in(3),
+    "regulatory_shadow_preset": get_in(4),
+    "site_latitude_deg": get_in(5),
+    "site_longitude_deg": get_in(6),
 }
 
 input_summary = {

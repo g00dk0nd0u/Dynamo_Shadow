@@ -91,6 +91,7 @@ try:
         EQUAL_TIME_CONTOUR_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
+    from shadow_regulatory_presets import overlay_player_settings, resolve_regulatory_shadow_preset
     from shadow_settings import _normalize_settings
     from shadow_measurement_plane import _build_law56_2_awareness_context, _construct_measurement_plane
     from shadow_geometry import _diagnose_shadow_caster_geometry
@@ -245,14 +246,22 @@ def _build_success():
     unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
 
     for key in INPUT_KEYS:
-        if key in ("site_boundary", "settings"):
+        if key in ("site_boundary", "settings", "regulatory_shadow_preset", "site_latitude_deg", "site_longitude_deg"):
             continue
         if raw_inputs.get(key) is None:
             warnings.append("{0} input is empty.".format(key))
 
     shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
     site_boundary = _diagnose_optional_site_boundary(raw_inputs.get("site_boundary"))
-    settings_normalized = _normalize_settings(raw_inputs.get("settings"), raw_inputs.get("level"))
+    overlaid_settings, resolved_preset, _, overlay_warnings, _ = overlay_player_settings(
+        raw_inputs.get("settings"), raw_inputs.get("regulatory_shadow_preset"),
+        raw_inputs.get("site_latitude_deg"), raw_inputs.get("site_longitude_deg"))
+    if resolved_preset is None:
+        resolved_preset = resolve_regulatory_shadow_preset("standard_all")
+    elif not resolved_preset.get("valid"):
+        warnings.extend(resolved_preset.get("blockers", []))
+    warnings.extend(overlay_warnings)
+    settings_normalized = _normalize_settings(overlaid_settings, raw_inputs.get("level"))
     law56_2_awareness = _build_law56_2_awareness_context(settings_normalized, site_boundary)
     measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
     shadow_caster_geometry, runtime_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized, measurement_plane, return_runtime_geometry=True)
@@ -334,6 +343,9 @@ def _build_success():
             "site_boundary": _summarize_input(raw_inputs.get("site_boundary")),
             "level": _summarize_input(raw_inputs.get("level")),
             "settings": _summarize_input(raw_inputs.get("settings")),
+            "regulatory_shadow_preset": _summarize_input(raw_inputs.get("regulatory_shadow_preset")),
+            "site_latitude_deg": _summarize_input(raw_inputs.get("site_latitude_deg")),
+            "site_longitude_deg": _summarize_input(raw_inputs.get("site_longitude_deg")),
         },
         "shadow_casters": shadow_casters,
         "shadow_caster_policy": SHADOW_CASTER_POLICY,
@@ -365,6 +377,10 @@ def _build_success():
         "site_boundary": site_boundary,
         "site_boundary_policy": SITE_BOUNDARY_POLICY,
         "settings_normalized": settings_normalized,
+        "regulatory_shadow_preset": resolved_preset,
+        "legal_judgement_generated": False,
+        "ordinance_selection_certified": False,
+        "permit_ready_certified": False,
         "settings_policy": SETTINGS_POLICY,
         "pipeline_readiness": pipeline_readiness,
         "planned_pipeline": PLANNED_PIPELINE,
