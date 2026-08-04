@@ -60,6 +60,9 @@ INPUT_KEYS = [
     "site_boundary",
     "level",
     "settings",
+    "regulatory_shadow_preset",
+    "site_latitude_deg",
+    "site_longitude_deg",
 ]
 
 SUPPORTED_CATEGORY_NAMES = set([

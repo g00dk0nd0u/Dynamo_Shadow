@@ -25,12 +25,29 @@
       "Description": "ドキュメントからモデル要素を選択します。"
     },
     {
-      "Id": "f688e0f729b946d0b8ac25514f4531da",
-      "Name": "String",
-      "Type": "string",
-      "Type2": "string",
-      "Value": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"solar_parameter_mode\": \"regulatory_winter_solstice_v1\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671,\r\n  \"site_latitude_deg\": 35.6812,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"true_solar_start_time\": \"08:00\",\r\n  \"true_solar_end_time\": \"16:00\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\",\r\n  \"preview_mode\": \"replace\"\r\n}",
-      "Description": "文字列を作成します。"
+      "Id": "b1111111111111111111111111111111",
+      "Name": "Regulatory Shadow Preset / 日影規制時間",
+      "Type": "selection",
+      "Type2": "dropdownSelection",
+      "Value": "standard_all",
+      "Description": "法別表第四の候補。適用区分は自治体条例で要確認。",
+      "SelectedIndex": 0
+    },
+    {
+      "Id": "b2222222222222222222222222222222",
+      "Name": "Site Latitude / 緯度（deg）",
+      "Type": "number",
+      "Type2": "number",
+      "Value": "35.6812",
+      "Description": "-90 ≤ latitude ≤ 90"
+    },
+    {
+      "Id": "b3333333333333333333333333333333",
+      "Name": "Site Longitude / 経度（deg）",
+      "Type": "number",
+      "Type2": "number",
+      "Value": "139.7671",
+      "Description": "-180 ≤ longitude ≤ 180"
     }
   ],
   "Outputs": [
@@ -82,6 +99,33 @@
           "Id": "169676b8f6464027b1022827c364e96e",
           "Name": "IN[3]",
           "Description": "Input #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "a1111111111111111111111111111111",
+          "Name": "IN[4]",
+          "Description": "Input #4",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "a2222222222222222222222222222222",
+          "Name": "IN[5]",
+          "Description": "Input #5",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "a3333333333333333333333333333333",
+          "Name": "IN[6]",
+          "Description": "Input #6",
           "UsingDefaultValue": false,
           "Level": 2,
           "UseLevels": false,
@@ -214,7 +258,103 @@
       ],
       "Replication": "Disabled",
       "Description": "文字列を作成します。",
-      "InputValue": "{\r\n  \"profile\": \"standard_8_16\",\r\n  \"solar_parameter_mode\": \"regulatory_winter_solstice_v1\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"latitude\": 35.6812,\r\n  \"longitude\": 139.7671,\r\n  \"site_latitude_deg\": 35.6812,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"true_solar_start_time\": \"08:00\",\r\n  \"true_solar_end_time\": \"16:00\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\",\r\n  \"preview_mode\": \"replace\"\r\n}"
+      "InputValue": "{\r\n  \"solar_parameter_mode\": \"regulatory_winter_solstice_v1\",\r\n  \"average_ground_level_elevation_m\": 0.0,\r\n  \"measurement_height_m\": 4.0,\r\n  \"solar_declination_deg\": -23.439,\r\n  \"time_basis\": \"true_solar_time\",\r\n  \"sun_time_step_minutes\": 30,\r\n  \"true_north_deg\": 0.0,\r\n  \"debug_log_enabled\": true,\r\n  \"debug_log_dir\": \"debug_logs\",\r\n  \"debug_log_filename\": \"latest_debug.json\",\r\n  \"preview_mode\": \"replace\",\r\n  \"equal_time_contour_preview_mode\": \"replace\"\r\n}"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.CustomSelection, CoreNodeModels",
+      "SelectedIndex": 0,
+      "Items": [
+        {
+          "Name": "標準地域｜条例未確認・候補をすべて表示",
+          "Value": "standard_all"
+        },
+        {
+          "Name": "標準地域｜5m超～10m以内 3h ／ 10m超 2h",
+          "Value": "standard_3_2"
+        },
+        {
+          "Name": "標準地域｜5m超～10m以内 4h ／ 10m超 2.5h",
+          "Value": "standard_4_2_5"
+        },
+        {
+          "Name": "標準地域｜5m超～10m以内 5h ／ 10m超 3h",
+          "Value": "standard_5_3"
+        },
+        {
+          "Name": "道の区域｜条例未確認・候補をすべて表示",
+          "Value": "hokkaido_all"
+        },
+        {
+          "Name": "道の区域｜5m超～10m以内 2h ／ 10m超 1.5h",
+          "Value": "hokkaido_2_1_5"
+        },
+        {
+          "Name": "道の区域｜5m超～10m以内 3h ／ 10m超 2h",
+          "Value": "hokkaido_3_2"
+        },
+        {
+          "Name": "道の区域｜5m超～10m以内 4h ／ 10m超 2.5h",
+          "Value": "hokkaido_4_2_5"
+        }
+      ],
+      "Id": "b1111111111111111111111111111111",
+      "NodeType": "ExtensionNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c1111111111111111111111111111111",
+          "Name": "",
+          "Description": "Selected value",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Select a regulatory shadow time candidate."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "35.6812",
+      "Id": "b2222222222222222222222222222222",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c2222222222222222222222222222222",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Site latitude in degrees."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "139.7671",
+      "Id": "b3333333333333333333333333333333",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c3333333333333333333333333333333",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Site longitude in degrees."
     }
   ],
   "Connectors": [
@@ -246,6 +386,24 @@
       "Start": "cbc50f7be15b48d9be232a88efa07c59",
       "End": "169676b8f6464027b1022827c364e96e",
       "Id": "8d731ce9e0b04fedb8b21bd4e8e97eac",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "c1111111111111111111111111111111",
+      "End": "a1111111111111111111111111111111",
+      "Id": "d1111111111111111111111111111111",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "c2222222222222222222222222222222",
+      "End": "a2222222222222222222222222222222",
+      "Id": "d2222222222222222222222222222222",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "c3333333333333333333333333333333",
+      "End": "a3333333333333333333333333333333",
+      "Id": "d3333333333333333333333333333333",
       "IsHidden": "False"
     }
   ],
@@ -352,12 +510,42 @@
       {
         "Id": "f688e0f729b946d0b8ac25514f4531da",
         "Name": "String",
-        "IsSetAsInput": true,
+        "IsSetAsInput": false,
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
         "X": -278.49552496288686,
         "Y": 618.1811810875407
+      },
+      {
+        "Id": "b1111111111111111111111111111111",
+        "Name": "Regulatory Shadow Preset / 日影規制時間",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -320.0,
+        "Y": 620.0
+      },
+      {
+        "Id": "b2222222222222222222222222222222",
+        "Name": "Site Latitude / 緯度（deg）",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -320.0,
+        "Y": 780.0
+      },
+      {
+        "Id": "b3333333333333333333333333333333",
+        "Name": "Site Longitude / 経度（deg）",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -320.0,
+        "Y": 900.0
       }
     ],
     "Annotations": [],

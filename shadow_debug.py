@@ -500,6 +500,8 @@ def _contour_preview_summary(value):
 def _summarize_out_for_debug(out_payload):
     out_payload = out_payload or {}
     settings = out_payload.get("settings_normalized") or {}
+    normalized = settings.get("normalized") or {}
+    preset = out_payload.get("regulatory_shadow_preset") or {}
     return {
         "success": bool(out_payload.get("success")),
         "message": _sanitize_for_debug(out_payload.get("message")),
@@ -513,6 +515,17 @@ def _summarize_out_for_debug(out_payload):
             "missing_required_keys": settings.get("missing_required_keys"),
             "invalid_keys": settings.get("invalid_keys"),
             "warnings": settings.get("warnings"),
+        }),
+        "regulatory_shadow_preset": _sanitize_for_debug({
+            "preset_id": preset.get("preset_id"),
+            "profile": preset.get("profile"),
+            "true_solar_start_time": preset.get("true_solar_start_time"),
+            "true_solar_end_time": preset.get("true_solar_end_time"),
+            "equal_time_contour_levels_minutes": preset.get("equal_time_contour_levels_minutes"),
+            "near_limit_minutes": preset.get("near_limit_minutes"),
+            "far_limit_minutes": preset.get("far_limit_minutes"),
+            "site_latitude_deg": normalized.get("site_latitude_deg"),
+            "site_longitude_deg": normalized.get("site_longitude_deg"),
         }),
         "shadow_caster_summary": _summary_counts(out_payload.get("shadow_casters")),
         "site_boundary_summary": _summary_counts(out_payload.get("site_boundary")),
