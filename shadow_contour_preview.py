@@ -139,7 +139,11 @@ def build_equal_time_contour_preview(equal_time_contours, measurement_plane, set
             groups = _level_groups(equal_time_contours)
             prepared = [(level, contours, _segments(contours)) for level, contours in groups]
         except (TypeError, ValueError, KeyError) as exc:
-            return _block(result, str(exc) or "contour_preview_source_invalid")
+            code = str(exc)
+            if code not in ("contour_preview_non_finite_level",
+                            "contour_preview_non_finite_coordinate"):
+                code = "contour_preview_source_invalid"
+            return _block(result, code)
         result["requested_level_count"] = len(prepared)
     else:
         prepared = []
@@ -198,7 +202,7 @@ def build_equal_time_contour_preview(equal_time_contours, measurement_plane, set
                         "Equal-time contour level %s preview failed: %s" %
                         (level, group["warning"]))
                 result["groups"].append(group)
-            if not result["created_element_ids"]:
+            if prepared and not result["created_element_ids"]:
                 raise ValueError("contour_preview_all_groups_failed")
         sub.Commit(); sub = None
     except BaseException as exc:

@@ -7,6 +7,7 @@ import pytest
 import shadow_contour_preview as preview
 import shadow_debug
 import shadow_preview
+from shadow_policies import CODE_BUILD_ID
 
 
 def contour(level=60, points=((0, 0), (2, 0), (2, 1)), closed=True):
@@ -132,6 +133,51 @@ def test_clear_deletes_only_without_source_or_plane(monkeypatch):
         {"equal_time_contour_preview_mode": "clear"})
     assert result["complete"] and result["deleted_element_count"] == 1
     assert len(doc.shapes) == 1 and doc.shapes[0].ApplicationId == shadow_preview.APPLICATION_ID
+
+
+def test_replace_complete_empty_source_commits_deletion(monkeypatch):
+    doc = Doc(); install(monkeypatch, doc)
+    result = preview.build_equal_time_contour_preview(
+        {"available": True, "complete": True, "contours": []},
+        {"elevation_m": 4}, {"equal_time_contour_preview_mode": "replace"})
+    assert result["available"] is result["complete"] is True
+    assert result["partial_success"] is False
+    assert result["requested_level_count"] == result["created_level_count"] == 0
+    assert result["created_element_count"] == 0 and result["blockers"] == []
+    assert len(doc.shapes) == 1 and doc.shapes[0].ApplicationId == shadow_preview.APPLICATION_ID
+
+
+def test_replace_all_creation_failure_rolls_back_old_preview(monkeypatch):
+    doc = Doc(); install(monkeypatch, doc)
+    class FailingDirect:
+        @staticmethod
+        def CreateElement(*args): raise RuntimeError("creation failed")
+    monkeypatch.setattr(preview, "DirectShape", FailingDirect)
+    result = preview.build_equal_time_contour_preview(
+        source(contour()), {"elevation_m": 4},
+        {"equal_time_contour_preview_mode": "replace"})
+    assert result["complete"] is False
+    assert result["blockers"] == [{"failure_code": "contour_preview_write_failed"}]
+    assert [shape.ApplicationId for shape in doc.shapes] == [
+        preview.APPLICATION_ID, shadow_preview.APPLICATION_ID]
+
+
+@pytest.mark.parametrize("bad_contour", [
+    {"closed": True, "points_m": [{"x": 0, "y": 0}, {"x": 1, "y": 1}]},
+    {"level_minutes": "not-a-number", "closed": True,
+     "points_m": [{"x": 0, "y": 0}, {"x": 1, "y": 1}]},
+    {"level_minutes": 60, "closed": True,
+     "points_m": [{"x": 0}, {"x": 1, "y": 1}]},
+])
+def test_invalid_source_uses_stable_failure_code(bad_contour):
+    result = preview.build_equal_time_contour_preview(
+        source(bad_contour), {"elevation_m": 4},
+        {"equal_time_contour_preview_mode": "replace"})
+    assert result["blockers"] == [{"failure_code": "contour_preview_source_invalid"}]
+
+
+def test_preview_build_id():
+    assert CODE_BUILD_ID == "2026-08-04-equal-time-contour-preview-v1"
 
 
 def test_debug_summary_omits_coordinates_and_uses_readiness_pending():
