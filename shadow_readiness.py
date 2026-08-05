@@ -1,7 +1,7 @@
 # Pipeline readiness diagnostics.
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None, equal_time_contours=None, site_boundary_area_extraction=None, site_boundary_geometry=None, measurement_masks=None):
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None, equal_time_contours=None, site_boundary_area_extraction=None, site_boundary_geometry=None, measurement_masks=None, resolved_regulatory_preset=None, selected_limit_comparison=None, legal_judgement=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
@@ -15,6 +15,8 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
     site_boundary_area_ready = site_boundary_input_ready
     site_boundary_geometry_ready = (site_boundary_geometry or {}).get("complete") is True
     measurement_masks_ready = (measurement_masks or {}).get("complete") is True
+    selected_limit_pair_selected = (resolved_regulatory_preset or {}).get("comparison_ready") is True
+    selected_limit_comparison_ready = (selected_limit_pair_selected and measurement_masks_ready and (selected_limit_comparison or {}).get("complete") is True)
     boundary_evaluation_coverage_complete = (shadow_duration or {}).get("boundary_evaluation_coverage_complete") is True
     legal_judgement_masks_ready = False
     future_projection_ready = footprint_ready and measurement_plane_ready and settings_ready
@@ -28,7 +30,11 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
     if not settings_ready:
         blockers_projection.append("Settings are not ready for future equal-time shadow calculation.")
     blockers_legal = list(mp_readiness.get("blockers_for_legal_judgement_masks") or [])
-    blockers_legal_judgement = [{"failure_code": "legal_judgement_not_implemented"}]
+    blockers_legal_judgement = []
+    for code in ("ordinance_applicability_not_certified", "local_ordinance_reference_missing", "legal_profile_schema_not_implemented"):
+        if code not in [item.get("failure_code") for item in blockers_legal_judgement]:
+            blockers_legal_judgement.append({"failure_code": code})
+    blockers_selected_limit = []
     if not shadow_ready:
         blockers_equal.append("No accepted shadow caster proxy elements are available.")
     if not settings_ready:
@@ -58,7 +64,9 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         next_steps.append("site boundary")
     if not measurement_masks_ready:
         next_steps.append("5m / 10m distance masks")
-    next_steps.extend(["5m / 10m Revit display lines", "contour evaluation extraction", "legal judgement"])
+    if selected_limit_pair_selected and not selected_limit_comparison_ready:
+        next_steps.append("selected limit comparison")
+    next_steps.extend(["legal profile applicability schema", "municipality / ordinance source metadata", "legal judgement", "5m / 10m Revit display lines", "report output"])
     return {
         "input_diagnostics_ready": True,
         "shadow_caster_ready": shadow_ready,
@@ -75,6 +83,8 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "site_boundary_area_ready": site_boundary_area_ready,
         "site_boundary_geometry_ready": site_boundary_geometry_ready,
         "measurement_masks_ready": measurement_masks_ready,
+        "selected_limit_pair_selected": selected_limit_pair_selected,
+        "selected_limit_comparison_ready": selected_limit_comparison_ready,
         "boundary_evaluation_coverage_complete": boundary_evaluation_coverage_complete,
         "settings_ready_for_equal_time_shadow": settings_ready,
         "formal_solar_calculation_ready": solar.get("formal_solar_calculation_ready") is True,
@@ -109,6 +119,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "blockers_for_site_boundary_area": list((site_boundary_area_extraction or {}).get("blockers") or []),
         "blockers_for_site_boundary_geometry": list((site_boundary_geometry or {}).get("blockers") or []),
         "blockers_for_measurement_masks": list((measurement_masks or {}).get("blockers") or []),
+        "blockers_for_selected_limit_comparison": blockers_selected_limit + list((selected_limit_comparison or {}).get("blockers") or []),
         "blockers_for_legal_judgement": blockers_legal_judgement,
         "blockers_for_legal_judgement_masks": blockers_legal,
         "blockers_for_boundary_dependent_steps": blockers_boundary,

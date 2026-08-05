@@ -216,7 +216,7 @@ def test_readiness_valid_area_no_legacy_boundary_blocker():
     assert r["boundary_dependent_steps_ready"] is True
     assert r["blockers_for_boundary_dependent_steps"] == []
     assert "site_boundary is missing" not in str(r)
-    assert r["blockers_for_legal_judgement"] == [{"failure_code":"legal_judgement_not_implemented"}]
+    assert r["blockers_for_legal_judgement"] == [{"failure_code":"ordinance_applicability_not_certified"}, {"failure_code":"local_ordinance_reference_missing"}, {"failure_code":"legal_profile_schema_not_implemented"}]
     assert r["legal_judgement_ready"] is False
 
 def test_duration_boundary_grid_blocker_keeps_core_complete():

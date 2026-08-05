@@ -49,3 +49,9 @@ This stage does not certify legal OK/NG, does not automatically determine the or
 `Site Boundary Area / 敷地境界エリア` is saved as a Dynamo Player `hostSelection` input. The Python pipeline still treats `site_boundary` as optional when `None` is supplied through tests or API-style execution, so core shadow duration and equal-time contours can continue without boundary masks.
 
 Dynamo Player behavior with an unselected `hostSelection` must be confirmed in Revit 2024.3 / Dynamo 3.3. If Player disables Run while the Area is unselected, this PR adopts the current UI behavior that the Area selection is required in Dynamo Player, while preserving optional `None` handling in Python. No dummy ElementId, dummy element, or fixed GUID is used.
+
+## Selected shadow limit comparison
+
+When a valid placed Area is selected and measurement masks are generated, Dynamo_Shadow can also compare the near (5 m to 10 m) and far (over 10 m) maximum shadow durations with a specific regulatory shadow limit preset selected in Dynamo Player.
+
+This comparison is only a numerical check against the user-selected preset. It is not a legal compliance judgement, ordinance applicability certification, or permit-ready result. The `standard_all` and `hokkaido_all` presets display candidate contour levels and do not produce a unique near/far comparison.
