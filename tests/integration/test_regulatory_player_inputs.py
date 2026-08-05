@@ -76,10 +76,10 @@ def test_player_graph_inputs_and_connectors():
     settings_id = "f688e0f729b946d0b8ac25514f4531da"
     assert views[settings_id]["IsSetAsInput"] is False
     assert settings_id not in {item["Id"] for item in data["Inputs"]}
-    custom = next(n for n in nodes.values() if "CustomSelection" in n["ConcreteType"])
+    custom = nodes["b1111111111111111111111111111111"]
     numbers = [n for n in nodes.values() if n["NodeType"] == "NumberInputNode"]
     assert views[custom["Id"]]["IsSetAsInput"] is True
-    assert custom["Items"][custom["SelectedIndex"]]["Value"] == "standard_all"
+    assert custom["SerializedItems"][custom["SelectedIndex"]]["Item"] == "standard_all"
     assert len(numbers) == 2 and all(views[n["Id"]]["IsSetAsInput"] for n in numbers)
     python_node = next(n for n in nodes.values() if n["NodeType"] == "PythonScriptNode")
     assert len(python_node["Inputs"]) == 8

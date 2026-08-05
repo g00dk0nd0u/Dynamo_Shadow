@@ -29,7 +29,7 @@
       "Name": "Regulatory Shadow Preset / 日影規制時間",
       "Type": "selection",
       "Type2": "dropdownSelection",
-      "Value": "standard_all",
+      "Value": "標準地域｜条例未確認・候補をすべて表示",
       "Description": "法別表第四の候補。適用区分は自治体条例で要確認。",
       "SelectedIndex": 0
     },
@@ -38,7 +38,7 @@
       "Name": "Calculation Accuracy / 計算精度",
       "Type": "selection",
       "Type2": "dropdownSelection",
-      "Value": "standard",
+      "Value": "標準｜0.5m・15分",
       "Description": "計算精度：高速・ラフ 0.5m/30分、標準 0.5m/15分、高精度 0.25m/15分",
       "SelectedIndex": 1
     },
@@ -281,48 +281,14 @@
     {
       "ConcreteType": "CoreNodeModels.Input.CustomSelection, CoreNodeModels",
       "SelectedIndex": 0,
-      "Items": [
-        {
-          "Name": "標準地域｜条例未確認・候補をすべて表示",
-          "Value": "standard_all"
-        },
-        {
-          "Name": "標準地域｜5m超～10m以内 3h ／ 10m超 2h",
-          "Value": "standard_3_2"
-        },
-        {
-          "Name": "標準地域｜5m超～10m以内 4h ／ 10m超 2.5h",
-          "Value": "standard_4_2_5"
-        },
-        {
-          "Name": "標準地域｜5m超～10m以内 5h ／ 10m超 3h",
-          "Value": "standard_5_3"
-        },
-        {
-          "Name": "道の区域｜条例未確認・候補をすべて表示",
-          "Value": "hokkaido_all"
-        },
-        {
-          "Name": "道の区域｜5m超～10m以内 2h ／ 10m超 1.5h",
-          "Value": "hokkaido_2_1_5"
-        },
-        {
-          "Name": "道の区域｜5m超～10m以内 3h ／ 10m超 2h",
-          "Value": "hokkaido_3_2"
-        },
-        {
-          "Name": "道の区域｜5m超～10m以内 4h ／ 10m超 2.5h",
-          "Value": "hokkaido_4_2_5"
-        }
-      ],
       "Id": "b1111111111111111111111111111111",
       "NodeType": "ExtensionNode",
       "Inputs": [],
       "Outputs": [
         {
           "Id": "c1111111111111111111111111111111",
-          "Name": "",
-          "Description": "Selected value",
+          "Name": "Value",
+          "Description": "The selected Value",
           "UsingDefaultValue": false,
           "Level": 2,
           "UseLevels": false,
@@ -330,7 +296,43 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select a regulatory shadow time candidate."
+      "Description": "Select a regulatory shadow time candidate.",
+      "IsVisibleDropDownTextBlock": true,
+      "SerializedItems": [
+        {
+          "Name": "標準地域｜条例未確認・候補をすべて表示",
+          "Item": "standard_all"
+        },
+        {
+          "Name": "標準地域｜5m超～10m以内 3h ／ 10m超 2h",
+          "Item": "standard_3_2"
+        },
+        {
+          "Name": "標準地域｜5m超～10m以内 4h ／ 10m超 2.5h",
+          "Item": "standard_4_2_5"
+        },
+        {
+          "Name": "標準地域｜5m超～10m以内 5h ／ 10m超 3h",
+          "Item": "standard_5_3"
+        },
+        {
+          "Name": "道の区域｜条例未確認・候補をすべて表示",
+          "Item": "hokkaido_all"
+        },
+        {
+          "Name": "道の区域｜5m超～10m以内 2h ／ 10m超 1.5h",
+          "Item": "hokkaido_2_1_5"
+        },
+        {
+          "Name": "道の区域｜5m超～10m以内 3h ／ 10m超 2h",
+          "Item": "hokkaido_3_2"
+        },
+        {
+          "Name": "道の区域｜5m超～10m以内 4h ／ 10m超 2.5h",
+          "Item": "hokkaido_4_2_5"
+        }
+      ],
+      "SelectedString": "標準地域｜条例未確認・候補をすべて表示"
     },
     {
       "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
@@ -377,28 +379,14 @@
     {
       "ConcreteType": "CoreNodeModels.Input.CustomSelection, CoreNodeModels",
       "SelectedIndex": 1,
-      "Items": [
-        {
-          "Name": "高速・ラフ｜0.5m・30分",
-          "Value": "rough"
-        },
-        {
-          "Name": "標準｜0.5m・15分",
-          "Value": "standard"
-        },
-        {
-          "Name": "高精度｜0.25m・15分",
-          "Value": "high"
-        }
-      ],
       "Id": "b4444444444444444444444444444444",
       "NodeType": "ExtensionNode",
       "Inputs": [],
       "Outputs": [
         {
           "Id": "c4444444444444444444444444444444",
-          "Name": "",
-          "Description": "Selected value",
+          "Name": "Value",
+          "Description": "The selected Value",
           "UsingDefaultValue": false,
           "Level": 2,
           "UseLevels": false,
@@ -406,7 +394,23 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select duration-grid and solar-time calculation accuracy."
+      "Description": "Select duration-grid and solar-time calculation accuracy.",
+      "IsVisibleDropDownTextBlock": true,
+      "SerializedItems": [
+        {
+          "Name": "高速・ラフ｜0.5m・30分",
+          "Item": "rough"
+        },
+        {
+          "Name": "標準｜0.5m・15分",
+          "Item": "standard"
+        },
+        {
+          "Name": "高精度｜0.25m・15分",
+          "Item": "high"
+        }
+      ],
+      "SelectedString": "標準｜0.5m・15分"
     }
   ],
   "Connectors": [

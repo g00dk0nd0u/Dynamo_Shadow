@@ -24,7 +24,8 @@ def test_accuracy_custom_selection_is_player_input_defaulting_to_standard():
     assert node["ConcreteType"].startswith("CoreNodeModels.Input.CustomSelection")
     assert views[node["Id"]]["IsSetAsInput"] is True
     assert node["SelectedIndex"] == 1
-    assert [item["Value"] for item in node["Items"]] == ["rough", "standard", "high"]
+    assert [item["Item"] for item in node["SerializedItems"]] == ["rough", "standard", "high"]
+    assert node["SelectedString"] == node["SerializedItems"][node["SelectedIndex"]]["Name"]
 
 
 def test_player_input_display_order_and_settings_remains_hidden():
@@ -47,7 +48,7 @@ def test_top_level_inputs_register_accuracy_once_with_default_and_order():
     assert accuracy["Name"] == "Calculation Accuracy / 計算精度"
     assert accuracy["Type"] == "selection"
     assert accuracy["Type2"] == "dropdownSelection"
-    assert accuracy["Value"] == "standard"
+    assert accuracy["Value"] == "標準｜0.5m・15分"
     assert accuracy["SelectedIndex"] == 1
     assert [item["Name"] for item in inputs] == [
         "Levels",
