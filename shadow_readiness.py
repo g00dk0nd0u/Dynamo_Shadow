@@ -1,7 +1,7 @@
 # Pipeline readiness diagnostics.
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None, equal_time_contours=None):
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None, equal_time_contours=None, site_boundary_area_extraction=None, site_boundary_geometry=None, measurement_masks=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
@@ -12,6 +12,9 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
     mp_readiness = (measurement_plane or {}).get("readiness") or {}
     measurement_plane_ready = mp_readiness.get("measurement_plane_constructed") is True
     future_projection_context_ready = mp_readiness.get("ready_for_future_shadow_projection_context") is True
+    site_boundary_area_ready = (site_boundary_area_extraction or {}).get("complete") is True
+    site_boundary_geometry_ready = (site_boundary_geometry or {}).get("complete") is True
+    measurement_masks_ready = (measurement_masks or {}).get("complete") is True
     legal_judgement_masks_ready = False
     future_projection_ready = footprint_ready and measurement_plane_ready and settings_ready
     blockers_fp = list(((footprint_extraction or {}).get("readiness") or {}).get("blockers_for_future_footprint_polygon_generation") or [])
@@ -65,6 +68,9 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "future_projection_context_ready": future_projection_context_ready,
         "future_shadow_projection_ready": future_projection_ready,
         "legal_judgement_masks_ready": legal_judgement_masks_ready,
+        "site_boundary_area_ready": site_boundary_area_ready,
+        "site_boundary_geometry_ready": site_boundary_geometry_ready,
+        "measurement_masks_ready": measurement_masks_ready,
         "settings_ready_for_equal_time_shadow": settings_ready,
         "formal_solar_calculation_ready": solar.get("formal_solar_calculation_ready") is True,
         "regulatory_profile_resolved": solar.get("regulatory_profile_resolved") is True,
@@ -75,7 +81,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "site_boundary_required_for_equal_time_shadow": False,
         "site_boundary_ready_for_boundary_dependent_steps": boundary_ready,
         "equal_time_shadow_calculation_ready": equal_ready,
-        "boundary_dependent_steps_ready": equal_ready and boundary_ready,
+        "boundary_dependent_steps_ready": site_boundary_area_ready and site_boundary_geometry_ready and duration_complete and measurement_masks_ready,
         "formal_shadow_polygon_generation_attempted": formal_shadow_polygons is not None,
         "formal_shadow_polygon_generation_available": formal.get("available") is True,
         "formal_shadow_polygon_generation_complete": formal.get("complete") is True,
@@ -94,6 +100,10 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "blockers_for_measurement_plane": blockers_mp,
         "blockers_for_future_projection_context": list(mp_readiness.get("blockers_for_future_shadow_projection_context") or []),
         "blockers_for_future_shadow_projection": blockers_projection,
+        "blockers_for_site_boundary_area": list((site_boundary_area_extraction or {}).get("blockers") or []),
+        "blockers_for_site_boundary_geometry": list((site_boundary_geometry or {}).get("blockers") or []),
+        "blockers_for_measurement_masks": list((measurement_masks or {}).get("blockers") or []),
+        "blockers_for_legal_judgement": [],
         "blockers_for_legal_judgement_masks": blockers_legal,
         "blockers_for_boundary_dependent_steps": blockers_boundary,
         "info": ["Duration accumulation is a grid/trapezoidal numerical approximation; site_boundary is required only for later legal judgement."],

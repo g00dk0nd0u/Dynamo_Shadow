@@ -40,7 +40,7 @@ def test_optional_boundary_base_exception_degrades_without_stopping_pipeline(mon
     assert result["shadow_projection_diagnostics"] is not None
 
 
-def test_no_boundary_is_successful_and_not_player_input(monkeypatch):
+def test_no_boundary_is_successful_and_area_player_input(monkeypatch):
     _set_inputs(monkeypatch)
     result = script._build_success()
     graph = json.loads(open("Shadow.dyn", encoding="utf-8").read())
@@ -48,7 +48,7 @@ def test_no_boundary_is_successful_and_not_player_input(monkeypatch):
     assert result["success"] is True
     assert result["partial_success"] is False
     assert result["site_boundary"]["boundary_dependent_steps_available"] is False
-    assert all(item["Id"] != "70c7bb6dbe3647b180c23c419e57cc9c" for item in graph["Inputs"])
+    assert any(item["Id"] == "70c7bb6dbe3647b180c23c419e57cc9c" for item in graph["Inputs"])
 
 
 def test_malformed_boundary_item_does_not_stop_remaining_items(monkeypatch):

@@ -16,7 +16,7 @@ def _empty():
         "maximum_grid_point_count": None, "maximum_shadow_duration_minutes": 0.0,
         "shadowed_point_count": 0, "ready_for_equal_time_contour_generation": False,
         "permit_ready_certified": False, "duration_grid": [], "grid_spec": None,
-        "bounds_m": None, "blockers": [],
+        "bounds_m": None, "bounds_sources": [], "site_boundary_bounds_included": False, "site_boundary_expansion_m": None, "blockers": [],
         "warnings": ["Duration values are a grid/trapezoidal numerical approximation at the configured temporal interval."]}
 
 
@@ -55,7 +55,7 @@ def _slice_contains(polygons, x, y):
     return False
 
 
-def build_shadow_duration(unified_shadow_slices, settings=None, selected_accuracy_preset=None):
+def build_shadow_duration(unified_shadow_slices, settings=None, selected_accuracy_preset=None, site_boundary_geometry=None):
     result = _empty(); unified = unified_shadow_slices or {}
     slices = list(unified.get("slices") or [])
     if unified.get("complete") is not True or not slices or any(s.get("complete") is not True for s in slices):
@@ -72,8 +72,23 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
         if not points: raise ValueError()
     except (TypeError, ValueError, KeyError, OverflowError):
         result["blockers"].append({"failure_code": "invalid_duration_input_or_settings"}); return result
-    min_x, max_x = min(p[0] for p in points)-margin, max(p[0] for p in points)+margin
-    min_y, max_y = min(p[1] for p in points)-margin, max(p[1] for p in points)+margin
+    shadow_min_x, shadow_max_x = min(p[0] for p in points), max(p[0] for p in points)
+    shadow_min_y, shadow_max_y = min(p[1] for p in points), max(p[1] for p in points)
+    base_min_x, base_max_x = shadow_min_x, shadow_max_x
+    base_min_y, base_max_y = shadow_min_y, shadow_max_y
+    bounds_sources = ["unified_shadow_polygons"]
+    site_included = False
+    if (site_boundary_geometry or {}).get("complete") is True and isinstance((site_boundary_geometry or {}).get("bounds_m"), dict):
+        sb = site_boundary_geometry["bounds_m"]; expansion = 10.0
+        base_min_x = min(base_min_x, float(sb["min_x"]) - expansion)
+        base_min_y = min(base_min_y, float(sb["min_y"]) - expansion)
+        base_max_x = max(base_max_x, float(sb["max_x"]) + expansion)
+        base_max_y = max(base_max_y, float(sb["max_y"]) + expansion)
+        bounds_sources.append("site_boundary_area_expanded_10m")
+        site_included = True
+    bounds_sources.append("analysis_margin")
+    min_x, max_x = base_min_x - margin, base_max_x + margin
+    min_y, max_y = base_min_y - margin, base_max_y + margin
     nx = int(math.ceil((max_x-min_x)/resolution))+1; ny = int(math.ceil((max_y-min_y)/resolution))+1
     count = nx * ny
     result.update({"temporal_step_minutes": intervals[0] if all(abs(v-intervals[0]) <= 1e-9 for v in intervals) else None,
@@ -102,6 +117,7 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
     result.update({"available": True, "complete": True, "maximum_shadow_duration_minutes": max_duration,
         "shadowed_point_count": shadowed, "ready_for_equal_time_contour_generation": True,
         "duration_grid": grid,
+        "bounds_sources": bounds_sources, "site_boundary_bounds_included": site_included, "site_boundary_expansion_m": 10.0 if site_included else None,
         "grid_spec": {"x_count": nx, "y_count": ny, "origin_x_m": min_x,
             "origin_y_m": min_y, "resolution_m": resolution,
             "ordering": "row_major_y_then_x"},

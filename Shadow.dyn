@@ -25,6 +25,13 @@
       "Description": "ドキュメントからモデル要素を選択します。"
     },
     {
+      "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
+      "Name": "Site Boundary Area / 敷地境界エリア",
+      "Type": "selection",
+      "Type2": "hostSelection",
+      "Description": "Select one placed Revit Area representing the site boundary.\n敷地境界を表す配置済みのエリアを1個選択してください。\nエリア境界線ではなく、エリア本体を選択します。"
+    },
+    {
       "Id": "b1111111111111111111111111111111",
       "Name": "Shadow Limits / 日影規制時間（5–10m / 10m超）",
       "Type": "selection",
@@ -196,7 +203,7 @@
       "Description": "ノードの出力を可視化"
     },
     {
-      "ConcreteType": "Dynamo.Nodes.DSModelElementsSelection, DSRevitNodesUI",
+      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
       "NodeType": "ExtensionNode",
       "InstanceId": [],
       "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
@@ -204,8 +211,8 @@
       "Outputs": [
         {
           "Id": "4d2553e9c6724d719829a6ed82ea6fcc",
-          "Name": "Elements",
-          "Description": "The selected elements.",
+          "Name": "Element",
+          "Description": "選択した要素。",
           "UsingDefaultValue": false,
           "Level": 2,
           "UseLevels": false,
@@ -213,7 +220,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Revit ドキュメントから複数の要素を選択します。"
+      "Description": "Select one placed Revit Area representing the site boundary. 敷地境界を表す配置済みのエリアを1個選択してください。エリア境界線ではなく、エリア本体を選択します。"
     },
     {
       "ConcreteType": "DSRevitNodesUI.Levels, DSRevitNodesUI",
@@ -537,13 +544,13 @@
       },
       {
         "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
-        "Name": "Select Site Boundary Elements",
-        "IsSetAsInput": false,
+        "Name": "Site Boundary Area / 敷地境界エリア",
+        "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
         "X": -326.89163960879176,
-        "Y": 289.46432477737847
+        "Y": 250
       },
       {
         "Id": "3daad2f0de954b2a971f92fd9f671601",
@@ -583,7 +590,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 340
+        "Y": 300
       },
       {
         "Id": "b2222222222222222222222222222222",
@@ -593,7 +600,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 580
+        "Y": 400
       },
       {
         "Id": "b3333333333333333333333333333333",
@@ -603,7 +610,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 700
+        "Y": 450
       },
       {
         "Id": "b4444444444444444444444444444444",
@@ -613,7 +620,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 460
+        "Y": 350
       }
     ],
     "Annotations": [],

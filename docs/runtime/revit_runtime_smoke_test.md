@@ -50,3 +50,14 @@ Confirm that:
 ## Known warning
 
 When the Plan representation is unavailable, preview creation falls back to the DirectShape Default Curve representation. Record the warning and visually verify the fallback; it does not certify calculation correctness.
+
+## Site Boundary Area distance mask smoke tests / 敷地境界エリア距離マスク実機確認
+
+Preparation: create a dedicated Area Scheme (`Shadow Analysis / 日影検討`), an Area Plan at the site level, a roughly 20m x 20m rectangular Area with four straight Area Boundary segments, and place the Area.
+
+- Test A valid rectangle: select the Area body once; expect `site_boundary_area_extraction.complete=true`, `site_boundary_geometry.complete=true`, `vertex_count=4`, polygon `area_m2` roughly matching Revit Area, `measurement_masks.complete=true`, non-negative near/far counts, and `legal_judgement_generated=false`.
+- Test B no Area selected: `None` site_boundary should allow shadow duration and equal-time contours to continue; `measurement_masks.available=false` and no fatal failure.
+- Test C unbounded Area: expect `site_boundary_area_unplaced_or_unbounded` or `site_boundary_area_boundary_missing`; core shadow calculation continues.
+- Test D curved boundary: expect `unsupported_site_boundary_curve_type`; endpoints are not silently straightened; core shadow calculation continues.
+- Test E Area with opening / inner loop: expect `site_boundary_area_multiple_loops_unsupported`; the largest loop is not adopted automatically.
+- Test F duration bounds: Area bounds expanded by 10m are included in duration bounds; outside-site shadows remain; equal-time contours are not clipped by the Area.

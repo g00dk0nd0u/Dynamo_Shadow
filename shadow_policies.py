@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-08-04-equal-time-contour-preview-v1"
+CODE_BUILD_ID = "2026-08-05-area-site-boundary-masks-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -178,7 +178,8 @@ EQUAL_TIME_CONTOUR_POLICY = {
 
 ANALYSIS_BOUNDS_POLICY = {
     "duration_grid_clipped_to_site_boundary": False,
-    "current_bounds": "all_unified_shadow_polygon_bounds_plus_analysis_safety_margin",
+    "duration_grid_clipped_to_area": False,
+    "current_bounds": "union_of_unified_shadow_polygon_bounds_and_valid_site_area_bounds_expanded_10m_plus_analysis_margin",
     "future_bounds_when_site_boundary_geometry_is_available": (
         "union(all unified shadow polygon bounds, site boundary bounds expanded by at least 10m) "
         "plus analysis safety margin"
@@ -380,6 +381,10 @@ SETTINGS_POLICY = {
     "debug_log_policy": DEBUG_LOG_POLICY,
 }
 
+SITE_BOUNDARY_AREA_POLICY = {"formal_user_input": "one_placed_revit_area", "area_boundary_segments_selected_in_player": False, "family_required": False, "requires_placed_closed_area": True, "initial_scope": "single_loop_line_only_host_model_area", "optional_for_shadow_calculation": True}
+SITE_BOUNDARY_GEOMETRY_POLICY = {"method": "revit_area_single_outer_loop_v1", "single_loop_only": True, "line_only": True, "holes_supported": False, "arc_approximation_performed": False, "formal_polygon_units": "meters_model_xy"}
+MEASUREMENT_MASK_POLICY = {"method": "point_to_area_boundary_distance_v1", "zones": ["inside_site", "on_site_boundary", "outside_0_to_5m", "near_5_to_10m", "far_over_10m"], "offset_display_curves_generated": False, "legal_judgement_generated": False, "permit_ready_certified": False}
+
 SITE_BOUNDARY_POLICY = {
     "optional": True,
     "required_for_equal_time_shadow": False,
@@ -399,7 +404,9 @@ SITE_BOUNDARY_POLICY = {
         "shadow_duration_accumulation",
         "equal_time_shadow_output",
     ],
-    "primary_source": "revit_property_line_or_site_property",
+    "primary_source": "single_placed_revit_area",
+    "area_boundary_lines_player_selection_required": False,
+    "family_required": False,
     "primary_built_in_categories": [
         "BuiltInCategory.OST_SiteProperty",
         "BuiltInCategory.OST_SitePropertyLineSegment",
@@ -409,7 +416,8 @@ SITE_BOUNDARY_POLICY = {
         "BuiltInCategory.OST_Site",
         "BuiltInCategory.OST_Property",
     ],
-    "fallback_source": "model_lines_closed_loop",
+    "legacy_diagnostic_fallback_source": "property_lines_or_model_lines_diagnostic_only",
+    "fallback_source": "none_for_formal_geometry",
     "fallback_line_categories": [
         "BuiltInCategory.OST_Lines",
         "BuiltInCategory.OST_SketchLines",
@@ -420,6 +428,7 @@ SITE_BOUNDARY_POLICY = {
     "cad_import_auto_boundary": False,
     "toposolid_auto_boundary": False,
     "temporary_revit_boundary_model": False,
+    "distance_masks_generated_when_area_valid": True,
     "measurement_lines_generated": False,
     "formal_permit_check": "external_tool_such_as_ADS",
 }

@@ -177,7 +177,7 @@ def test_invalid_source_uses_stable_failure_code(bad_contour):
 
 
 def test_preview_build_id():
-    assert CODE_BUILD_ID == "2026-08-04-equal-time-contour-preview-v1"
+    assert CODE_BUILD_ID == "2026-08-05-area-site-boundary-masks-v1"
 
 
 def test_debug_summary_omits_coordinates_and_uses_readiness_pending():
