@@ -26,11 +26,11 @@
     },
     {
       "Id": "b1111111111111111111111111111111",
-      "Name": "Regulatory Shadow Preset / 日影規制時間",
+      "Name": "Shadow Limits / 日影規制時間（5–10m / 10m超）",
       "Type": "selection",
       "Type2": "dropdownSelection",
-      "Value": "標準地域｜条例未確認・候補をすべて表示",
-      "Description": "法別表第四の候補。適用区分は自治体条例で要確認。",
+      "Value": "Standard / 標準｜All / 全候補",
+      "Description": "Order: 5–10m zone / over-10m zone.\n表示順：5m超～10m以内 / 10m超。\n条例による適用区分は別途確認してください。",
       "SelectedIndex": 0
     },
     {
@@ -38,8 +38,8 @@
       "Name": "Calculation Accuracy / 計算精度",
       "Type": "selection",
       "Type2": "dropdownSelection",
-      "Value": "標準｜0.5m・15分",
-      "Description": "計算精度：高速・ラフ 0.5m/30分、標準 0.5m/15分、高精度 0.25m/15分",
+      "Value": "Standard / 標準｜0.5m・15min",
+      "Description": "Fast: 0.5m / 30min.\nStandard: 0.5m / 15min.\nStandard is the default.",
       "SelectedIndex": 1
     },
     {
@@ -296,43 +296,43 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select a regulatory shadow time candidate.",
+      "Description": "Order: 5–10m zone / over-10m zone.\n表示順：5m超～10m以内 / 10m超。\n条例による適用区分は別途確認してください。",
       "IsVisibleDropDownTextBlock": true,
       "SerializedItems": [
         {
-          "Name": "標準地域｜条例未確認・候補をすべて表示",
+          "Name": "Standard / 標準｜All / 全候補",
           "Item": "standard_all"
         },
         {
-          "Name": "標準地域｜5m超～10m以内 3h ／ 10m超 2h",
+          "Name": "Standard / 標準｜3h / 2h",
           "Item": "standard_3_2"
         },
         {
-          "Name": "標準地域｜5m超～10m以内 4h ／ 10m超 2.5h",
+          "Name": "Standard / 標準｜4h / 2.5h",
           "Item": "standard_4_2_5"
         },
         {
-          "Name": "標準地域｜5m超～10m以内 5h ／ 10m超 3h",
+          "Name": "Standard / 標準｜5h / 3h",
           "Item": "standard_5_3"
         },
         {
-          "Name": "道の区域｜条例未確認・候補をすべて表示",
+          "Name": "Hokkaido / 北海道｜All / 全候補",
           "Item": "hokkaido_all"
         },
         {
-          "Name": "道の区域｜5m超～10m以内 2h ／ 10m超 1.5h",
+          "Name": "Hokkaido / 北海道｜2h / 1.5h",
           "Item": "hokkaido_2_1_5"
         },
         {
-          "Name": "道の区域｜5m超～10m以内 3h ／ 10m超 2h",
+          "Name": "Hokkaido / 北海道｜3h / 2h",
           "Item": "hokkaido_3_2"
         },
         {
-          "Name": "道の区域｜5m超～10m以内 4h ／ 10m超 2.5h",
+          "Name": "Hokkaido / 北海道｜4h / 2.5h",
           "Item": "hokkaido_4_2_5"
         }
       ],
-      "SelectedString": "標準地域｜条例未確認・候補をすべて表示"
+      "SelectedString": "Standard / 標準｜All / 全候補"
     },
     {
       "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
@@ -394,23 +394,19 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select duration-grid and solar-time calculation accuracy.",
+      "Description": "Fast: 0.5m / 30min.\nStandard: 0.5m / 15min.\nStandard is the default.",
       "IsVisibleDropDownTextBlock": true,
       "SerializedItems": [
         {
-          "Name": "高速・ラフ｜0.5m・30分",
+          "Name": "Fast / 高速｜0.5m・30min",
           "Item": "rough"
         },
         {
-          "Name": "標準｜0.5m・15分",
+          "Name": "Standard / 標準｜0.5m・15min",
           "Item": "standard"
-        },
-        {
-          "Name": "高精度｜0.25m・15分",
-          "Item": "high"
         }
       ],
-      "SelectedString": "標準｜0.5m・15分"
+      "SelectedString": "Standard / 標準｜0.5m・15min"
     }
   ],
   "Connectors": [
@@ -581,7 +577,7 @@
       },
       {
         "Id": "b1111111111111111111111111111111",
-        "Name": "Regulatory Shadow Preset / 日影規制時間",
+        "Name": "Shadow Limits / 日影規制時間（5–10m / 10m超）",
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
@@ -597,7 +593,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 660
+        "Y": 580
       },
       {
         "Id": "b3333333333333333333333333333333",
@@ -607,7 +603,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 780
+        "Y": 700
       },
       {
         "Id": "b4444444444444444444444444444444",
@@ -617,7 +613,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 500.0
+        "Y": 460
       }
     ],
     "Annotations": [],
