@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-08-05-site-distance-contours-v1"
+CODE_BUILD_ID = "2026-08-06-site-result-preview-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -19,10 +19,12 @@ CURRENT_IMPLEMENTATION_STATUS = {
         "per_slice_union", "duration_accumulation", "equal_time_contours",
         "equal_time_contour_preview",
         "site_distance_contours",
+        "site_distance_contours_revit_preview",
+        "near_far_maximum_point_revit_preview",
     ],
     "not_implemented": [
-        "site_boundary_legal_masks", "5m_10m_revit_preview", "legal_judgement",
-        "permit_certification",
+        "site_boundary_legal_masks", "selected_limit_exceedance_styling",
+        "legal_judgement", "permit_certification",
     ],
 }
 
@@ -402,6 +404,29 @@ SITE_BOUNDARY_GEOMETRY_POLICY = {"method": "revit_area_single_outer_loop_v1", "s
 MEASUREMENT_MASK_POLICY = {"method": "point_to_area_boundary_distance_v1", "zones": ["inside_site", "on_site_boundary", "outside_0_to_5m", "near_5_to_10m", "far_over_10m"], "offset_display_curves_generated": False, "legal_judgement_generated": False, "permit_ready_certified": False}
 
 SELECTED_LIMIT_COMPARISON_POLICY = {"purpose": "numerical_comparison_against_user_selected_preset", "method": "selected_regulatory_limit_comparison_v1", "comparison_basis": "Dynamo Player user-selected preset", "ordinance_applicability_certified": False, "numerical_prototype": True, "reports_grid_resolution_and_time_step": True, "legal_pass_fail_generated": False, "permit_ready_certified": False}
+
+SITE_RESULT_PREVIEW_POLICY = {
+    "purpose": "optional_revit_visual_qa_for_site_distance_contours_and_maximum_duration_points",
+    "optional": True,
+    "mode_source": "equal_time_contour_preview_mode",
+    "new_player_input_added": False,
+    "creates_revit_elements": True,
+    "primary_revit_api": "Autodesk.Revit.DB.DirectShape Curve",
+    "application_id": "Dynamo_Shadow.SiteResultPreview",
+    "replaces_previous_owned_preview": True,
+    "cleanup_ownership_method": "DirectShape.ApplicationId exact match",
+    "distance_contours_recalculated": False,
+    "maximum_points_recalculated": False,
+    "marker_half_size_m": 0.5,
+    "status_color_mapping_used": False,
+    "legal_pass_fail_color_mapping_used": False,
+    "style_semantics": "colors_distinguish_output_kinds_only_no_legal_pass_fail_meaning",
+    "formal_calculation_input": False,
+    "legal_judgement_generated": False,
+    "ordinance_selection_certified": False,
+    "permit_ready_certified": False,
+    "target_revit_version": "Revit 2024.3",
+}
 
 LEGAL_JUDGEMENT_POLICY = {"current_status": "always_undetermined", "local_ordinance_applicability_schema_implemented": False, "requires_explicit_traceable_profile": True, "inferred_municipality_defaults": False, "guessed_zoning_or_floor_area_ratio_conditions": False, "legal_judgement_generated": False, "permit_ready_certified": False}
 

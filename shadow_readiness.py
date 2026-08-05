@@ -1,7 +1,7 @@
 # Pipeline readiness diagnostics.
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None, equal_time_contours=None, site_boundary_area_extraction=None, site_boundary_geometry=None, measurement_masks=None, resolved_regulatory_preset=None, selected_limit_comparison=None, legal_judgement=None, site_distance_contours=None):
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None, equal_time_contours=None, site_boundary_area_extraction=None, site_boundary_geometry=None, measurement_masks=None, resolved_regulatory_preset=None, selected_limit_comparison=None, legal_judgement=None, site_distance_contours=None, site_result_preview=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
@@ -20,6 +20,13 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
     selected_limit_comparison_ready = (selected_limit_pair_selected and measurement_masks_ready and (selected_limit_comparison or {}).get("complete") is True)
     boundary_evaluation_coverage_complete = (shadow_duration or {}).get("boundary_evaluation_coverage_complete") is True
     legal_judgement_masks_ready = False
+    site_result_preview_enabled = (site_result_preview or {}).get("enabled") is True
+    site_result_preview_attempted = (site_result_preview or {}).get("attempted") is True
+    site_result_preview_complete = (site_result_preview or {}).get("complete") is True
+    preview_groups = (site_result_preview or {}).get("groups") or []
+    site_distance_revit_preview_created = all(any(g.get("output_kind") == "site_distance_contour" and abs(float(g.get("distance_m", -999)) - d) <= 1e-9 and g.get("created") is True for g in preview_groups) for d in (5.0, 10.0))
+    available_marker_zones = [z for z in ("near_5_to_10m", "far_over_10m") if any(g.get("output_kind") == "maximum_shadow_duration_marker" and g.get("zone") == z for g in preview_groups)]
+    maximum_duration_point_preview_created = bool(available_marker_zones) and all(any(g.get("output_kind") == "maximum_shadow_duration_marker" and g.get("zone") == z and g.get("created") is True for g in preview_groups) for z in available_marker_zones)
     future_projection_ready = footprint_ready and measurement_plane_ready and settings_ready
     blockers_fp = list(((footprint_extraction or {}).get("readiness") or {}).get("blockers_for_future_footprint_polygon_generation") or [])
     blockers_mp = list(mp_readiness.get("blockers_for_measurement_plane") or [])
@@ -69,7 +76,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         next_steps.append("5m / 10m geometry preparation")
     if selected_limit_pair_selected and not selected_limit_comparison_ready:
         next_steps.append("selected limit comparison")
-    next_steps.extend(["5m / 10m Revit preview", "exceedance point Revit preview", "legal judgement", "report output"])
+    next_steps.extend(["selected-limit exceedance styling", "legal judgement", "report output", "reverse shadow"])
     return {
         "input_diagnostics_ready": True,
         "shadow_caster_ready": shadow_ready,
@@ -89,6 +96,11 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "site_distance_contours_ready": site_distance_contours_ready,
         "selected_limit_pair_selected": selected_limit_pair_selected,
         "selected_limit_comparison_ready": selected_limit_comparison_ready,
+        "site_result_preview_enabled": site_result_preview_enabled,
+        "site_result_preview_attempted": site_result_preview_attempted,
+        "site_result_preview_complete": site_result_preview_complete,
+        "site_distance_revit_preview_created": site_distance_revit_preview_created,
+        "maximum_duration_point_preview_created": maximum_duration_point_preview_created,
         "boundary_evaluation_coverage_complete": boundary_evaluation_coverage_complete,
         "settings_ready_for_equal_time_shadow": settings_ready,
         "formal_solar_calculation_ready": solar.get("formal_solar_calculation_ready") is True,
@@ -124,6 +136,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "blockers_for_site_boundary_geometry": list((site_boundary_geometry or {}).get("blockers") or []),
         "blockers_for_measurement_masks": list((measurement_masks or {}).get("blockers") or []),
         "blockers_for_site_distance_contours": list((site_distance_contours or {}).get("blockers") or []),
+        "blockers_for_site_result_preview": list((site_result_preview or {}).get("blockers") or []),
         "blockers_for_selected_limit_comparison": blockers_selected_limit + list((selected_limit_comparison or {}).get("blockers") or []),
         "blockers_for_legal_judgement": blockers_legal_judgement,
         "blockers_for_legal_judgement_masks": blockers_legal,

@@ -96,6 +96,7 @@ try:
         SITE_DISTANCE_CONTOUR_POLICY,
         SELECTED_LIMIT_COMPARISON_POLICY,
         LEGAL_JUDGEMENT_POLICY,
+        SITE_RESULT_PREVIEW_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
     from shadow_regulatory_presets import overlay_player_settings, resolve_regulatory_shadow_preset
@@ -112,6 +113,7 @@ try:
     from shadow_formal_projection import _build_formal_shadow_polygons
     from shadow_preview import _build_shadow_preview
     from shadow_contour_preview import _build_equal_time_contour_preview
+    from shadow_site_result_preview import build_site_result_preview
     from shadow_union import _build_unified_shadow_slices
     from shadow_duration import _build_shadow_duration
     from shadow_contours import _build_equal_time_contours
@@ -357,7 +359,20 @@ def _build_success():
             [{"failure_code": "contour_preview_unhandled_exception"}],
             "warnings": ["Contour preview failed non-fatally; equal-time contour output remains available."],
             "permit_ready_certified": False}
-    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks, resolved_regulatory_preset=resolved_preset, selected_limit_comparison=selected_limit_comparison, legal_judgement=legal_judgement, site_distance_contours=site_distance_contours)
+    try:
+        site_result_preview = build_site_result_preview(
+            site_distance_contours, measurement_masks, selected_limit_comparison,
+            measurement_plane, settings_normalized)
+    except BaseException:
+        site_result_preview = {"enabled": False, "mode": "off", "attempted": True,
+            "available": False, "complete": False, "partial_success": False,
+            "created_element_count": 0, "deleted_element_count": 0,
+            "created_element_ids": [], "groups": [], "blockers":
+            [{"failure_code": "site_result_preview_unhandled_exception"}],
+            "warnings": ["Site result preview failed non-fatally; calculation outputs remain available."],
+            "legal_judgement_generated": False, "ordinance_selection_certified": False,
+            "permit_ready_certified": False}
+    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks, resolved_regulatory_preset=resolved_preset, selected_limit_comparison=selected_limit_comparison, legal_judgement=legal_judgement, site_distance_contours=site_distance_contours, site_result_preview=site_result_preview)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
     warnings.extend(site_boundary_area_extraction.get("warnings", []))
@@ -375,6 +390,7 @@ def _build_success():
     warnings.extend(formal_shadow_polygons.get("warnings", []))
     warnings.extend(shadow_preview.get("warnings", []))
     warnings.extend(equal_time_contour_preview.get("warnings", []))
+    warnings.extend(site_result_preview.get("warnings", []))
     warnings.extend(pipeline_readiness.get("blockers_for_equal_time_shadow", []))
     warnings.extend(pipeline_readiness.get("blockers_for_footprint_extraction", []))
     warnings.extend(pipeline_readiness.get("blockers_for_measurement_plane", []))
@@ -449,6 +465,8 @@ def _build_success():
         "shadow_preview_policy": SHADOW_PREVIEW_POLICY,
         "equal_time_contour_preview": equal_time_contour_preview,
         "equal_time_contour_preview_policy": EQUAL_TIME_CONTOUR_PREVIEW_POLICY,
+        "site_result_preview": site_result_preview,
+        "site_result_preview_policy": SITE_RESULT_PREVIEW_POLICY,
         "law56_2_awareness": law56_2_awareness,
         "measurement_plane": measurement_plane,
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,

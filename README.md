@@ -20,14 +20,15 @@ Implemented prototype capabilities include:
 - Site distance masks for within 5 m, beyond 5 m through 10 m, and beyond 10 m.
 - Near/far maximum shadow duration and maximum point outputs.
 - Fixed 5 m / 10 m signed-distance contour polyline data.
+- Revit DirectShape preview for fixed 5 m / 10 m contours.
+- Revit X-marker preview for near/far maximum-duration points.
 - Numeric comparison against the selected regulatory preset.
 - Fast / Standard Dynamo Player accuracy selection, plus an internal high-accuracy compatibility preset.
 - Pure-Python regression tests.
 
 Not implemented:
 
-- Revit display elements for the fixed 5 m / 10 m contours. The contour polyline data exists, but Revit element display for those contours does not.
-- Revit display of near/far maximum points.
+- Selected-limit exceedance styling for preview graphics.
 - Formal legal pass/fail judgement.
 - Automatic municipal ordinance selection.
 - Road, water, elevation-difference, or similar relaxations.
@@ -84,7 +85,7 @@ Preview is visualization-only. The policy default is `preview_mode="off"`; the c
 {"preview_mode": "clear"}
 ```
 
-`replace` removes prior Dynamo Shadow preview DirectShapes before creating preview geometry. Equal-time contour DirectShape preview is implemented. Fixed 5 m / 10 m contour Revit display and near/far maximum-point Revit display remain unimplemented. `clear` removes owned previews without creating replacements.
+`replace` removes prior Dynamo Shadow preview DirectShapes before creating preview geometry. Equal-time contour DirectShape preview is implemented. Site result preview reuses `equal_time_contour_preview_mode` to display fixed 5 m / 10 m DirectShape Curve contours and near/far maximum-point X markers. Preview colors are visual distinctions only and do not indicate legal pass/fail. `clear` removes owned previews without creating replacements.
 
 ## Architecture direction
 
@@ -118,7 +119,7 @@ Revit geometry values are preserved as raw internal units, normally feet, inside
 
 ## Tests
 
-At the latest confirmed main for this documentation sync, the repository-wide pure-Python test suite had 362 passing tests. This count is a confirmation snapshot, not a permanent specification.
+At the latest confirmed main for this documentation sync, the repository-wide pure-Python test suite had 367 passing tests. This count is a confirmation snapshot, not a permanent specification.
 
 ## Documentation
 
