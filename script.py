@@ -90,6 +90,9 @@ try:
         EQUAL_TIME_CONTOUR_PREVIEW_POLICY,
         EQUAL_TIME_CONTOUR_POLICY,
         ANALYSIS_BOUNDS_POLICY,
+        SITE_BOUNDARY_AREA_POLICY,
+        SITE_BOUNDARY_GEOMETRY_POLICY,
+        MEASUREMENT_MASK_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
     from shadow_regulatory_presets import overlay_player_settings, resolve_regulatory_shadow_preset
@@ -109,6 +112,9 @@ try:
     from shadow_union import _build_unified_shadow_slices
     from shadow_duration import _build_shadow_duration
     from shadow_contours import _build_equal_time_contours
+    from shadow_site_area_adapter import extract_site_boundary_area
+    from shadow_site_geometry import build_site_boundary_geometry
+    from shadow_site_masks import build_measurement_masks
 except BaseException:
     _IMPORT_ERROR_TEXT = traceback.format_exc()
 else:
@@ -255,6 +261,8 @@ def _build_success():
 
     shadow_casters = _diagnose_shadow_casters(raw_inputs.get("building_elements"))
     site_boundary = _diagnose_optional_site_boundary(raw_inputs.get("site_boundary"))
+    site_boundary_area_extraction = extract_site_boundary_area(raw_inputs.get("site_boundary"))
+    site_boundary_geometry = build_site_boundary_geometry(site_boundary_area_extraction)
     overlaid_settings, resolved_preset, _, overlay_warnings, _ = overlay_player_settings(
         raw_inputs.get("settings"), raw_inputs.get("regulatory_shadow_preset"),
         raw_inputs.get("site_latitude_deg"), raw_inputs.get("site_longitude_deg"))
@@ -293,7 +301,7 @@ def _build_success():
         try:
             shadow_duration = _build_shadow_duration(
                 unified_shadow_slices, settings_normalized,
-                (resolved_accuracy or {}).get("preset_id"))
+                (resolved_accuracy or {}).get("preset_id"), site_boundary_geometry)
         except BaseException as exc:
             shadow_duration = {"available": False, "complete": False, "method": "grid_trapezoidal_time_integration_v1", "permit_ready_certified": False, "blockers": [{"failure_code": "shadow_duration_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
     normalized_values = settings_normalized.get("normalized") or {}
@@ -312,6 +320,10 @@ def _build_success():
     except BaseException as exc:
         equal_time_contours = {"available": False, "complete": False, "method": "marching_squares_linear_interpolation_v1", "source_duration_method": "grid_trapezoidal_time_integration_v1", "requested_levels_minutes": [], "generated_levels_minutes": [], "contour_count": 0, "closed_contour_count": 0, "open_contour_count": 0, "contours": [], "permit_ready_certified": False, "blockers": [{"failure_code": "equal_time_contours_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
     try:
+        measurement_masks = build_measurement_masks(shadow_duration, site_boundary_geometry)
+    except BaseException as exc:
+        measurement_masks = {"available": False, "complete": False, "method": "point_to_area_boundary_distance_v1", "boundary_dependent_ready": False, "blockers": [{"failure_code": "measurement_masks_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": [], "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
+    try:
         shadow_preview = _build_shadow_preview(unified_shadow_slices, measurement_plane, settings_normalized)
     except BaseException:
         shadow_preview = {"enabled": False, "mode": "off", "attempted": True, "available": False, "complete": False, "partial_success": False, "unified_shadow_source_available": bool(unified_shadow_slices.get("available")), "created_element_count": 0, "deleted_element_count": 0, "created_element_ids": [], "groups": [], "warnings": ["Preview failed non-fatally; unified formal shadow output remains available."]}
@@ -327,9 +339,12 @@ def _build_success():
             [{"failure_code": "contour_preview_unhandled_exception"}],
             "warnings": ["Contour preview failed non-fatally; equal-time contour output remains available."],
             "permit_ready_certified": False}
-    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours)
+    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
+    warnings.extend(site_boundary_area_extraction.get("warnings", []))
+    warnings.extend(site_boundary_geometry.get("warnings", []))
+    warnings.extend(measurement_masks.get("warnings", []))
     warnings.extend(settings_normalized.get("warnings", []))
     warnings.extend(law56_2_awareness.get("warnings", []))
     warnings.extend(measurement_plane.get("warnings", []))
@@ -350,11 +365,19 @@ def _build_success():
     if not pipeline_readiness.get("boundary_dependent_steps_ready"):
         warnings.extend(pipeline_readiness.get("blockers_for_boundary_dependent_steps", []))
 
-    site_boundary_degraded = site_boundary.get("diagnostic_failed") is True
+    site_boundary_degraded = (site_boundary.get("diagnostic_failed") is True or
+        (site_boundary_area_extraction.get("provided") and site_boundary_area_extraction.get("complete") is not True) or
+        (site_boundary_area_extraction.get("complete") is True and site_boundary_geometry.get("complete") is not True) or
+        (site_boundary_geometry.get("complete") is True and measurement_masks.get("complete") is not True))
+    degraded_components = []
+    if site_boundary.get("diagnostic_failed") is True: degraded_components.append("site_boundary")
+    if site_boundary_area_extraction.get("provided") and site_boundary_area_extraction.get("complete") is not True: degraded_components.append("site_boundary_area")
+    if site_boundary_area_extraction.get("complete") is True and site_boundary_geometry.get("complete") is not True: degraded_components.append("site_boundary_geometry")
+    if site_boundary_geometry.get("complete") is True and measurement_masks.get("complete") is not True: degraded_components.append("measurement_masks")
     out_payload = {
         "success": True,
         "partial_success": site_boundary_degraded,
-        "degraded_components": ["site_boundary"] if site_boundary_degraded else [],
+        "degraded_components": degraded_components,
         "shadow_calculation_completed": True,
         "boundary_dependent_steps_completed": bool(pipeline_readiness.get("boundary_dependent_steps_ready")),
         "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
@@ -405,7 +428,13 @@ def _build_success():
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
         "geometry_extraction_policy": GEOMETRY_EXTRACTION_POLICY,
         "site_boundary": site_boundary,
+        "site_boundary_area_extraction": site_boundary_area_extraction,
+        "site_boundary_geometry": site_boundary_geometry,
+        "measurement_masks": measurement_masks,
         "site_boundary_policy": SITE_BOUNDARY_POLICY,
+        "site_boundary_area_policy": SITE_BOUNDARY_AREA_POLICY,
+        "site_boundary_geometry_policy": SITE_BOUNDARY_GEOMETRY_POLICY,
+        "measurement_mask_policy": MEASUREMENT_MASK_POLICY,
         "settings_normalized": settings_normalized,
         "regulatory_shadow_preset": resolved_preset,
         "legal_judgement_generated": False,
@@ -480,6 +509,7 @@ def _build_failure(error_text):
     formal_shadow_polygons = None
     unified_shadow_slices = None
     shadow_preview = None
+    measurement_masks = {"available": False, "complete": False, "boundary_dependent_ready": False, "blockers": []}
     try:
         unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
     except Exception:
@@ -490,8 +520,12 @@ def _build_failure(error_text):
         shadow_casters = None
     try:
         site_boundary = _diagnose_optional_site_boundary(raw_inputs.get("site_boundary"))
+        site_boundary_area_extraction = extract_site_boundary_area(raw_inputs.get("site_boundary"))
+        site_boundary_geometry = build_site_boundary_geometry(site_boundary_area_extraction)
     except BaseException:
         site_boundary = {"available": False, "boundary_dependent_steps_available": False}
+        site_boundary_area_extraction = {"provided": False, "available": False, "complete": False, "blockers": []}
+        site_boundary_geometry = {"available": False, "complete": False, "blockers": []}
     try:
         settings_normalized = _normalize_settings(raw_inputs.get("settings"), raw_inputs.get("level"))
     except Exception:
@@ -553,7 +587,13 @@ def _build_failure(error_text):
         "measurement_plane_policy": MEASUREMENT_PLANE_POLICY,
         "geometry_extraction_policy": GEOMETRY_EXTRACTION_POLICY,
         "site_boundary": site_boundary,
+        "site_boundary_area_extraction": site_boundary_area_extraction,
+        "site_boundary_geometry": site_boundary_geometry,
+        "measurement_masks": measurement_masks,
         "site_boundary_policy": SITE_BOUNDARY_POLICY,
+        "site_boundary_area_policy": SITE_BOUNDARY_AREA_POLICY,
+        "site_boundary_geometry_policy": SITE_BOUNDARY_GEOMETRY_POLICY,
+        "measurement_mask_policy": MEASUREMENT_MASK_POLICY,
         "settings_normalized": settings_normalized,
         "settings_policy": SETTINGS_POLICY,
         "pipeline_readiness": pipeline_readiness,

@@ -33,8 +33,8 @@ def test_player_input_display_order_and_settings_remains_hidden():
     graph = _graph()
     players = sorted((v for v in graph["View"]["NodeViews"] if v["IsSetAsInput"]), key=lambda v: v["Y"])
     assert [v["Name"] for v in players] == [
-        "Levels", "Select Model Element", "Shadow Limits / 日影規制時間（5–10m / 10m超）",
-        "Calculation Accuracy / 計算精度", "Site Latitude / 緯度（deg）", "Site Longitude / 経度（deg）",
+        "Levels", "Select Model Element", "Site Boundary Area / 敷地境界エリア",
+        "Shadow Limits / 日影規制時間（5–10m / 10m超）", "Calculation Accuracy / 計算精度", "Site Latitude / 緯度（deg）", "Site Longitude / 経度（deg）",
     ]
     settings = next(v for v in graph["View"]["NodeViews"] if v["Id"] == "f688e0f729b946d0b8ac25514f4531da")
     assert settings["IsSetAsInput"] is False
@@ -54,6 +54,7 @@ def test_top_level_inputs_register_accuracy_once_with_default_and_order():
     assert [item["Name"] for item in inputs] == [
         "Levels",
         "Select Model Element",
+        "Site Boundary Area / 敷地境界エリア",
         "Shadow Limits / 日影規制時間（5–10m / 10m超）",
         "Calculation Accuracy / 計算精度",
         "Site Latitude / 緯度（deg）",

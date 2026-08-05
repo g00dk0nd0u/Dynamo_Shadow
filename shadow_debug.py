@@ -498,6 +498,22 @@ def _contour_preview_summary(value):
                    for group in (value.get("groups") or [])],
         "warnings": value.get("warnings"), "blockers": value.get("blockers")})
 
+
+def _site_area_debug_summary(v):
+    v = v if isinstance(v, dict) else {}
+    seg_count = sum(int((loop or {}).get("segment_count") or 0) for loop in v.get("loops") or [])
+    return _sanitize_for_debug({"provided": v.get("provided"), "available": v.get("available"), "complete": v.get("complete"), "method": v.get("method"), "loop_count": v.get("loop_count"), "total_segment_count": seg_count, "maximum_z_difference_m": v.get("maximum_z_difference_m"), "blocker_count": len(v.get("blockers") or []), "warning_count": len(v.get("warnings") or [])})
+
+def _site_geometry_debug_summary(v):
+    v = v if isinstance(v, dict) else {}
+    return _sanitize_for_debug({"available": v.get("available"), "complete": v.get("complete"), "method": v.get("method"), "vertex_count": v.get("vertex_count"), "segment_count": v.get("segment_count"), "area_m2": v.get("area_m2"), "perimeter_m": v.get("perimeter_m"), "orientation": v.get("orientation"), "blocker_count": len(v.get("blockers") or []), "warning_count": len(v.get("warnings") or [])})
+
+def _measurement_masks_debug_summary(v):
+    v = v if isinstance(v, dict) else {}
+    near = v.get("near") if isinstance(v.get("near"), dict) else {}
+    far = v.get("far") if isinstance(v.get("far"), dict) else {}
+    return _sanitize_for_debug({"available": v.get("available"), "complete": v.get("complete"), "method": v.get("method"), "zone_counts": v.get("zone_counts"), "near_maximum_shadow_duration_minutes": near.get("maximum_shadow_duration_minutes"), "far_maximum_shadow_duration_minutes": far.get("maximum_shadow_duration_minutes"), "boundary_dependent_ready": v.get("boundary_dependent_ready"), "blocker_count": len(v.get("blockers") or []), "warning_count": len(v.get("warnings") or [])})
+
 def _summarize_out_for_debug(out_payload):
     out_payload = out_payload or {}
     settings = out_payload.get("settings_normalized") or {}
@@ -531,6 +547,9 @@ def _summarize_out_for_debug(out_payload):
         "calculation_accuracy": _sanitize_for_debug(out_payload.get("calculation_accuracy")),
         "shadow_caster_summary": _summary_counts(out_payload.get("shadow_casters")),
         "site_boundary_summary": _summary_counts(out_payload.get("site_boundary")),
+        "site_boundary_area_extraction_summary": _site_area_debug_summary(out_payload.get("site_boundary_area_extraction")),
+        "site_boundary_geometry_summary": _site_geometry_debug_summary(out_payload.get("site_boundary_geometry")),
+        "measurement_masks_summary": _measurement_masks_debug_summary(out_payload.get("measurement_masks")),
         "site_boundary_skipped": bool((out_payload.get("site_boundary") or {}).get("boundary_dependent_steps_skipped", False)),
         "measurement_plane_summary": _summary_counts(out_payload.get("measurement_plane")),
         "shadow_caster_geometry_summary": _summary_counts(out_payload.get("shadow_caster_geometry")),

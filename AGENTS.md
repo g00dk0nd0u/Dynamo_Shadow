@@ -157,19 +157,18 @@ The current seven-input Dynamo graph includes independent Player inputs for regu
 
 ## Site boundary input rules
 
-- `site_boundary` is optional. Missing `site_boundary` must not be treated as a fatal error.
-- Equal-time shadow output must remain available without `site_boundary`; missing `site_boundary` should only skip boundary-dependent steps such as Property Line / Site Boundary based offset, 5m / 10m measurement line generation, and boundary-based regulation checks.
-- Do not split the processing flow by a new `analysis_mode`; use one pipeline with optional gates only for site-boundary-dependent steps.
-- When `site_boundary` is provided, the primary input should be Revit Property Line / Site Property.
-- Prefer Revit API `BuiltInCategory` checks for site boundary detection. Accepted initial site boundary categories are `BuiltInCategory.OST_SiteProperty` and `BuiltInCategory.OST_SitePropertyLineSegment`.
-- `BuiltInCategory.OST_SitePointBoundary` and other site-related categories should be diagnosed separately and should not be treated as a complete closed boundary by themselves.
-- Model Lines closed loop is fallback only, not the primary site boundary input.
-- Detail Lines are view-specific and should not be used as primary `site_boundary` input.
-- Do not auto-use CAD import lines as `site_boundary`.
-- Do not auto-use Toposolid / SiteSurface / Topography edges as `site_boundary`.
-- Do not create temporary Revit elements or temporary site boundary models.
-- Do not generate 5m / 10m measurement lines unless explicitly requested.
-- Do not implement shadow calculation, sun position, shadow polygons, measurement-grid accumulation, or equal-time contours unless explicitly requested.
+- `site_boundary` is optional for the core shadow-duration and equal-time contour pipeline. Missing or invalid site boundary input must not be treated as a fatal error for core shadow calculation.
+- The formal `site_boundary` user input is exactly one placed Revit Area selected once in Dynamo Player.
+- Users select the placed Area body, not Area Boundary lines, Area Tag, Property Line segments, Model Lines, Detail Lines, Filled Regions, Floors, Generic Models, CAD imports, Toposolids, or families.
+- Area Boundary lines must not be exposed as a multiple-selection formal input.
+- Area Tag must not be accepted as `site_boundary`.
+- The initial formal scope is one host-model Area, one outer loop, no holes, no islands, and straight boundary segments only.
+- Property Line / Site Property / Model Lines are not formal site boundary inputs at this stage. If legacy diagnostics remain in code, they are legacy diagnostic-only and must not be promoted to formal geometry or readiness.
+- Filled Region, Detail Line, Floor, Generic Model, CAD import, and Toposolid/SiteSurface/Topography must not be formal site boundary inputs.
+- Site boundary extraction or geometry failure blocks only boundary-dependent steps such as 5m/10m distance masks; it must not stop core shadow duration or equal-time contours.
+- 5m/10m Revit display lines are not implemented.
+- Legal judgement is not implemented.
+- Permit certification is not implemented.
 
 ## Pull request checklist
 

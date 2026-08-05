@@ -111,3 +111,5 @@ Complete `unified_shadow_slices` can be sampled on a bounded meter grid and inte
 ## Equal-time contours v1
 
 `shadow_contours.py` reconstructs the row-major duration grid from `grid_spec`, resolves ambiguous Marching Squares cases deterministically from the cell mean, removes duplicate or zero-length segments, and joins segments into ordered open or closed polylines. Explicit `equal_time_contour_levels_minutes` take priority; otherwise levels use `equal_time_contour_interval_minutes=60`. `max_equal_time_contour_levels=100` bounds output work. These are technical/diagnostic levels, not statutory thresholds, and legal judgement remains unimplemented.
+
+- Site boundary Area setup: [docs/user/site_boundary_area_setup.md](docs/user/site_boundary_area_setup.md)
