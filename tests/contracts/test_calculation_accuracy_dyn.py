@@ -36,3 +36,33 @@ def test_player_input_display_order_and_settings_remains_hidden():
     ]
     settings = next(v for v in graph["View"]["NodeViews"] if v["Id"] == "f688e0f729b946d0b8ac25514f4531da")
     assert settings["IsSetAsInput"] is False
+
+
+def test_top_level_inputs_register_accuracy_once_with_default_and_order():
+    graph = _graph()
+    inputs = graph["Inputs"]
+    accuracy_inputs = [item for item in inputs if item["Id"] == "b4444444444444444444444444444444"]
+    assert len(accuracy_inputs) == 1
+    accuracy = accuracy_inputs[0]
+    assert accuracy["Name"] == "Calculation Accuracy / 計算精度"
+    assert accuracy["Type"] == "selection"
+    assert accuracy["Type2"] == "dropdownSelection"
+    assert accuracy["Value"] == "standard"
+    assert accuracy["SelectedIndex"] == 1
+    assert [item["Name"] for item in inputs] == [
+        "Levels",
+        "Select Model Element",
+        "Regulatory Shadow Preset / 日影規制時間",
+        "Calculation Accuracy / 計算精度",
+        "Site Latitude / 緯度（deg）",
+        "Site Longitude / 経度（deg）",
+    ]
+
+
+def test_all_player_nodeviews_are_registered_as_top_level_inputs():
+    graph = _graph()
+    top_level_input_ids = {item["Id"] for item in graph["Inputs"]}
+    player_input_ids = {
+        view["Id"] for view in graph["View"]["NodeViews"] if view.get("IsSetAsInput") is True
+    }
+    assert player_input_ids <= top_level_input_ids

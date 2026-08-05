@@ -34,6 +34,15 @@
       "SelectedIndex": 0
     },
     {
+      "Id": "b4444444444444444444444444444444",
+      "Name": "Calculation Accuracy / 計算精度",
+      "Type": "selection",
+      "Type2": "dropdownSelection",
+      "Value": "standard",
+      "Description": "計算精度：高速・ラフ 0.5m/30分、標準 0.5m/15分、高精度 0.25m/15分",
+      "SelectedIndex": 1
+    },
+    {
       "Id": "b2222222222222222222222222222222",
       "Name": "Site Latitude / 緯度（deg）",
       "Type": "number",
