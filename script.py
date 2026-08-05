@@ -89,9 +89,11 @@ try:
         SHADOW_PREVIEW_POLICY,
         EQUAL_TIME_CONTOUR_PREVIEW_POLICY,
         EQUAL_TIME_CONTOUR_POLICY,
+        ANALYSIS_BOUNDS_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
     from shadow_regulatory_presets import overlay_player_settings, resolve_regulatory_shadow_preset
+    from shadow_accuracy_presets import overlay_calculation_accuracy_settings
     from shadow_settings import _normalize_settings
     from shadow_measurement_plane import _build_law56_2_awareness_context, _construct_measurement_plane
     from shadow_geometry import _diagnose_shadow_caster_geometry
@@ -246,7 +248,7 @@ def _build_success():
     unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
 
     for key in INPUT_KEYS:
-        if key in ("site_boundary", "settings", "regulatory_shadow_preset", "site_latitude_deg", "site_longitude_deg"):
+        if key in ("site_boundary", "settings", "regulatory_shadow_preset", "site_latitude_deg", "site_longitude_deg", "calculation_accuracy_preset"):
             continue
         if raw_inputs.get(key) is None:
             warnings.append("{0} input is empty.".format(key))
@@ -256,11 +258,16 @@ def _build_success():
     overlaid_settings, resolved_preset, _, overlay_warnings, _ = overlay_player_settings(
         raw_inputs.get("settings"), raw_inputs.get("regulatory_shadow_preset"),
         raw_inputs.get("site_latitude_deg"), raw_inputs.get("site_longitude_deg"))
+    overlaid_settings, resolved_accuracy, _, accuracy_warnings, _ = overlay_calculation_accuracy_settings(
+        overlaid_settings, raw_inputs.get("calculation_accuracy_preset"))
     if resolved_preset is None:
         resolved_preset = resolve_regulatory_shadow_preset("standard_all")
     elif not resolved_preset.get("valid"):
         warnings.extend(resolved_preset.get("blockers", []))
     warnings.extend(overlay_warnings)
+    warnings.extend(accuracy_warnings)
+    if resolved_accuracy is not None and not resolved_accuracy.get("valid"):
+        warnings.extend(resolved_accuracy.get("blockers", []))
     settings_normalized = _normalize_settings(overlaid_settings, raw_inputs.get("level"))
     law56_2_awareness = _build_law56_2_awareness_context(settings_normalized, site_boundary)
     measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
@@ -276,10 +283,30 @@ def _build_success():
         unified_shadow_slices = _build_unified_shadow_slices(formal_shadow_polygons, measurement_plane, settings_normalized)
     except BaseException as exc:
         unified_shadow_slices = {"engine": "revit_boolean_solid_union_v1", "available": False, "complete": False, "partial_success": False, "ready_for_duration_accumulation": False, "slices": [], "blockers": [{"failure_code": "formal_shadow_union_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
-    try:
-        shadow_duration = _build_shadow_duration(unified_shadow_slices, settings_normalized)
-    except BaseException as exc:
-        shadow_duration = {"available": False, "complete": False, "method": "grid_trapezoidal_time_integration_v1", "permit_ready_certified": False, "blockers": [{"failure_code": "shadow_duration_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
+    if resolved_accuracy is not None and not resolved_accuracy.get("valid"):
+        shadow_duration = {"available": False, "complete": False,
+            "method": "grid_trapezoidal_time_integration_v1",
+            "requested_grid_point_count": None, "maximum_grid_point_count": None,
+            "permit_ready_certified": False,
+            "blockers": list(resolved_accuracy.get("blockers") or []), "warnings": []}
+    else:
+        try:
+            shadow_duration = _build_shadow_duration(
+                unified_shadow_slices, settings_normalized,
+                (resolved_accuracy or {}).get("preset_id"))
+        except BaseException as exc:
+            shadow_duration = {"available": False, "complete": False, "method": "grid_trapezoidal_time_integration_v1", "permit_ready_certified": False, "blockers": [{"failure_code": "shadow_duration_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
+    normalized_values = settings_normalized.get("normalized") or {}
+    calculation_accuracy = {
+        "preset_id": (resolved_accuracy or {}).get("preset_id"),
+        "grid_resolution_m": normalized_values.get("grid_resolution_m"),
+        "sun_time_step_minutes": normalized_values.get("sun_time_step_minutes"),
+        "requested_grid_point_count": shadow_duration.get("requested_grid_point_count"),
+        "maximum_grid_point_count": shadow_duration.get("maximum_grid_point_count"),
+        "automatic_accuracy_fallback_used": False,
+        "valid": None if resolved_accuracy is None else resolved_accuracy.get("valid"),
+        "blockers": [] if resolved_accuracy is None else resolved_accuracy.get("blockers", []),
+    }
     try:
         equal_time_contours = _build_equal_time_contours(shadow_duration, settings_normalized)
     except BaseException as exc:
@@ -346,6 +373,7 @@ def _build_success():
             "regulatory_shadow_preset": _summarize_input(raw_inputs.get("regulatory_shadow_preset")),
             "site_latitude_deg": _summarize_input(raw_inputs.get("site_latitude_deg")),
             "site_longitude_deg": _summarize_input(raw_inputs.get("site_longitude_deg")),
+            "calculation_accuracy_preset": _summarize_input(raw_inputs.get("calculation_accuracy_preset")),
         },
         "shadow_casters": shadow_casters,
         "shadow_caster_policy": SHADOW_CASTER_POLICY,
@@ -365,6 +393,8 @@ def _build_success():
         "shadow_duration": shadow_duration,
         "equal_time_contours": equal_time_contours,
         "equal_time_contour_policy": EQUAL_TIME_CONTOUR_POLICY,
+        "analysis_bounds_policy": ANALYSIS_BOUNDS_POLICY,
+        "calculation_accuracy": calculation_accuracy,
         "formal_shadow_union_policy": FORMAL_SHADOW_UNION_POLICY,
         "shadow_preview": shadow_preview,
         "shadow_preview_policy": SHADOW_PREVIEW_POLICY,

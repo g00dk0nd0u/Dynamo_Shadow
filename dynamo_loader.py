@@ -114,6 +114,7 @@ INPUTS = {
     "regulatory_shadow_preset": get_in(4),
     "site_latitude_deg": get_in(5),
     "site_longitude_deg": get_in(6),
+    "calculation_accuracy_preset": get_in(7),
 }
 
 input_summary = {

@@ -470,6 +470,7 @@ def _duration_summary(duration):
     return _sanitize_for_debug({key: value.get(key) for key in (
         "available", "complete", "method", "temporal_step_minutes", "spatial_resolution_m",
         "grid_point_count", "maximum_shadow_duration_minutes", "shadowed_point_count",
+        "requested_grid_point_count", "maximum_grid_point_count",
         "ready_for_equal_time_contour_generation", "permit_ready_certified", "blockers", "warnings")})
 
 def _contour_summary(value):
@@ -527,6 +528,7 @@ def _summarize_out_for_debug(out_payload):
             "site_latitude_deg": normalized.get("site_latitude_deg"),
             "site_longitude_deg": normalized.get("site_longitude_deg"),
         }),
+        "calculation_accuracy": _sanitize_for_debug(out_payload.get("calculation_accuracy")),
         "shadow_caster_summary": _summary_counts(out_payload.get("shadow_casters")),
         "site_boundary_summary": _summary_counts(out_payload.get("site_boundary")),
         "site_boundary_skipped": bool((out_payload.get("site_boundary") or {}).get("boundary_dependent_steps_skipped", False)),

@@ -66,7 +66,7 @@ def test_player_inputs_override_json_without_mutating_it():
 
 def test_legacy_four_port_contract_remains_prefix_compatible():
     assert INPUT_KEYS[:4] == ["building_elements", "site_boundary", "level", "settings"]
-    assert len(INPUT_KEYS) == 7
+    assert len(INPUT_KEYS) == 8
 
 
 def test_player_graph_inputs_and_connectors():
@@ -82,7 +82,7 @@ def test_player_graph_inputs_and_connectors():
     assert custom["Items"][custom["SelectedIndex"]]["Value"] == "standard_all"
     assert len(numbers) == 2 and all(views[n["Id"]]["IsSetAsInput"] for n in numbers)
     python_node = next(n for n in nodes.values() if n["NodeType"] == "PythonScriptNode")
-    assert len(python_node["Inputs"]) == 7
+    assert len(python_node["Inputs"]) == 8
     output_ids = {p["Id"] for n in nodes.values() for p in n.get("Outputs", [])}
     input_ids = {p["Id"] for n in nodes.values() for p in n.get("Inputs", [])}
     assert all(c["Start"] in output_ids and c["End"] in input_ids for c in data["Connectors"])

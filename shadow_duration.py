@@ -12,7 +12,8 @@ METHOD = "grid_trapezoidal_time_integration_v1"
 def _empty():
     return {"available": False, "complete": False, "method": METHOD,
         "temporal_step_minutes": None, "spatial_resolution_m": None,
-        "grid_point_count": 0, "maximum_shadow_duration_minutes": 0.0,
+        "grid_point_count": 0, "requested_grid_point_count": None,
+        "maximum_grid_point_count": None, "maximum_shadow_duration_minutes": 0.0,
         "shadowed_point_count": 0, "ready_for_equal_time_contour_generation": False,
         "permit_ready_certified": False, "duration_grid": [], "grid_spec": None,
         "bounds_m": None, "blockers": [],
@@ -54,7 +55,7 @@ def _slice_contains(polygons, x, y):
     return False
 
 
-def build_shadow_duration(unified_shadow_slices, settings=None):
+def build_shadow_duration(unified_shadow_slices, settings=None, selected_accuracy_preset=None):
     result = _empty(); unified = unified_shadow_slices or {}
     slices = list(unified.get("slices") or [])
     if unified.get("complete") is not True or not slices or any(s.get("complete") is not True for s in slices):
@@ -76,9 +77,18 @@ def build_shadow_duration(unified_shadow_slices, settings=None):
     nx = int(math.ceil((max_x-min_x)/resolution))+1; ny = int(math.ceil((max_y-min_y)/resolution))+1
     count = nx * ny
     result.update({"temporal_step_minutes": intervals[0] if all(abs(v-intervals[0]) <= 1e-9 for v in intervals) else None,
-        "spatial_resolution_m": resolution, "grid_point_count": count})
+        "spatial_resolution_m": resolution, "grid_point_count": count,
+        "requested_grid_point_count": count, "maximum_grid_point_count": maximum})
     if count > maximum:
-        result["blockers"].append({"failure_code": "max_duration_grid_points_exceeded", "requested_grid_point_count": count, "max_duration_grid_points": maximum}); return result
+        result["blockers"].append({
+            "failure_code": "max_duration_grid_points_exceeded",
+            "requested_grid_point_count": count,
+            "max_duration_grid_points": maximum,
+            "selected_accuracy_preset": selected_accuracy_preset,
+            "grid_resolution_m": resolution,
+            "sun_time_step_minutes": normalized.get("sun_time_step_minutes"),
+            "automatic_accuracy_fallback_used": False,
+        }); return result
     grid = []; max_duration = 0.0; shadowed = 0
     for iy in range(ny):
         y = min_y + iy * resolution
