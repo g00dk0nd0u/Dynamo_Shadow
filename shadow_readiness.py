@@ -1,7 +1,7 @@
 # Pipeline readiness diagnostics.
 
 
-def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None, equal_time_contours=None, site_boundary_area_extraction=None, site_boundary_geometry=None, measurement_masks=None, resolved_regulatory_preset=None, selected_limit_comparison=None, legal_judgement=None):
+def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry=None, measurement_plane=None, footprint_extraction=None, formal_shadow_polygons=None, solar_calculation=None, unified_shadow_slices=None, shadow_duration=None, equal_time_contours=None, site_boundary_area_extraction=None, site_boundary_geometry=None, measurement_masks=None, resolved_regulatory_preset=None, selected_limit_comparison=None, legal_judgement=None, site_distance_contours=None):
     blockers_equal = []
     blockers_boundary = []
     shadow_ready = (shadow_casters or {}).get("accepted_count", 0) > 0
@@ -15,6 +15,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
     site_boundary_area_ready = site_boundary_input_ready
     site_boundary_geometry_ready = (site_boundary_geometry or {}).get("complete") is True
     measurement_masks_ready = (measurement_masks or {}).get("complete") is True
+    site_distance_contours_ready = ((site_distance_contours or {}).get("complete") is True and (site_distance_contours or {}).get("ready_for_revit_preview") is True)
     selected_limit_pair_selected = (resolved_regulatory_preset or {}).get("comparison_ready") is True
     selected_limit_comparison_ready = (selected_limit_pair_selected and measurement_masks_ready and (selected_limit_comparison or {}).get("complete") is True)
     boundary_evaluation_coverage_complete = (shadow_duration or {}).get("boundary_evaluation_coverage_complete") is True
@@ -64,9 +65,11 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         next_steps.append("site boundary")
     if not measurement_masks_ready:
         next_steps.append("5m / 10m distance masks")
+    if not site_distance_contours_ready:
+        next_steps.append("5m / 10m geometry preparation")
     if selected_limit_pair_selected and not selected_limit_comparison_ready:
         next_steps.append("selected limit comparison")
-    next_steps.extend(["legal profile applicability schema", "municipality / ordinance source metadata", "legal judgement", "5m / 10m Revit display lines", "report output"])
+    next_steps.extend(["5m / 10m Revit preview", "exceedance point Revit preview", "legal judgement", "report output"])
     return {
         "input_diagnostics_ready": True,
         "shadow_caster_ready": shadow_ready,
@@ -83,6 +86,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "site_boundary_area_ready": site_boundary_area_ready,
         "site_boundary_geometry_ready": site_boundary_geometry_ready,
         "measurement_masks_ready": measurement_masks_ready,
+        "site_distance_contours_ready": site_distance_contours_ready,
         "selected_limit_pair_selected": selected_limit_pair_selected,
         "selected_limit_comparison_ready": selected_limit_comparison_ready,
         "boundary_evaluation_coverage_complete": boundary_evaluation_coverage_complete,
@@ -119,6 +123,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "blockers_for_site_boundary_area": list((site_boundary_area_extraction or {}).get("blockers") or []),
         "blockers_for_site_boundary_geometry": list((site_boundary_geometry or {}).get("blockers") or []),
         "blockers_for_measurement_masks": list((measurement_masks or {}).get("blockers") or []),
+        "blockers_for_site_distance_contours": list((site_distance_contours or {}).get("blockers") or []),
         "blockers_for_selected_limit_comparison": blockers_selected_limit + list((selected_limit_comparison or {}).get("blockers") or []),
         "blockers_for_legal_judgement": blockers_legal_judgement,
         "blockers_for_legal_judgement_masks": blockers_legal,

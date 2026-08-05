@@ -93,6 +93,7 @@ try:
         SITE_BOUNDARY_AREA_POLICY,
         SITE_BOUNDARY_GEOMETRY_POLICY,
         MEASUREMENT_MASK_POLICY,
+        SITE_DISTANCE_CONTOUR_POLICY,
         SELECTED_LIMIT_COMPARISON_POLICY,
         LEGAL_JUDGEMENT_POLICY,
     )
@@ -117,6 +118,7 @@ try:
     from shadow_site_area_adapter import extract_site_boundary_area
     from shadow_site_geometry import build_site_boundary_geometry
     from shadow_site_masks import build_measurement_masks
+    from shadow_site_distance_contours import build_site_distance_contours
     from shadow_regulatory_comparison import (
         build_selected_limit_comparison,
         build_legal_judgement_skeleton,
@@ -330,6 +332,10 @@ def _build_success():
     except BaseException as exc:
         measurement_masks = {"available": False, "complete": False, "method": "point_to_area_boundary_distance_v1", "boundary_dependent_ready": False, "blockers": [{"failure_code": "measurement_masks_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": [], "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
     try:
+        site_distance_contours = build_site_distance_contours(shadow_duration, site_boundary_geometry)
+    except BaseException as exc:
+        site_distance_contours = {"available": False, "complete": False, "method": "signed_distance_grid_marching_squares_v1", "ready_for_revit_preview": False, "blockers": [{"failure_code": "site_distance_contours_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": [], "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
+    try:
         selected_limit_comparison = build_selected_limit_comparison(
             resolved_preset, measurement_masks, shadow_duration, settings_normalized)
     except BaseException as exc:
@@ -351,12 +357,13 @@ def _build_success():
             [{"failure_code": "contour_preview_unhandled_exception"}],
             "warnings": ["Contour preview failed non-fatally; equal-time contour output remains available."],
             "permit_ready_certified": False}
-    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks, resolved_regulatory_preset=resolved_preset, selected_limit_comparison=selected_limit_comparison, legal_judgement=legal_judgement)
+    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks, resolved_regulatory_preset=resolved_preset, selected_limit_comparison=selected_limit_comparison, legal_judgement=legal_judgement, site_distance_contours=site_distance_contours)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
     warnings.extend(site_boundary_area_extraction.get("warnings", []))
     warnings.extend(site_boundary_geometry.get("warnings", []))
     warnings.extend(measurement_masks.get("warnings", []))
+    warnings.extend(site_distance_contours.get("warnings", []))
     warnings.extend(selected_limit_comparison.get("warnings", []))
     warnings.extend(settings_normalized.get("warnings", []))
     warnings.extend(law56_2_awareness.get("warnings", []))
@@ -387,6 +394,9 @@ def _build_success():
     if site_boundary_area_extraction.get("provided") and site_boundary_area_extraction.get("complete") is not True: degraded_components.append("site_boundary_area")
     if site_boundary_area_extraction.get("complete") is True and site_boundary_geometry.get("complete") is not True: degraded_components.append("site_boundary_geometry")
     if site_boundary_geometry.get("complete") is True and measurement_masks.get("complete") is not True: degraded_components.append("measurement_masks")
+    if site_boundary_geometry.get("complete") is True and shadow_duration.get("boundary_evaluation_coverage_complete") is True and site_distance_contours.get("complete") is not True:
+        degraded_components.append("site_distance_contours")
+        site_boundary_degraded = True
     if (resolved_preset or {}).get("comparison_ready") is True and site_boundary_geometry.get("complete") is True and measurement_masks.get("complete") is True and selected_limit_comparison.get("complete") is not True:
         degraded_components.append("selected_limit_comparison")
         site_boundary_degraded = True
@@ -447,6 +457,8 @@ def _build_success():
         "site_boundary_area_extraction": site_boundary_area_extraction,
         "site_boundary_geometry": site_boundary_geometry,
         "measurement_masks": measurement_masks,
+        "site_distance_contours": site_distance_contours,
+        "site_distance_contour_policy": SITE_DISTANCE_CONTOUR_POLICY,
         "selected_limit_comparison": selected_limit_comparison,
         "selected_limit_comparison_policy": SELECTED_LIMIT_COMPARISON_POLICY,
         "legal_judgement": legal_judgement,
@@ -530,6 +542,7 @@ def _build_failure(error_text):
     unified_shadow_slices = None
     shadow_preview = None
     measurement_masks = {"available": False, "complete": False, "boundary_dependent_ready": False, "blockers": []}
+    site_distance_contours = {"available": False, "complete": False, "method": "signed_distance_grid_marching_squares_v1", "ready_for_revit_preview": False, "blockers": []}
     selected_limit_comparison = {"available": False, "complete": False, "status": "undetermined", "blockers": []}
     legal_judgement = {"available": False, "complete": False, "status": "undetermined", "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
     try:
@@ -612,6 +625,8 @@ def _build_failure(error_text):
         "site_boundary_area_extraction": site_boundary_area_extraction,
         "site_boundary_geometry": site_boundary_geometry,
         "measurement_masks": measurement_masks,
+        "site_distance_contours": site_distance_contours,
+        "site_distance_contour_policy": SITE_DISTANCE_CONTOUR_POLICY,
         "selected_limit_comparison": selected_limit_comparison,
         "selected_limit_comparison_policy": SELECTED_LIMIT_COMPARISON_POLICY,
         "legal_judgement": legal_judgement,

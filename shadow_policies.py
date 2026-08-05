@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-08-05-selected-limit-comparison-v1"
+CODE_BUILD_ID = "2026-08-05-site-distance-contours-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -18,9 +18,10 @@ CURRENT_IMPLEMENTATION_STATUS = {
         "formal_footprint", "formal_solar_specification", "formal_time_slice_shadow_polygons",
         "per_slice_union", "duration_accumulation", "equal_time_contours",
         "equal_time_contour_preview",
+        "site_distance_contours",
     ],
     "not_implemented": [
-        "site_boundary_legal_masks", "5m_10m_measurement_lines", "legal_judgement",
+        "site_boundary_legal_masks", "5m_10m_revit_preview", "legal_judgement",
         "permit_certification",
     ],
 }
@@ -65,7 +66,7 @@ PLANNED_PIPELINE = [
     "shadow duration accumulation without double counting",
     "equal-time contour generation",
     "site boundary",
-    "optional 5m / 10m measurement line generation when site_boundary is available",
+    "5m / 10m site distance display polyline generation when site_boundary is available",
     "legal judgement report",
 ]
 
@@ -174,6 +175,21 @@ EQUAL_TIME_CONTOUR_POLICY = {
     "permit_ready_certified": False,
     "smoothing_performed": False,
     "canonical_geometry": "raw_marching_squares_polylines",
+}
+
+SITE_DISTANCE_CONTOUR_POLICY = {
+    "purpose": "display_geometry_for_5m_10m_site_distance_contours",
+    "fixed_distances_m": [5.0, 10.0],
+    "signed_distance": True,
+    "grid_based": True,
+    "linear_interpolation": True,
+    "smoothing_performed": False,
+    "polygon_offset_used": False,
+    "display_geometry_only": True,
+    "revit_write_performed": False,
+    "legal_judgement_generated": False,
+    "ordinance_selection_certified": False,
+    "permit_ready_certified": False,
 }
 
 ANALYSIS_BOUNDS_POLICY = {
