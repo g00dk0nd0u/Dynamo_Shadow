@@ -532,6 +532,41 @@ def _site_distance_contours_debug_summary(v):
         "warning_count": len(v.get("warnings") or []),
     })
 
+def _site_result_preview_debug_summary(v):
+    v = v if isinstance(v, dict) else {}
+    groups = v.get("groups") or []
+    output_kinds = []
+    distances = []
+    zones = []
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        kind = group.get("output_kind")
+        if kind and kind not in output_kinds:
+            output_kinds.append(kind)
+        if kind == "site_distance_contour" and group.get("created") is True:
+            distances.append(group.get("distance_m"))
+        if kind == "maximum_shadow_duration_marker" and group.get("created") is True:
+            zones.append(group.get("zone"))
+    return _sanitize_for_debug({
+        "enabled": v.get("enabled"),
+        "mode": v.get("mode"),
+        "attempted": v.get("attempted"),
+        "available": v.get("available"),
+        "complete": v.get("complete"),
+        "partial_success": v.get("partial_success"),
+        "measurement_plane_elevation_m": v.get("measurement_plane_elevation_m"),
+        "requested_group_count": v.get("requested_group_count"),
+        "created_group_count": v.get("created_group_count"),
+        "created_element_count": v.get("created_element_count"),
+        "deleted_element_count": v.get("deleted_element_count"),
+        "output_kinds": output_kinds,
+        "generated_distances_m": distances,
+        "generated_zones": zones,
+        "blocker_count": len(v.get("blockers") or []),
+        "warning_count": len(v.get("warnings") or []),
+    })
+
 def _selected_limit_comparison_debug_summary(v):
     v = v if isinstance(v, dict) else {}
     preset = v.get("preset") if isinstance(v.get("preset"), dict) else {}
@@ -607,6 +642,7 @@ def _summarize_out_for_debug(out_payload):
         "equal_time_contour_summary": _contour_summary(out_payload.get("equal_time_contours")),
         "shadow_preview": _sanitize_for_debug(out_payload.get("shadow_preview")),
         "equal_time_contour_preview": _contour_preview_summary(out_payload.get("equal_time_contour_preview")),
+        "site_result_preview": _site_result_preview_debug_summary(out_payload.get("site_result_preview")),
         "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
         "solar_specification_summary": _solar_specification_debug_summary(out_payload.get("solar_calculation_v1")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
@@ -649,6 +685,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "equal_time_contour_summary": summary["equal_time_contour_summary"],
         "shadow_preview": summary["shadow_preview"],
         "equal_time_contour_preview": summary["equal_time_contour_preview"],
+        "site_result_preview": summary["site_result_preview"],
         "solar_calculation_summary": summary["solar_calculation_summary"],
         "solar_specification_summary": summary["solar_specification_summary"],
         "pipeline_readiness": summary["pipeline_readiness"],

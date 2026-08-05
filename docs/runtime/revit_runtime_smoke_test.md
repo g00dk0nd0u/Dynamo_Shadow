@@ -63,3 +63,35 @@ Preparation: create a dedicated Area Scheme (`Shadow Analysis / 日影検討`), 
 - Test F duration bounds: Area bounds expanded by 10m are included in duration bounds; outside-site shadows remain; equal-time contours are not clipped by the Area.
 
 Player optional-input check: because `Site Boundary Area / 敷地境界エリア` is a `hostSelection` Player input, confirm in Revit whether Run remains enabled when it is unselected. If Run is disabled, record that Dynamo Player requires Area selection for this UI while Python still handles `None` as optional for API/test execution; do not add dummy ElementIds.
+
+## Site result preview v1 pending checks
+
+These checks require a real Revit 2024.3 + Dynamo 3.3 runtime and are not a PR creation prerequisite.
+
+A. `replace`
+- Confirm one 5 m SiteResultPreview distance group is displayed.
+- Confirm one 10 m SiteResultPreview distance group is displayed.
+- Confirm the near maximum-duration X marker is displayed.
+- Confirm the far maximum-duration X marker is displayed.
+
+B. Rerun
+- Confirm repeated runs do not multiply the same SiteResultPreview elements.
+- Confirm only previous `Dynamo_Shadow.SiteResultPreview` elements are replaced.
+
+C. Ownership
+- Confirm equal-time contour preview elements are not deleted.
+- Confirm formal shadow preview elements are not deleted.
+
+D. `clear`
+- Confirm SiteResultPreview elements are deleted.
+- Confirm the source Area and source building elements are not deleted.
+
+E. All preset
+- Confirm near and far markers are displayed.
+- Confirm selected-limit status remains `undetermined`.
+- Confirm the preview does not fail because comparison status is undetermined.
+
+F. No Area selected
+- Confirm core shadow calculation continues.
+- Confirm site result preview is skipped.
+- Confirm old SiteResultPreview elements are not accidentally deleted.
