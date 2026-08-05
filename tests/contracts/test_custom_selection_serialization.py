@@ -32,7 +32,7 @@ def test_custom_selection_nodes_use_dynamo_serialized_items_contract():
     assert set(nodes) == {REGULATORY_ID, ACCURACY_ID}
     assert len(nodes) == 2
 
-    expected_lengths = {REGULATORY_ID: 8, ACCURACY_ID: 3}
+    expected_lengths = {REGULATORY_ID: 8, ACCURACY_ID: 2}
     expected_selected_items = {REGULATORY_ID: "standard_all", ACCURACY_ID: "standard"}
     for node_id, node in nodes.items():
         assert "Items" not in node
@@ -55,6 +55,50 @@ def test_top_level_player_values_match_selected_display_strings():
         selected_string = nodes[node_id]["SelectedString"]
         assert inputs[node_id]["Value"] == selected_string
         assert inputs[node_id]["SelectedIndex"] == nodes[node_id]["SelectedIndex"]
+
+
+def test_player_menu_display_names_and_defaults_are_bilingual_and_stable():
+    graph = _graph()
+    nodes = {node["Id"]: node for node in _custom_selection_nodes(graph)}
+
+    regulatory = nodes[REGULATORY_ID]
+    assert regulatory["SelectedIndex"] == 0
+    assert regulatory["SelectedString"] == "Standard / 標準｜All / 全候補"
+    assert [entry["Item"] for entry in regulatory["SerializedItems"]] == [
+        "standard_all",
+        "standard_3_2",
+        "standard_4_2_5",
+        "standard_5_3",
+        "hokkaido_all",
+        "hokkaido_2_1_5",
+        "hokkaido_3_2",
+        "hokkaido_4_2_5",
+    ]
+    assert [entry["Name"] for entry in regulatory["SerializedItems"]] == [
+        "Standard / 標準｜All / 全候補",
+        "Standard / 標準｜3h / 2h",
+        "Standard / 標準｜4h / 2.5h",
+        "Standard / 標準｜5h / 3h",
+        "Hokkaido / 北海道｜All / 全候補",
+        "Hokkaido / 北海道｜2h / 1.5h",
+        "Hokkaido / 北海道｜3h / 2h",
+        "Hokkaido / 北海道｜4h / 2.5h",
+    ]
+
+    accuracy = nodes[ACCURACY_ID]
+    assert accuracy["SelectedIndex"] == 1
+    assert accuracy["SelectedString"] == "Standard / 標準｜0.5m・15min"
+    assert accuracy["SerializedItems"] == [
+        {"Name": "Fast / 高速｜0.5m・30min", "Item": "rough"},
+        {"Name": "Standard / 標準｜0.5m・15min", "Item": "standard"},
+    ]
+
+
+def test_top_level_inputs_and_nodeviews_use_matching_player_names():
+    graph = _graph()
+    nodeviews = {view["Id"]: view for view in graph["View"]["NodeViews"]}
+    for player_input in graph["Inputs"]:
+        assert player_input["Name"] == nodeviews[player_input["Id"]]["Name"]
 
 
 def test_custom_selection_outputs_and_python_connectors_are_preserved():

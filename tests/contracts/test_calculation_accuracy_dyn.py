@@ -24,7 +24,8 @@ def test_accuracy_custom_selection_is_player_input_defaulting_to_standard():
     assert node["ConcreteType"].startswith("CoreNodeModels.Input.CustomSelection")
     assert views[node["Id"]]["IsSetAsInput"] is True
     assert node["SelectedIndex"] == 1
-    assert [item["Item"] for item in node["SerializedItems"]] == ["rough", "standard", "high"]
+    assert [item["Item"] for item in node["SerializedItems"]] == ["rough", "standard"]
+    assert "high" not in [item["Item"] for item in node["SerializedItems"]]
     assert node["SelectedString"] == node["SerializedItems"][node["SelectedIndex"]]["Name"]
 
 
@@ -32,7 +33,7 @@ def test_player_input_display_order_and_settings_remains_hidden():
     graph = _graph()
     players = sorted((v for v in graph["View"]["NodeViews"] if v["IsSetAsInput"]), key=lambda v: v["Y"])
     assert [v["Name"] for v in players] == [
-        "Levels", "Select Model Element", "Regulatory Shadow Preset / 日影規制時間",
+        "Levels", "Select Model Element", "Shadow Limits / 日影規制時間（5–10m / 10m超）",
         "Calculation Accuracy / 計算精度", "Site Latitude / 緯度（deg）", "Site Longitude / 経度（deg）",
     ]
     settings = next(v for v in graph["View"]["NodeViews"] if v["Id"] == "f688e0f729b946d0b8ac25514f4531da")
@@ -48,12 +49,12 @@ def test_top_level_inputs_register_accuracy_once_with_default_and_order():
     assert accuracy["Name"] == "Calculation Accuracy / 計算精度"
     assert accuracy["Type"] == "selection"
     assert accuracy["Type2"] == "dropdownSelection"
-    assert accuracy["Value"] == "標準｜0.5m・15分"
+    assert accuracy["Value"] == "Standard / 標準｜0.5m・15min"
     assert accuracy["SelectedIndex"] == 1
     assert [item["Name"] for item in inputs] == [
         "Levels",
         "Select Model Element",
-        "Regulatory Shadow Preset / 日影規制時間",
+        "Shadow Limits / 日影規制時間（5–10m / 10m超）",
         "Calculation Accuracy / 計算精度",
         "Site Latitude / 緯度（deg）",
         "Site Longitude / 経度（deg）",
