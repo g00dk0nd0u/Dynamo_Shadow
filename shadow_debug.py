@@ -514,6 +514,24 @@ def _measurement_masks_debug_summary(v):
     far = v.get("far") if isinstance(v.get("far"), dict) else {}
     return _sanitize_for_debug({"available": v.get("available"), "complete": v.get("complete"), "method": v.get("method"), "zone_counts": v.get("zone_counts"), "near_maximum_shadow_duration_minutes": near.get("maximum_shadow_duration_minutes"), "far_maximum_shadow_duration_minutes": far.get("maximum_shadow_duration_minutes"), "boundary_dependent_ready": v.get("boundary_dependent_ready"), "blocker_count": len(v.get("blockers") or []), "warning_count": len(v.get("warnings") or [])})
 
+def _site_distance_contours_debug_summary(v):
+    v = v if isinstance(v, dict) else {}
+    source = v.get("source") if isinstance(v.get("source"), dict) else {}
+    return _sanitize_for_debug({
+        "available": v.get("available"),
+        "complete": v.get("complete"),
+        "method": v.get("method"),
+        "spatial_resolution_m": source.get("spatial_resolution_m"),
+        "requested_distances_m": v.get("requested_distances_m"),
+        "generated_distances_m": v.get("generated_distances_m"),
+        "contour_count": v.get("contour_count"),
+        "closed_contour_count": v.get("closed_contour_count"),
+        "open_contour_count": v.get("open_contour_count"),
+        "ready_for_revit_preview": v.get("ready_for_revit_preview"),
+        "blocker_count": len(v.get("blockers") or []),
+        "warning_count": len(v.get("warnings") or []),
+    })
+
 def _selected_limit_comparison_debug_summary(v):
     v = v if isinstance(v, dict) else {}
     preset = v.get("preset") if isinstance(v.get("preset"), dict) else {}
@@ -575,6 +593,7 @@ def _summarize_out_for_debug(out_payload):
         "site_boundary_area_extraction_summary": _site_area_debug_summary(out_payload.get("site_boundary_area_extraction")),
         "site_boundary_geometry_summary": _site_geometry_debug_summary(out_payload.get("site_boundary_geometry")),
         "measurement_masks_summary": _measurement_masks_debug_summary(out_payload.get("measurement_masks")),
+        "site_distance_contours_summary": _site_distance_contours_debug_summary(out_payload.get("site_distance_contours")),
         "selected_limit_comparison": _selected_limit_comparison_debug_summary(out_payload.get("selected_limit_comparison")),
         "legal_judgement": _legal_judgement_debug_summary(out_payload.get("legal_judgement")),
         "site_boundary_skipped": bool((out_payload.get("site_boundary") or {}).get("boundary_dependent_steps_skipped", False)),
@@ -618,6 +637,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "site_boundary_summary": summary["site_boundary_summary"],
         "site_boundary_skipped": summary["site_boundary_skipped"],
         "measurement_plane_summary": summary["measurement_plane_summary"],
+        "site_distance_contours_summary": summary["site_distance_contours_summary"],
         "selected_limit_comparison": summary["selected_limit_comparison"],
         "legal_judgement": summary["legal_judgement"],
         "shadow_caster_geometry_summary": summary["shadow_caster_geometry_summary"],
