@@ -80,7 +80,10 @@ def _distance_groups(source):
 def _point_xy(point):
     if not isinstance(point, dict):
         raise ValueError("site_result_preview_marker_point_missing")
-    x = float(point.get("x")); y = float(point.get("y"))
+    try:
+        x = float(point.get("x_m")); y = float(point.get("y_m"))
+    except (TypeError, ValueError):
+        raise ValueError("site_result_preview_non_finite_coordinate")
     if not (math.isfinite(x) and math.isfinite(y)):
         raise ValueError("site_result_preview_non_finite_coordinate")
     return x, y
@@ -152,20 +155,34 @@ def build_site_result_preview(site_distance_contours, measurement_masks, selecte
             if not math.isfinite(elevation): raise ValueError()
         except (TypeError, ValueError):
             return _block(result, "site_result_preview_measurement_plane_missing")
+        source_complete_for_preview = True
         if distance_available:
-            prepared.extend(_distance_groups(site_distance_contours))
+            distance_groups = _distance_groups(site_distance_contours)
+            prepared.extend(distance_groups)
+            missing_distances = [value for value in (5.0, 10.0)
+                if not any(group.get("distance_m") == value for group in distance_groups)]
+            if missing_distances:
+                source_complete_for_preview = False
+                result["warnings"].append("Site distance contour source is missing one or more fixed 5m/10m contours; distance preview is partial.")
         else:
+            source_complete_for_preview = False
             result["warnings"].append("Site distance contour source unavailable; distance preview skipped.")
         if masks_available:
             marker_groups = _marker_groups(measurement_masks, selected_limit_comparison)
             prepared.extend(marker_groups)
             for zone_key, zone_name in (("near", "near_5_to_10m"), ("far", "far_over_10m")):
                 item = (measurement_masks or {}).get(zone_key) or {}
-                if item and item.get("available") is False:
+                marker_created_from_source = any(group.get("zone") == zone_name for group in marker_groups)
+                if item.get("available") is False or not marker_created_from_source:
+                    source_complete_for_preview = False
                     result["warnings"].append("Maximum point source for %s is unavailable; marker skipped." % zone_name)
         else:
+            source_complete_for_preview = False
             result["warnings"].append("Measurement mask maximum-point source unavailable; marker preview skipped.")
+        if not prepared:
+            return _block(result, "site_result_preview_sources_unavailable")
         result["requested_group_count"] = len(prepared)
+        result["_source_complete_for_preview"] = source_complete_for_preview
     required = (DocumentManager, TransactionManager, DirectShape, XYZ, Line, FilteredElementCollector, SubTransaction)
     if any(item is None for item in required):
         result["warnings"].append("Revit site result preview API is unavailable; preview skipped."); return result
@@ -229,6 +246,7 @@ def build_site_result_preview(site_distance_contours, measurement_masks, selecte
     result["created_element_count"] = len(result["created_element_ids"])
     result["created_group_count"] = sum(1 for group in result["groups"] if group.get("created") is True)
     result["available"] = not result["blockers"]
-    result["complete"] = result["available"] and (config["mode"] == "clear" or result["created_group_count"] == result["requested_group_count"])
-    result["partial_success"] = result["available"] and not result["complete"]
+    source_complete = result.pop("_source_complete_for_preview", True)
+    result["complete"] = result["available"] and (config["mode"] == "clear" or (source_complete and result["created_group_count"] == result["requested_group_count"]))
+    result["partial_success"] = result["available"] and not result["complete"] and result["created_group_count"] > 0
     return result
