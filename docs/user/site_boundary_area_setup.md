@@ -43,3 +43,9 @@ Select the Area body, not the Area Tag. / Area TagではなくArea本体を選�
 ## Notes / 注意
 
 This stage does not certify legal OK/NG, does not automatically determine the ordinance classification, and is not permit certification.
+
+## Dynamo Player optional-input note / Dynamo Player任意入力の注意
+
+`Site Boundary Area / 敷地境界エリア` is saved as a Dynamo Player `hostSelection` input. The Python pipeline still treats `site_boundary` as optional when `None` is supplied through tests or API-style execution, so core shadow duration and equal-time contours can continue without boundary masks.
+
+Dynamo Player behavior with an unselected `hostSelection` must be confirmed in Revit 2024.3 / Dynamo 3.3. If Player disables Run while the Area is unselected, this PR adopts the current UI behavior that the Area selection is required in Dynamo Player, while preserving optional `None` handling in Python. No dummy ElementId, dummy element, or fixed GUID is used.

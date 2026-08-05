@@ -143,4 +143,4 @@ def test_maximum_level_count_blocks():
 def test_readiness_advances_after_contours():
     result = _build_pipeline_readiness({}, {}, {}, shadow_duration={"complete": True},
                                        equal_time_contours={"complete": True})
-    assert result["next_implementation_steps"] == ["site boundary", "5m / 10m lines", "legal judgement"]
+    assert result["next_implementation_steps"] == ["site boundary", "5m / 10m distance masks", "5m / 10m Revit display lines", "contour evaluation extraction", "legal judgement"]

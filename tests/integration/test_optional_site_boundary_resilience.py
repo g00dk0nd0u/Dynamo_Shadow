@@ -30,7 +30,7 @@ def test_optional_boundary_base_exception_degrades_without_stopping_pipeline(mon
 
     assert result["success"] is True
     assert result["partial_success"] is True
-    assert result["degraded_components"] == ["site_boundary"]
+    assert result["degraded_components"] == ["site_boundary", "site_boundary_area"]
     assert result["shadow_calculation_completed"] is True
     assert result["boundary_dependent_steps_completed"] is False
     assert result["site_boundary"]["error_code"] == "optional_site_boundary_diagnostic_failure"

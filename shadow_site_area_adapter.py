@@ -1,111 +1,234 @@
 """Read a single placed Revit Area boundary through SpatialElement boundary API."""
-from shadow_units import _internal_length_to_meters, _internal_area_to_m2
-from shadow_utils import _try_unwrap_with_diagnostics, _to_list, _type_name, _safe_attr, _category_name
-try:
-    from shadow_revit_api import BuiltInCategory
-except Exception:
-    BuiltInCategory = None
-try:
-    from Autodesk.Revit.DB import SpatialElement, SpatialElementBoundaryOptions, Line
-    try:
-        from Autodesk.Revit.DB.Architecture import Area, Room
-    except Exception:
-        Area = Room = None
-    try:
-        from Autodesk.Revit.DB.Mechanical import Space
-    except Exception:
-        Space = None
-except Exception:
-    SpatialElement = SpatialElementBoundaryOptions = Line = Area = Room = Space = None
+import math
 
-METHOD="revit_area_spatial_boundary_v1"
+from shadow_units import _internal_area_to_m2, _internal_length_to_meters
+from shadow_utils import (
+    _built_in_category_name_for_id,
+    _category,
+    _category_id_from_category,
+    _safe_attr,
+    _to_list,
+    _try_unwrap_with_diagnostics,
+    _type_name,
+)
+
+try:
+    from Autodesk.Revit.DB import (
+        Area,
+        SpatialElement,
+        SpatialElementBoundaryOptions,
+        Line,
+        BuiltInCategory,
+    )
+except Exception:
+    Area = None
+    SpatialElement = None
+    SpatialElementBoundaryOptions = None
+    Line = None
+    BuiltInCategory = None
+
+try:
+    from Autodesk.Revit.DB.Architecture import Room
+except Exception:
+    Room = None
+
+try:
+    from Autodesk.Revit.DB.Mechanical import Space
+except Exception:
+    Space = None
+
+METHOD = "revit_area_spatial_boundary_v1"
+
 
 def _empty(provided=False, blocker=None):
-    return {"provided":provided,"available":False,"complete":False,"method":METHOD,"source_type":None,"source_element_count":0,"loop_count":0,"loops":[],"level_id_available":False,"z_min_m":None,"z_max_m":None,"maximum_z_difference_m":None,"blockers":[] if blocker is None else [{"failure_code":blocker}],"warnings":[],"permit_ready_certified":False}
+    return {
+        "provided": provided, "available": False, "complete": False,
+        "method": METHOD, "source_type": None, "source_element_count": 0,
+        "loop_count": 0, "loops": [], "level_id_available": False,
+        "z_min_m": None, "z_max_m": None, "maximum_z_difference_m": None,
+        "blockers": [] if blocker is None else [{"failure_code": blocker}],
+        "warnings": [], "permit_ready_certified": False,
+    }
 
-def _flatten(v):
-    out=[]
-    for x in _to_list(v):
-        if isinstance(x,(list,tuple)):
-            out.extend(_flatten(x))
-        elif x is not None:
-            out.append(x)
+
+def _flatten(value):
+    out = []
+    for item in _to_list(value):
+        if isinstance(item, (list, tuple)):
+            out.extend(_flatten(item))
+        elif item is not None:
+            out.append(item)
     return out
 
-def _category_is_area(e):
-    cat=_category_name(e) or ""; return "area" in cat.lower() or "エリア" in cat
 
-def _is_area(e):
-    if e is None: return False
-    if Area is not None and isinstance(e, Area): return True
-    if Room is not None and isinstance(e, Room): return False
-    if Space is not None and isinstance(e, Space): return False
-    if SpatialElement is not None and isinstance(e, SpatialElement) and _category_is_area(e): return True
-    tn=_type_name(e).lower()
-    if "room" in tn or "space" in tn or "tag" in tn or "filledregion" in tn: return False
-    return tn.endswith("area") or ".area" in tn or _category_is_area(e)
+def _finite(value):
+    try:
+        number = float(value)
+    except Exception:
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _category_name_for_element(element):
+    category_id = _category_id_from_category(_category(element))
+    return _built_in_category_name_for_id(category_id)
+
+
+def _safe_fallback_is_area(element):
+    """Limited test-double fallback; never accepts category-name-only non-spatial elements."""
+    type_name = _type_name(element)
+    if type_name in ("FakeArea", "Area") or getattr(element, "_is_revit_area_test_double", False):
+        return True
+    return False
+
+
+def _is_area(element):
+    if element is None:
+        return False
+    if Room is not None and isinstance(element, Room):
+        return False
+    if Space is not None and isinstance(element, Space):
+        return False
+    if Area is not None and isinstance(element, Area):
+        return True
+    lowered = _type_name(element).lower()
+    if any(token in lowered for token in ("areatag", "spatialelementtag", "roomtag", "spacetag", "areaload", "filledregion", "floor", "modelcurve", "detailcurve")):
+        return False
+    if "generic" in lowered and "model" in lowered:
+        return False
+    category_name = _category_name_for_element(element)
+    if SpatialElement is not None and isinstance(element, SpatialElement):
+        return category_name == "OST_Areas"
+    return _safe_fallback_is_area(element)
+
 
 def _point_m(xyz):
-    x,w=_internal_length_to_meters(getattr(xyz,"X",None)); y,w2=_internal_length_to_meters(getattr(xyz,"Y",None)); z,w3=_internal_length_to_meters(getattr(xyz,"Z",None))
-    return {"x_m":x,"y_m":y,"z_m":z}, w+w2+w3
+    raw = []
+    for attr in ("X", "Y", "Z"):
+        value = _finite(getattr(xyz, attr, None))
+        if value is None:
+            return None, ["site boundary endpoint coordinate is unavailable or non-finite"]
+        raw.append(value)
+    x, wx = _internal_length_to_meters(raw[0])
+    y, wy = _internal_length_to_meters(raw[1])
+    z, wz = _internal_length_to_meters(raw[2])
+    if any(v is None or not math.isfinite(float(v)) for v in (x, y, z)):
+        return None, wx + wy + wz + ["site boundary endpoint unit conversion failed"]
+    return {"x_m": x, "y_m": y, "z_m": z}, wx + wy + wz
 
-def _curve_type(curve): return _type_name(curve).split('.')[-1]
+
+def _curve_type(curve):
+    return _type_name(curve).split(".")[-1]
+
 
 def _is_line(curve):
-    if Line is not None and isinstance(curve, Line): return True
-    return _curve_type(curve).lower() == "line"
+    curve_type = _curve_type(curve).lower()
+    if Line is not None and isinstance(curve, Line) and curve_type in ("line", "fakeline"):
+        return True
+    return curve_type in ("line", "fakeline")
+
 
 def extract_site_boundary_area(area_input):
-    items=[]
+    items = []
     for raw in _flatten(area_input):
-        unwrapped,_=_try_unwrap_with_diagnostics(raw)
-        if unwrapped is not None: items.append(unwrapped)
-    if not items: return _empty(False)
-    if len(items)>1: return _empty(True,"multiple_site_boundary_areas_not_supported")
-    area=items[0]
-    res=_empty(True); res["source_element_count"]=1; res["source_type"]=_type_name(area).split('.')[-1]
+        unwrapped, _ = _try_unwrap_with_diagnostics(raw)
+        items.append(unwrapped if unwrapped is not None else raw)
+    if not items:
+        return _empty(False)
+    if len(items) > 1:
+        return _empty(True, "multiple_site_boundary_areas_not_supported")
+
+    area = items[0]
+    result = _empty(True)
+    result["source_element_count"] = 1
+    result["source_type"] = _type_name(area).split(".")[-1]
     if not _is_area(area):
-        res["blockers"].append({"failure_code":"site_boundary_input_is_not_area","input_type":res["source_type"]}); return res
-    res["source_type"]="Area"
-    if not hasattr(area,"GetBoundarySegments"):
-        res["blockers"].append({"failure_code":"site_boundary_area_boundary_missing"}); return res
+        result["blockers"].append({"failure_code": "site_boundary_input_is_not_area", "input_type": result["source_type"]})
+        return result
+    result["source_type"] = "Area"
+
     try:
-        area_raw=_safe_attr(area,"Area")
-        if area_raw is not None:
-            area_m2,w=_internal_area_to_m2(area_raw); res["area_api_m2"] = area_m2; res["warnings"].extend(w)
-            if area_m2 is not None and area_m2 <= 0:
-                res["blockers"].append({"failure_code":"site_boundary_area_unplaced_or_unbounded"}); return res
-    except Exception: pass
-    try:
-        opts=SpatialElementBoundaryOptions() if SpatialElementBoundaryOptions is not None else None
-        loops_raw=area.GetBoundarySegments(opts)
+        area_raw = _safe_attr(area, "Area")
+        area_value = _finite(area_raw)
+        if area_value is None:
+            result["blockers"].append({"failure_code": "site_boundary_area_unplaced_or_unbounded", "reason": "area_value_unavailable_or_non_finite"})
+            return result
+        area_m2, warnings = _internal_area_to_m2(area_value)
+        result["warnings"].extend(warnings)
+        if area_m2 is None or not math.isfinite(float(area_m2)):
+            result["blockers"].append({"failure_code": "site_boundary_area_unplaced_or_unbounded", "reason": "area_unit_conversion_failed"})
+            return result
+        result["area_api_m2"] = area_m2
+        if area_m2 <= 0:
+            result["blockers"].append({"failure_code": "site_boundary_area_unplaced_or_unbounded"})
+            return result
     except Exception:
-        res["blockers"].append({"failure_code":"site_boundary_area_unplaced_or_unbounded"}); return res
-    loops=list(loops_raw or [])
+        result["blockers"].append({"failure_code": "site_boundary_area_unplaced_or_unbounded", "reason": "area_value_api_failure"})
+        return result
+
+    get_boundary = getattr(area, "GetBoundarySegments", None)
+    if not callable(get_boundary):
+        result["blockers"].append({"failure_code": "site_boundary_area_boundary_missing"})
+        return result
+    try:
+        options = SpatialElementBoundaryOptions() if SpatialElementBoundaryOptions is not None else None
+        loops_raw = get_boundary(options)
+    except Exception:
+        result["blockers"].append({"failure_code": "site_boundary_area_boundary_api_failure"})
+        return result
+
+    loops = list(loops_raw or [])
+    result["loop_count"] = len(loops)
     if not loops:
-        res["blockers"].append({"failure_code":"site_boundary_area_boundary_missing"}); return res
-    res["loop_count"]=len(loops)
-    if len(loops)>1:
-        res["blockers"].append({"failure_code":"site_boundary_area_multiple_loops_unsupported","loop_count":len(loops)}); return res
-    zs=[]
-    for li,loop in enumerate(loops):
-        segs=[]
-        for si,bs in enumerate(list(loop or [])):
-            try: curve=bs.GetCurve()
-            except Exception:
-                res["blockers"].append({"failure_code":"site_boundary_area_boundary_missing","segment_index":si}); return res
-            ct=_curve_type(curve)
-            if not _is_line(curve):
-                res["blockers"].append({"failure_code":"unsupported_site_boundary_curve_type","curve_type":ct,"segment_index":si}); return res
+        result["blockers"].append({"failure_code": "site_boundary_area_boundary_missing"})
+        return result
+    if len(loops) > 1:
+        result["blockers"].append({"failure_code": "site_boundary_area_multiple_loops_unsupported", "loop_count": len(loops)})
+        return result
+
+    z_values = []
+    for loop_index, loop in enumerate(loops):
+        raw_segments = list(loop or [])
+        if len(raw_segments) < 3:
+            result["blockers"].append({"failure_code": "site_boundary_area_boundary_missing", "segment_count": len(raw_segments)})
+            return result
+        segments = []
+        for segment_index, boundary_segment in enumerate(raw_segments):
+            get_curve = getattr(boundary_segment, "GetCurve", None)
+            if not callable(get_curve):
+                result["blockers"].append({"failure_code": "site_boundary_area_boundary_missing", "segment_index": segment_index})
+                return result
             try:
-                p0=curve.GetEndPoint(0); p1=curve.GetEndPoint(1)
-                a,w=_point_m(p0); b,w2=_point_m(p1); res["warnings"].extend(w+w2); zs.extend([a["z_m"],b["z_m"]])
+                curve = get_curve()
             except Exception:
-                res["blockers"].append({"failure_code":"site_boundary_area_boundary_missing","segment_index":si}); return res
-            segs.append({"curve_type":"Line","start":a,"end":b,"segment_index":si})
-        res["loops"].append({"loop_index":li,"segment_count":len(segs),"segments":segs})
-    zs=[z for z in zs if z is not None]
-    res["z_min_m"]=min(zs) if zs else None; res["z_max_m"]=max(zs) if zs else None; res["maximum_z_difference_m"]=(res["z_max_m"]-res["z_min_m"]) if zs else None
-    res["level_id_available"] = _safe_attr(area,"LevelId") is not None
-    res["available"]=True; res["complete"]=not res["blockers"]
-    return res
+                result["blockers"].append({"failure_code": "site_boundary_area_boundary_api_failure", "segment_index": segment_index})
+                return result
+            curve_type = _curve_type(curve)
+            if not _is_line(curve):
+                result["blockers"].append({"failure_code": "unsupported_site_boundary_curve_type", "curve_type": curve_type, "segment_index": segment_index})
+                return result
+            get_endpoint = getattr(curve, "GetEndPoint", None)
+            if not callable(get_endpoint):
+                result["blockers"].append({"failure_code": "site_boundary_area_boundary_missing", "segment_index": segment_index})
+                return result
+            try:
+                start, w0 = _point_m(get_endpoint(0))
+                end, w1 = _point_m(get_endpoint(1))
+            except Exception:
+                result["blockers"].append({"failure_code": "site_boundary_area_boundary_api_failure", "segment_index": segment_index})
+                return result
+            result["warnings"].extend(w0 + w1)
+            if start is None or end is None:
+                result["blockers"].append({"failure_code": "site_boundary_area_boundary_missing", "segment_index": segment_index})
+                return result
+            z_values.extend([start["z_m"], end["z_m"]])
+            segments.append({"curve_type": "Line", "start": start, "end": end, "segment_index": segment_index})
+        result["loops"].append({"loop_index": loop_index, "segment_count": len(segments), "segments": segments})
+
+    result["z_min_m"] = min(z_values)
+    result["z_max_m"] = max(z_values)
+    result["maximum_z_difference_m"] = result["z_max_m"] - result["z_min_m"]
+    result["level_id_available"] = _safe_attr(area, "LevelId") is not None
+    result["available"] = True
+    result["complete"] = True
+    return result

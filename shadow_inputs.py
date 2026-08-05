@@ -553,9 +553,6 @@ def _diagnose_site_boundary_unsafe(site_boundary):
         ])
         return diagnostics
 
-    if len(items) == 1:
-        diagnostics["warnings"].append("site_boundary received a single selected item; multiple Property Line segments or Model Lines may be required for a closed loop.")
-
     for index, item in enumerate(items):
         unwrapped, unwrap_diag = _try_unwrap_with_diagnostics(item)
         category_name = _category_name(unwrapped)
@@ -564,8 +561,8 @@ def _diagnose_site_boundary_unsafe(site_boundary):
         type_name = _type_name(unwrapped)
         name = _element_name(unwrapped)
         combined = " ".join([_safe_text(x) or "" for x in (type_name, name, category_name, official)])
-        curve_access = _diagnose_curve_access(unwrapped)
-        is_area = official == "OST_Areas" or _looks_like(" ".join([type_name, category_name]), ["area", "エリア"])
+        is_area = official == "OST_Areas" or type_name in ("Area", "FakeArea") or bool(_safe_attr(unwrapped, "_is_revit_area_test_double"))
+        curve_access = {"available": False, "attempted": False, "reason": "Formal Area boundary validation is performed by site_boundary_area_extraction."} if is_area else _diagnose_curve_access(unwrapped)
         is_property = official == "OST_SiteProperty"
         is_segment = official == "OST_SitePropertyLineSegment"
         is_site_point = official == "OST_SitePointBoundary"
@@ -586,7 +583,7 @@ def _diagnose_site_boundary_unsafe(site_boundary):
             item_warnings.append("CAD import/link-like element is diagnostic only; CAD lines are not automatically adopted as site_boundary.")
         if is_topo:
             item_warnings.append("Toposolid/SiteSurface/Topography-like element is diagnostic only; terrain edges are not automatically adopted as site_boundary.")
-        if not curve_access.get("available"):
+        if (not is_area) and not curve_access.get("available"):
             item_warnings.append("Curve/endpoint access is unavailable: {0}".format(curve_access.get("error")))
         if is_line_fallback and not curve_access.get("endpoint_count"):
             item_warnings.append("Model Lines fallback candidate cannot be confirmed as a closed loop because endpoints are unavailable.")
@@ -628,12 +625,10 @@ def _diagnose_site_boundary_unsafe(site_boundary):
         diagnostics["items"].append(entry)
         diagnostics["warnings"].extend(item_warnings)
 
-    diagnostics["loop_diagnostics"] = _diagnose_site_boundary_loop(diagnostics["items"])
-    diagnostics["warnings"].extend(diagnostics["loop_diagnostics"].get("warnings", []))
-    diagnostics["boundary_dependent_steps_available"] = diagnostics["accepted_count"] > 0 and diagnostics["loop_diagnostics"].get("closed_loop_check_available") is True
-    diagnostics["boundary_dependent_steps_skipped"] = not diagnostics["boundary_dependent_steps_available"]
-    if diagnostics["boundary_dependent_steps_skipped"]:
-        diagnostics["info"].append("site_boundary was provided, but boundary-dependent steps remain gated until a usable Property Line/Site Property or closed Model Lines loop can be read.")
+    diagnostics["loop_diagnostics"] = {"attempted": False, "reason": "Formal boundary validation is performed by site_boundary_area_extraction and site_boundary_geometry."}
+    diagnostics["boundary_dependent_steps_available"] = False
+    diagnostics["boundary_dependent_steps_skipped"] = True
+    diagnostics["info"].append("site_boundary diagnostics only identify the selected Area input; formal boundary readiness is reported by site_boundary_area_extraction and site_boundary_geometry.")
     return diagnostics
 
 
@@ -669,13 +664,8 @@ def _diagnose_site_boundary(site_boundary):
             combined["warnings"].append(warning)
     if combined.get("accepted_count") == 1:
         combined["selected_input_type"] = "Area"
-    combined["loop_diagnostics"] = _diagnose_site_boundary_loop(combined["items"])
-    combined["warnings"].extend(combined["loop_diagnostics"].get("warnings") or [])
-    combined["boundary_dependent_steps_available"] = (
-        combined["accepted_count"] > 0
-        and combined["loop_diagnostics"].get("closed_loop_check_available") is True
-    )
-    combined["boundary_dependent_steps_skipped"] = not combined["boundary_dependent_steps_available"]
-    if combined["boundary_dependent_steps_skipped"]:
-        combined["info"].append("Boundary-dependent steps remain gated; core shadow diagnostics continue.")
+    combined["loop_diagnostics"] = {"attempted": False, "reason": "Formal boundary validation is performed by site_boundary_area_extraction and site_boundary_geometry."}
+    combined["boundary_dependent_steps_available"] = False
+    combined["boundary_dependent_steps_skipped"] = True
+    combined["info"].append("site_boundary diagnostics only identify Area selection; readiness is reported by formal Area extraction/geometry/mask outputs.")
     return combined

@@ -61,3 +61,5 @@ Preparation: create a dedicated Area Scheme (`Shadow Analysis / 日影検討`), 
 - Test D curved boundary: expect `unsupported_site_boundary_curve_type`; endpoints are not silently straightened; core shadow calculation continues.
 - Test E Area with opening / inner loop: expect `site_boundary_area_multiple_loops_unsupported`; the largest loop is not adopted automatically.
 - Test F duration bounds: Area bounds expanded by 10m are included in duration bounds; outside-site shadows remain; equal-time contours are not clipped by the Area.
+
+Player optional-input check: because `Site Boundary Area / 敷地境界エリア` is a `hostSelection` Player input, confirm in Revit whether Run remains enabled when it is unselected. If Run is disabled, record that Dynamo Player requires Area selection for this UI while Python still handles `None` as optional for API/test execution; do not add dummy ElementIds.

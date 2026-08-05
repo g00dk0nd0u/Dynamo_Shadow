@@ -13,6 +13,31 @@ def _empty(blocker=None):
             "warnings": [], "legal_judgement_generated": False, "permit_ready_certified": False}
 
 
+def _finite(value):
+    try:
+        number = float(value)
+    except Exception:
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _valid_tolerance(value):
+    number = _finite(value)
+    return number if number is not None and number > 0.0 else None
+
+
+def _point(value):
+    if not isinstance(value, dict):
+        return None
+    out = {}
+    for key in ("x_m", "y_m", "z_m"):
+        number = _finite(value.get(key))
+        if number is None:
+            return None
+        out[key] = number
+    return out
+
+
 def _dist(a, b):
     return math.hypot(a["x_m"] - b["x_m"], a["y_m"] - b["y_m"])
 
@@ -26,58 +51,114 @@ def _seg_key(a, b, tol):
     return (qa, qb)
 
 
-def _orient(a,b,c): return (b["x_m"]-a["x_m"])*(c["y_m"]-a["y_m"])-(b["y_m"]-a["y_m"])*(c["x_m"]-a["x_m"])
+def _orient(a, b, c):
+    return (b["x_m"] - a["x_m"]) * (c["y_m"] - a["y_m"]) - (b["y_m"] - a["y_m"]) * (c["x_m"] - a["x_m"])
 
-def _intersect(a,b,c,d,tol):
-    def on(p,q,r): return min(p["x_m"],r["x_m"])-tol <= q["x_m"] <= max(p["x_m"],r["x_m"])+tol and min(p["y_m"],r["y_m"])-tol <= q["y_m"] <= max(p["y_m"],r["y_m"])+tol and abs(_orient(p,q,r))<=tol
-    o1,o2,o3,o4=_orient(a,b,c),_orient(a,b,d),_orient(c,d,a),_orient(c,d,b)
-    if o1*o2 < -tol and o3*o4 < -tol: return True
-    return any([on(a,c,b),on(a,d,b),on(c,a,d),on(c,b,d)])
+
+def _intersect(a, b, c, d, tol):
+    def on(p, q, r):
+        return (min(p["x_m"], r["x_m"]) - tol <= q["x_m"] <= max(p["x_m"], r["x_m"]) + tol and
+                min(p["y_m"], r["y_m"]) - tol <= q["y_m"] <= max(p["y_m"], r["y_m"]) + tol and
+                abs(_orient(p, q, r)) <= tol)
+    o1, o2, o3, o4 = _orient(a, b, c), _orient(a, b, d), _orient(c, d, a), _orient(c, d, b)
+    if o1 * o2 < -tol and o3 * o4 < -tol:
+        return True
+    return any([on(a, c, b), on(a, d, b), on(c, a, d), on(c, b, d)])
 
 
 def build_site_boundary_geometry(extracted_area_boundary, join_tolerance_m=0.005, planarity_tolerance_m=0.005):
+    join_tolerance_m = _valid_tolerance(join_tolerance_m)
+    planarity_tolerance_m = _valid_tolerance(planarity_tolerance_m)
+    result = _empty()
+    result["join_tolerance_m"] = join_tolerance_m
+    result["planarity_tolerance_m"] = planarity_tolerance_m
+    if join_tolerance_m is None or planarity_tolerance_m is None:
+        result["blockers"].append({"failure_code": "invalid_site_boundary_geometry_tolerance"})
+        return result
+
     src = extracted_area_boundary or {}
-    res = _empty(); res["join_tolerance_m"] = join_tolerance_m; res["planarity_tolerance_m"] = planarity_tolerance_m
     if src.get("complete") is not True:
-        res["blockers"] = list(src.get("blockers") or [{"failure_code": "site_boundary_geometry_missing"}]); return res
+        result["blockers"] = list(src.get("blockers") or [{"failure_code": "site_boundary_geometry_missing"}])
+        return result
     loops = src.get("loops") or []
     if len(loops) != 1:
-        res["blockers"].append({"failure_code": "site_boundary_area_multiple_loops_unsupported", "loop_count": len(loops)}); return res
-    if (src.get("maximum_z_difference_m") or 0.0) > planarity_tolerance_m:
-        res["blockers"].append({"failure_code": "site_boundary_area_nonplanar", "maximum_z_difference_m": src.get("maximum_z_difference_m")}); return res
-    segs = loops[0].get("segments") or []
-    if len(segs) < 3:
-        res["blockers"].append({"failure_code": "site_boundary_open_loop"}); return res
-    pts=[]; seen=set(); seen_rev=set()
-    for i,s in enumerate(segs):
-        if s.get("curve_type") != "Line":
-            res["blockers"].append({"failure_code":"unsupported_site_boundary_curve_type","curve_type":s.get("curve_type"),"segment_index":i}); return res
-        a,b=s.get("start"),s.get("end")
-        if not isinstance(a,dict) or not isinstance(b,dict): res["blockers"].append({"failure_code":"site_boundary_geometry_missing","segment_index":i}); return res
-        if _dist(a,b) <= 1e-12: res["blockers"].append({"failure_code":"site_boundary_zero_length_segment","segment_index":i}); return res
-        if _dist(a,b) < join_tolerance_m: res["blockers"].append({"failure_code":"site_boundary_short_segment","segment_index":i}); return res
-        k=_seg_key(a,b,join_tolerance_m); rk=_seg_key(b,a,join_tolerance_m)
-        if k in seen: res["blockers"].append({"failure_code":"site_boundary_duplicate_segment","segment_index":i}); return res
-        if rk in seen: res["blockers"].append({"failure_code":"site_boundary_duplicate_segment","segment_index":i,"reverse":True}); return res
-        seen.add(k); pts.append({"x_m":float(a["x_m"]),"y_m":float(a["y_m"])})
-        if i < len(segs)-1 and _dist(b, segs[i+1].get("start") or {}) > join_tolerance_m:
-            res["blockers"].append({"failure_code":"site_boundary_disconnected_segments","segment_index":i}); return res
-    if _dist(segs[-1].get("end") or {}, segs[0].get("start") or {}) > join_tolerance_m:
-        res["blockers"].append({"failure_code":"site_boundary_open_loop"}); return res
-    keys=[]
-    for i,p in enumerate(pts):
-        k=(round(p["x_m"]/join_tolerance_m),round(p["y_m"]/join_tolerance_m))
-        if k in keys: res["blockers"].append({"failure_code":"site_boundary_repeated_vertex","vertex_index":i}); return res
-        keys.append(k)
-    n=len(pts)
-    for i in range(n):
-        for j in range(i+1,n):
-            if abs(i-j)<=1 or {i,j}=={0,n-1}: continue
-            if _intersect(pts[i],pts[(i+1)%n],pts[j],pts[(j+1)%n],join_tolerance_m): res["blockers"].append({"failure_code":"site_boundary_self_intersection","segment_index":i,"other_segment_index":j}); return res
-    signed=_area(pts)
-    if abs(signed) <= 1e-12: res["blockers"].append({"failure_code":"site_boundary_zero_area"}); return res
-    if signed < 0: pts=list(reversed(pts)); signed=-signed
-    start=min(range(len(pts)), key=lambda i:(pts[i]["x_m"], pts[i]["y_m"])); pts=pts[start:]+pts[:start]
-    per=sum(_dist(pts[i],pts[(i+1)%len(pts)]) for i in range(len(pts)))
-    res.update({"available":True,"complete":True,"outer_loop":pts,"vertex_count":len(pts),"segment_count":len(pts),"orientation":"counter_clockwise","signed_area_m2":signed,"area_m2":signed,"perimeter_m":per,"bounds_m":{"min_x":min(p["x_m"] for p in pts),"min_y":min(p["y_m"] for p in pts),"max_x":max(p["x_m"] for p in pts),"max_y":max(p["y_m"] for p in pts)}})
-    return res
+        result["blockers"].append({"failure_code": "site_boundary_area_multiple_loops_unsupported", "loop_count": len(loops)})
+        return result
+    z_diff = _finite(src.get("maximum_z_difference_m"))
+    if z_diff is None or z_diff > planarity_tolerance_m:
+        result["blockers"].append({"failure_code": "site_boundary_area_nonplanar", "maximum_z_difference_m": src.get("maximum_z_difference_m")})
+        return result
+
+    segments = loops[0].get("segments") or []
+    if len(segments) < 3:
+        result["blockers"].append({"failure_code": "site_boundary_open_loop"})
+        return result
+    pts = []
+    seen = set()
+    for index, segment in enumerate(segments):
+        if segment.get("curve_type") != "Line":
+            result["blockers"].append({"failure_code": "unsupported_site_boundary_curve_type", "curve_type": segment.get("curve_type"), "segment_index": index})
+            return result
+        start = _point(segment.get("start")); end = _point(segment.get("end"))
+        if start is None or end is None:
+            result["blockers"].append({"failure_code": "invalid_site_boundary_segment_coordinates", "segment_index": index})
+            return result
+        if _dist(start, end) <= 1e-12:
+            result["blockers"].append({"failure_code": "site_boundary_zero_length_segment", "segment_index": index})
+            return result
+        if _dist(start, end) < join_tolerance_m:
+            result["blockers"].append({"failure_code": "site_boundary_short_segment", "segment_index": index})
+            return result
+        key = _seg_key(start, end, join_tolerance_m); reverse_key = _seg_key(end, start, join_tolerance_m)
+        if key in seen:
+            result["blockers"].append({"failure_code": "site_boundary_duplicate_segment", "segment_index": index})
+            return result
+        if reverse_key in seen:
+            result["blockers"].append({"failure_code": "site_boundary_duplicate_segment", "segment_index": index, "reverse": True})
+            return result
+        seen.add(key); pts.append({"x_m": start["x_m"], "y_m": start["y_m"]})
+        if index < len(segments) - 1:
+            next_start = _point((segments[index + 1] or {}).get("start"))
+            if next_start is None:
+                result["blockers"].append({"failure_code": "invalid_site_boundary_segment_coordinates", "segment_index": index + 1})
+                return result
+            if _dist(end, next_start) > join_tolerance_m:
+                result["blockers"].append({"failure_code": "site_boundary_disconnected_segments", "segment_index": index})
+                return result
+    last_end = _point(segments[-1].get("end")); first_start = _point(segments[0].get("start"))
+    if last_end is None or first_start is None:
+        result["blockers"].append({"failure_code": "invalid_site_boundary_segment_coordinates"})
+        return result
+    if _dist(last_end, first_start) > join_tolerance_m:
+        result["blockers"].append({"failure_code": "site_boundary_open_loop"})
+        return result
+
+    vertex_keys = set()
+    for index, point in enumerate(pts):
+        key = (round(point["x_m"] / join_tolerance_m), round(point["y_m"] / join_tolerance_m))
+        if key in vertex_keys:
+            result["blockers"].append({"failure_code": "site_boundary_repeated_vertex", "vertex_index": index})
+            return result
+        vertex_keys.add(key)
+    for i in range(len(pts)):
+        for j in range(i + 1, len(pts)):
+            if abs(i - j) <= 1 or {i, j} == {0, len(pts) - 1}:
+                continue
+            if _intersect(pts[i], pts[(i + 1) % len(pts)], pts[j], pts[(j + 1) % len(pts)], join_tolerance_m):
+                result["blockers"].append({"failure_code": "site_boundary_self_intersection", "segment_index": i, "other_segment_index": j})
+                return result
+    signed = _area(pts)
+    if abs(signed) <= 1e-12:
+        result["blockers"].append({"failure_code": "site_boundary_zero_area"})
+        return result
+    if signed < 0:
+        pts = list(reversed(pts)); signed = -signed
+    start_index = min(range(len(pts)), key=lambda i: (pts[i]["x_m"], pts[i]["y_m"]))
+    pts = pts[start_index:] + pts[:start_index]
+    perimeter = sum(math.hypot(pts[i]["x_m"] - pts[(i + 1) % len(pts)]["x_m"], pts[i]["y_m"] - pts[(i + 1) % len(pts)]["y_m"]) for i in range(len(pts)))
+    result.update({"available": True, "complete": True, "outer_loop": pts, "vertex_count": len(pts),
+                   "segment_count": len(pts), "orientation": "counter_clockwise", "signed_area_m2": signed,
+                   "area_m2": signed, "perimeter_m": perimeter,
+                   "bounds_m": {"min_x": min(p["x_m"] for p in pts), "min_y": min(p["y_m"] for p in pts),
+                                  "max_x": max(p["x_m"] for p in pts), "max_y": max(p["y_m"] for p in pts)}})
+    return result

@@ -91,9 +91,15 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
     min_y, max_y = base_min_y - margin, base_max_y + margin
     nx = int(math.ceil((max_x-min_x)/resolution))+1; ny = int(math.ceil((max_y-min_y)/resolution))+1
     count = nx * ny
+    calculated_bounds = {"min_x": min_x, "min_y": min_y,
+        "max_x": min_x + (nx - 1) * resolution,
+        "max_y": min_y + (ny - 1) * resolution}
     result.update({"temporal_step_minutes": intervals[0] if all(abs(v-intervals[0]) <= 1e-9 for v in intervals) else None,
         "spatial_resolution_m": resolution, "grid_point_count": count,
-        "requested_grid_point_count": count, "maximum_grid_point_count": maximum})
+        "requested_grid_point_count": count, "maximum_grid_point_count": maximum,
+        "bounds_sources": bounds_sources, "site_boundary_bounds_included": site_included,
+        "site_boundary_expansion_m": 10.0 if site_included else None,
+        "bounds_m": calculated_bounds})
     if count > maximum:
         result["blockers"].append({
             "failure_code": "max_duration_grid_points_exceeded",
@@ -117,13 +123,10 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
     result.update({"available": True, "complete": True, "maximum_shadow_duration_minutes": max_duration,
         "shadowed_point_count": shadowed, "ready_for_equal_time_contour_generation": True,
         "duration_grid": grid,
-        "bounds_sources": bounds_sources, "site_boundary_bounds_included": site_included, "site_boundary_expansion_m": 10.0 if site_included else None,
         "grid_spec": {"x_count": nx, "y_count": ny, "origin_x_m": min_x,
             "origin_y_m": min_y, "resolution_m": resolution,
             "ordering": "row_major_y_then_x"},
-        "bounds_m": {"min_x": min_x, "min_y": min_y,
-            "max_x": min_x + (nx - 1) * resolution,
-            "max_y": min_y + (ny - 1) * resolution}})
+        "bounds_m": calculated_bounds})
     return result
 
 

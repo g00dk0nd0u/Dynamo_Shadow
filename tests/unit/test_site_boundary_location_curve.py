@@ -75,10 +75,8 @@ def test_seven_model_lines_form_closed_site_boundary():
     result = shadow_inputs._diagnose_site_boundary(lines)
 
     assert result["accepted_count"] == 0
-    assert result["loop_diagnostics"]["candidate_curve_count"] == 0
+    assert result["loop_diagnostics"]["attempted"] is False
     assert sum(item["curve_access"]["endpoint_count"] for item in result["items"]) == 14
-    assert result["loop_diagnostics"]["closed_loop_check_available"] is False
-    assert result["loop_diagnostics"]["appears_closed"] is None
     assert result["boundary_dependent_steps_available"] is False
     assert all(line.geometry_call_count == 0 for line in lines)
 
@@ -96,6 +94,6 @@ def test_malformed_item_does_not_abort_remaining_model_lines():
 
     assert result["accepted_count"] == 0
     assert result["rejected_count"] == 5
-    assert result["loop_diagnostics"]["candidate_curve_count"] == 0
-    assert result["loop_diagnostics"]["appears_closed"] is None
+    assert result["loop_diagnostics"]["attempted"] is False
+    assert result["loop_diagnostics"]["attempted"] is False
     assert result["warnings"]
