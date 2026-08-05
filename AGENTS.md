@@ -2,11 +2,39 @@
 
 ## Repository purpose
 
-This repository is an experimental Dynamo / Revit tool for studying equal-time shadow diagrams under Japanese Building Standard Law shadow regulations.
+This repository is an experimental Dynamo / Revit tool for studying equal-time shadow diagrams under Japanese Building Standard Law Article 56-2 shadow regulations.
 
-The project is still in an early development stage. The current files must not be treated as a complete building permit calculation tool.
+The project is still a diagnostic and research prototype. It must not be treated as a complete building permit calculation tool, and `permit_ready_certified` must remain `false` until a separate certification workflow is explicitly implemented.
 
-The current seven-input Dynamo graph includes independent Player inputs for regulatory preset, latitude, and longitude. Formal footprint extraction, formal solar specification, formal time-slice polygons, per-slice union, duration accumulation, equal-time contours, and contour preview are implemented as technical prototypes. Site-boundary masks, 5 m / 10 m lines, legal judgement, and permit certification remain unimplemented.
+The current Dynamo graph exposes seven Dynamo Player inputs, while the Python Node has eight `IN[0]` through `IN[7]` ports because it also receives an internal settings input. Do not describe the graph only as an "8 input" Player UI.
+
+Current implemented prototype scope includes: multiple Mass / Generic Model shadow-caster selection, Revit geometry extraction, footprint extraction prototype, NOAA solar calculation, true solar time, formal time-slice shadow projection, per-time-slice Revit-native union, grid/trapezoidal shadow-duration accumulation, equal-time contour generation, equal-time contour DirectShape preview, placed Revit Area site-boundary extraction for one outer straight-segment loop with no holes, 5 m / 10 m / beyond-10 m distance masks, near/far maximum shadow duration and maximum points, fixed 5 m / 10 m signed-distance contour data, selected regulatory preset comparison, Fast / Standard Player accuracy selection, internal high-accuracy compatibility preset, and pure-Python regression tests.
+
+Currently unimplemented scope includes: Revit display elements for the fixed 5 m / 10 m contours, Revit display of near/far maximum points, formal legal pass/fail judgement, automatic municipal ordinance selection, road/water/elevation-difference relaxations, verification report output, reverse-shadow workflows, C# Revit add-in, product UI, installer, and permit certification. The 5 m / 10 m contour polyline data exists; only Revit element display for those contours remains unimplemented.
+
+## Architecture direction
+
+Future work should keep the repository aligned with three layers:
+
+### Revit Adapter
+
+- Reads Revit elements and placed Revit Area inputs.
+- Preserves and processes native `Autodesk.Revit.DB.Solid`, `Face`, `Curve`, `CurveLoop`, `Plane`, and `XYZ` where needed.
+- Owns formal shadow projection, Revit-native Boolean / union operations, Revit preview or future write operations, and Revit internal-unit conversion.
+- Must not place raw Revit objects in `OUT` or debug JSON.
+
+### Shadow Core
+
+- Owns meter-based, JSON-safe calculation data after the Revit Adapter boundary.
+- Owns solar calculation, duration accumulation, equal-time contours, site geometry validation, distance masks, 5 m / 10 m distance contours, selected limit comparison, and future reverse-shadow algorithms.
+- Must not import `Autodesk.Revit.DB`.
+- Must not operate on Revit internal units; use meters, degrees, and minutes after adapter conversion.
+
+### Dynamo Host
+
+- Consists of `Shadow.dyn`, `dynamo_loader.py`, Dynamo Player inputs, `IN[]` / `INPUTS` mapping, `script.py` orchestration, and `OUT` inspection.
+- `script.py` should remain an orchestration layer. Put new processing in focused modules rather than expanding `script.py`.
+- Do not add new Dynamo Player inputs, change Python Node ports, or change graph structure without explicit approval.
 
 ## File roles
 
@@ -43,7 +71,7 @@ The current seven-input Dynamo graph includes independent Player inputs for regu
 ### docs/
 
 - Research notes and specifications.
-- Check `docs/development/spec_v0.md` before implementing shadow calculation logic.
+- Check `docs/development/spec_v0.md` before changing shadow calculation logic.
 
 ## Dynamo / Revit rules
 
@@ -53,6 +81,9 @@ The current seven-input Dynamo graph includes independent Player inputs for regu
 - Do not change Dynamo input ports unless the task explicitly asks for it.
 - Do not change Select nodes, Watch nodes, Level nodes, or connectors unless the task explicitly asks for it.
 - Do not restore `Shadow - Copy.json`.
+- Preserve existing output contracts unless a migration is explicitly approved.
+- Do not change established calculation methods unless explicitly requested.
+- Do not add Revit API imports to Shadow Core modules.
 
 ## Native API first
 
@@ -65,31 +96,32 @@ The current seven-input Dynamo graph includes independent Player inputs for regu
 
 ### Preserve native geometry
 
-- Formal calculation paths should preserve `Autodesk.Revit.DB.Solid`, `Face`, `Curve`, `CurveLoop`, `Plane`, and `XYZ` for as long as practical.
-- Convert native geometry to dictionaries or meter coordinates only at a pure-Python test boundary, debug JSON boundary, `OUT` serialization boundary, or an explicit legal-calculation data-model boundary.
+- Formal Revit Adapter paths should preserve `Autodesk.Revit.DB.Solid`, `Face`, `Curve`, `CurveLoop`, `Plane`, and `XYZ` for as long as practical.
+- Convert native geometry to meter-based JSON-safe data at the adapter-to-core boundary, pure-Python test boundary, debug JSON boundary, `OUT` serialization boundary, or explicit legal-calculation data-model boundary.
 - Never put raw Revit objects in `OUT` or debug JSON.
 
 ### Dynamo responsibilities
 
-- Preserve the current standard selection, Level, String, and Watch nodes. Dynamo owns user selection, UI values, execution flow, result inspection, and optional lightweight preview.
+- Preserve the current standard selection, Level, String, and Watch nodes. Dynamo owns user selection, UI values, execution flow, result inspection, and optional preview.
 - `Element.Geometry` and other Revit-to-Dynamo/libG conversion paths are limited to preview, lightweight diagnostics, user display, or an explicitly labelled fallback experiment when the native API is unavailable. Do not make unconditional libG conversion the primary formal-shadow path.
 - Do not expand the graph into a large geometry-node network. Put complex branching, validation, logging, and legal logic in focused Python modules.
 
 ### Revit version compatibility
 
-- The primary target is Revit 2024.3 with Dynamo CPython3. Documentation for Revit 2025/2026 is not evidence that an API exists in 2024.3.
+- The primary target is Revit 2024.3 with Dynamo 3.3 and CPython3.
+- Documentation for Revit 2025/2026 is not evidence that an API exists in Revit 2024.3.
 - New Revit APIs require optional imports, runtime capability checks, an explicit blocker or fallback when unavailable, and continued import/`py_compile` support in normal Python.
 - Isolate optional API imports so one missing class never sets the established core Revit imports to `None`.
 
 ### Native geometry candidates by stage
 
 - **Footprint:** use `PlanarFace` -> `Face.GetEdgesAsCurveLoops()` -> `CurveLoop` as the first formal candidate. Evaluate `CurveLoop.IsOpen`, `HasPlane`, `GetPlane`, `IsCounterclockwise`, `Flip`, `GetExactLength`, `NumberOfCurves`, and `Application.ShortCurveTolerance`. Preserve arcs and other supported Revit curves rather than rejecting a loop merely because it is not line-only. Existing endpoint clustering, segment graphs, and manual stitching remain fallback, a pure-Python unit-test model, and diagnostics when native loops cannot be obtained; they must not run before the native formal path.
-- **Solid processing:** for the primary Revit 2024.3 target, prefer `SolidUtils.SplitVolumes` for independent volumes instead of first creating a custom connected-component algorithm. Do not assume `SolidUtils.ComputeIsGeometricallyClosed` or `ComputeIsTopologicallyClosed` exists: these closure checks are Revit 2026.4+ future-version candidates, not Revit 2024.3 target APIs. Newer documentation is not evidence of availability in Revit 2024.3, and the 2024.3 formal path must not call these methods.
-- **Formal time-slice shadow prototype:** positive-volume `Solid` -> `BooleanOperationsUtils.CutWithHalfSpace` -> `SolidUtils.SplitVolumes` -> measurement `Plane` -> `ExtrusionAnalyzer.Create` -> `GetExtrusionBase` -> `Face.GetEdgesAsCurveLoops`. `ExtrusionAnalyzer` is most reliable for a single extrusion-like solid; split independent volumes first and do not assume all complex shapes succeed. Runtime direction and extent validation must pass. Report failures and never substitute a convex hull as a formal result. Point-cloud projection and convex hull remain diagnostic/comparison-only over-approximations. `ExtrusionAnalyzer` implements `IDisposable`; release every analyzer deterministically with `try/finally` and `Dispose()` unless a Python context-manager contract has been verified in Revit 2024.3 with Dynamo CPython3. Never rely on Python garbage collection for cleanup.
-- **Solar position:** retain the custom NOAA calculation as the auditable, reproducible legal-calculation candidate, including explicit true solar time and independence from view state. Use `View.SunAndShadowSettings` and `SunAndShadowSettings.GetFrameAltitude`, `GetFrameAzimuth`, and `GetFrameTime` only as an independent cross-check unless a later task explicitly changes the source. Do not modify Revit sun/view settings unless requested. Never compare raw Revit values directly with NOAA output or compare Revit radians with Dynamo_Shadow degrees. Before comparison, record the raw value, raw unit, raw coordinate convention, normalized degree value, normalized convention, conversion formula or method, whether true-north adjustment was applied, and comparison tolerance. The Dynamo_Shadow canonical convention is degrees, azimuth measured clockwise from true north, normalized to `0 <= azimuth < 360`, where north/east/south/west are `0/90/180/270` respectively.
-- **Project location and true north:** diagnostic candidates are `Document.ActiveProjectLocation`, `ProjectLocation.GetSiteLocation`, `ProjectLocation.GetProjectPosition(XYZ.Zero)`, `SiteLocation.Latitude`, `Longitude`, `TimeZone`, and `ProjectPosition.Angle`. Source priority is (1) explicit settings, (2) an explicitly selected Revit project-location source, and (3) Revit values for diagnostic comparison. Never silently overwrite settings; report differences as warnings or diagnostics. Convert the API angle `ProjectPosition.Angle` explicitly from radians before reporting or comparing it in degrees. Verify its sign and rotation convention in Revit 2024.3 with controlled project-north/true-north test cases rather than inferring it.
-- **Units:** prefer `UnitUtils.ConvertFromInternalUnits` and `ConvertToInternalUnits` with `UnitTypeId.Meters`, `SquareMeters`, and `CubicMeters`. Fixed factors `0.3048`, `0.09290304`, and `0.028316846592` are limited to normal-Python tests or fallback after API unavailability/failure.
-- **Booleans:** the current time-slice union prototype converts Line `CurveLoop` polygons to temporary thin in-memory `Solid` geometry, applies Revit `BooleanOperationsUtils`, and splits the result with `SolidUtils.SplitVolumes`. It creates no Revit elements. This narrow Revit-native prototype does not guarantee arbitrary complex solids or formal non-Line serialization.
+- **Solid processing:** for the primary Revit 2024.3 target, prefer `SolidUtils.SplitVolumes` for independent volumes instead of first creating a custom connected-component algorithm. Do not assume `SolidUtils.ComputeIsGeometricallyClosed` or `ComputeIsTopologicallyClosed` exists: these closure checks are Revit 2026.4+ future-version candidates, not Revit 2024.3 target APIs.
+- **Formal time-slice shadow prototype:** positive-volume `Solid` -> `BooleanOperationsUtils.CutWithHalfSpace` -> `SolidUtils.SplitVolumes` -> measurement `Plane` -> `ExtrusionAnalyzer.Create` -> `GetExtrusionBase` -> `Face.GetEdgesAsCurveLoops`. `ExtrusionAnalyzer` is most reliable for a single extrusion-like solid; split independent volumes first and do not assume all complex shapes succeed. Runtime direction and extent validation must pass. Report failures and never substitute a convex hull as a formal result. Point-cloud projection and convex hull remain diagnostic/comparison-only over-approximations. `ExtrusionAnalyzer` implements `IDisposable`; release every analyzer deterministically with `try/finally` and `Dispose()` unless a Python context-manager contract has been verified in Revit 2024.3 with Dynamo CPython3.
+- **Solar position:** retain the custom NOAA calculation as the auditable, reproducible legal-calculation candidate, including explicit true solar time and independence from view state. Use `View.SunAndShadowSettings` and `SunAndShadowSettings.GetFrameAltitude`, `GetFrameAzimuth`, and `GetFrameTime` only as an independent cross-check unless a later task explicitly changes the source. Do not modify Revit sun/view settings unless requested. The Dynamo_Shadow canonical convention is degrees, azimuth measured clockwise from true north, normalized to `0 <= azimuth < 360`, where north/east/south/west are `0/90/180/270` respectively.
+- **Project location and true north:** diagnostic candidates are `Document.ActiveProjectLocation`, `ProjectLocation.GetSiteLocation`, `ProjectLocation.GetProjectPosition(XYZ.Zero)`, `SiteLocation.Latitude`, `Longitude`, `TimeZone`, and `ProjectPosition.Angle`. Source priority is (1) explicit settings, (2) an explicitly selected Revit project-location source, and (3) Revit values for diagnostic comparison. Never silently overwrite settings; report differences as warnings or diagnostics. Convert the API angle `ProjectPosition.Angle` explicitly from radians before reporting or comparing it in degrees.
+- **Units:** prefer `UnitUtils.ConvertFromInternalUnits` and `ConvertToInternalUnits` with `UnitTypeId.Meters`, `SquareMeters`, and `CubicMeters` in the Revit Adapter. Fixed factors are limited to normal-Python tests or fallback after API unavailability/failure.
+- **Booleans:** the current time-slice union prototype converts Line `CurveLoop` polygons to temporary thin in-memory `Solid` geometry, applies Revit `BooleanOperationsUtils`, and splits the result with `SolidUtils.SplitVolumes`. It creates no Revit elements.
 
 ## Development rules for Codex
 
@@ -105,14 +137,8 @@ The current seven-input Dynamo graph includes independent Player inputs for regu
 
 - Fixed legal assumptions should not be turned into arbitrary user inputs.
 - Site-specific or zoning-specific conditions should be represented as settings or configuration.
-- Standard equal-time shadow calculation should be developed step by step:
-  - input extraction
-  - sun position / shadow direction
-  - time-slice shadow geometry
-  - accumulation
-  - equal-time contour generation
-  - diagnostics and validation
-
+- Preserve the established sequence of input extraction, sun position / shadow direction, time-slice shadow geometry, accumulation, equal-time contour generation, diagnostics, and validation unless a task explicitly approves changing it.
+- Do not implement formal legal judgement, permit certification, reverse shadow, report output, or municipal ordinance auto-selection unless explicitly requested.
 
 ## Shadow caster input rules
 
@@ -128,7 +154,6 @@ The current seven-input Dynamo graph includes independent Player inputs for regu
 - The current prototype performs logical union per time slice before grid/trapezoidal duration accumulation v1.
 - Do not double-count overlapping shadows.
 - Formal permit-level shadow checks are outside this repository scope and should be done with dedicated tools such as ADS.
-- Do not implement shadow calculation, sun position, shadow polygons, measurement-grid accumulation, or equal-time contours unless explicitly requested.
 
 ## Geometry extraction rules
 
@@ -140,20 +165,18 @@ The current seven-input Dynamo graph includes independent Player inputs for regu
 - Mass / Generic Model shadow caster proxy remains the accepted initial source.
 - BoundingBox may be used only for diagnostic summary or future analysis extent estimation.
 - BoundingBox must not be used for shadow geometry or shadow judgement.
-- Footprint candidates may be diagnosed, but footprint polygons must not be generated unless explicitly requested.
-- Do not implement sun position, shadow projection, shadow polygons, measurement grid accumulation, 5m/10m measurement lines, or equal-time contours unless explicitly requested.
+- Footprint candidates and formal footprint outputs must come from user-selected Mass / Generic Model proxy geometry and preserve existing diagnostics/contracts unless explicitly changed.
 
 ## Settings input rules
 
 - `settings` is optional for input diagnostics.
 - Missing `settings` must not be treated as a fatal error.
-- Future equal-time shadow calculation requires explicit `average_ground_level_elevation_m`, `measurement_height_m`, `latitude`, `longitude`, and `true_north_deg`.
+- Equal-time shadow calculation requires explicit or preset-derived `average_ground_level_elevation_m`, `measurement_height_m`, `latitude`, `longitude`, and `true_north_deg`.
 - Do not use Revit Level Elevation as average ground level.
 - Do not use Revit Level Elevation as measurement plane.
 - Settings units should be meters and degrees unless explicitly changed in a future task.
 - Do not invent legal defaults for `measurement_height_m` or `average_ground_level_elevation_m`.
 - Diagnostic defaults are allowed only for non-legal computational parameters such as `grid_resolution_m`, `analysis_margin_m`, and `closure_tolerance_m`.
-- Do not implement sun position, shadow polygons, measurement grid accumulation, 5m/10m measurement lines, or equal-time contours unless explicitly requested.
 
 ## Site boundary input rules
 
@@ -165,8 +188,8 @@ The current seven-input Dynamo graph includes independent Player inputs for regu
 - The initial formal scope is one host-model Area, one outer loop, no holes, no islands, and straight boundary segments only.
 - Property Line / Site Property / Model Lines are not formal site boundary inputs at this stage. If legacy diagnostics remain in code, they are legacy diagnostic-only and must not be promoted to formal geometry or readiness.
 - Filled Region, Detail Line, Floor, Generic Model, CAD import, and Toposolid/SiteSurface/Topography must not be formal site boundary inputs.
-- Site boundary extraction or geometry failure blocks only boundary-dependent steps such as 5m/10m distance masks; it must not stop core shadow duration or equal-time contours.
-- 5m/10m Revit display lines are not implemented.
+- Site boundary extraction or geometry failure blocks only boundary-dependent steps such as 5 m / 10 m distance masks; it must not stop core shadow duration or equal-time contours.
+- 5 m / 10 m contour polyline data is implemented; Revit display elements for those contours are not implemented.
 - Legal judgement is not implemented.
 - Permit certification is not implemented.
 
@@ -204,9 +227,8 @@ For PRs containing geometry processing, also confirm:
 - Do not create Revit elements for measurement plane diagnostics.
 - Measurement height must not be invented; it should come from settings / ordinance profile.
 - True solar time awareness must not be confused with JST clock time.
-- Do not implement true solar time, sun vectors, shadow projection, legal masks, 5m/10m lines, or legal judgement unless explicitly requested.
 - site_boundary is not required to construct the measurement plane.
-- site_boundary is required for future legal judgement masks such as beyond-5m range and own-site exclusion.
+- site_boundary is required for legal judgement masks such as beyond-5m range and own-site exclusion.
 - Same-site multiple buildings are unioned per time slice before grid/trapezoidal duration accumulation v1; do not double-count overlapping shadows.
 
 ## Footprint extraction rules
@@ -215,24 +237,22 @@ For PRs containing geometry processing, also confirm:
 - Footprint candidates must come from user-selected Mass / Generic Model proxy geometry.
 - Do not auto-extract footprints from Walls / Floors / Roofs / Equipment.
 - Bottom face candidates may be used to diagnose edge loop candidates.
-- Do not generate formal footprint polygons unless explicitly requested.
-- Do not create CurveLoops, offsets, booleans, or self-intersection checks unless explicitly requested.
 - Do not use BoundingBox as footprint geometry.
 - Keep each selected caster separate; do not merge into a temporary unified Revit model.
-- Same-site multiple buildings should be handled later during union / duration accumulation, not by merging Revit elements now.
+- Same-site multiple buildings are handled during union / duration accumulation, not by merging Revit elements.
 - site_boundary is not required for footprint diagnostics.
-- site_boundary is required later for legal judgement masks.
-- Do not implement true solar time, sun vectors, shadow projection, 5m/10m lines, legal masks, or legal judgement unless explicitly requested.
+- site_boundary is required for legal judgement masks.
 
 ## Module split rules
 
 - Keep `script.py` focused on orchestration, Dynamo import fallback, and top-level `OUT` construction.
-- Keep policies, safe utilities, input diagnostics, settings normalization, measurement plane diagnostics, geometry diagnostics, footprint diagnostics, and readiness checks in focused `shadow_*.py` modules.
+- Keep policies, safe utilities, input diagnostics, settings normalization, measurement plane diagnostics, geometry diagnostics, footprint diagnostics, site geometry validation, site masks, distance contours, comparison, preview, and readiness checks in focused `shadow_*.py` modules.
 - Module split PRs must not add new calculation features or change diagnostic semantics.
 - Do not change the top-level `OUT` structure, warning semantics, readiness logic, or policy content during module-only refactors.
 - Do not touch `Shadow.dyn`, the Python Node bootstrap, or `dynamo_loader.py` for module-only refactors.
 - Avoid circular imports; `shadow_revit_api.py` must remain the lowest optional Revit API import layer.
 - Keep Revit API imports optional so normal Python `py_compile` and smoke tests run without Revit.
+- Do not add `Autodesk.Revit.DB` imports to Shadow Core modules.
 
 ## Development debug log rules
 
@@ -260,7 +280,6 @@ For PRs containing geometry processing, also confirm:
 - Never silently replace raw fields; preserve raw fields and add converted meter fields with `_m`, `_m2`, or `_m3` suffixes.
 - Do not use raw Revit units for legal comparison once meter fields exist.
 - Unit conversion diagnostics are not legal judgement readiness.
-- Do not implement formal footprint polygon generation, shadow projection, or legal judgement in a unit conversion PR.
 - Debug logs may include unit conversion summaries but must remain sanitized.
 - The debug log privacy scan must pass when debug logs are committed.
 
@@ -275,7 +294,7 @@ For PRs containing geometry processing, also confirm:
 
 - Equal-time contours are technical/diagnostic outputs generated from the duration grid; their levels are not statutory thresholds.
 - Keep contour generation pure Python and independent of Revit API objects.
-- Site-boundary processing, 5 m / 10 m lines, legal judgement, and permit certification remain later work.
+- Site-boundary processing, 5 m / 10 m contour data, and selected limit comparison are prototypes; legal judgement and permit certification remain later work.
 
 ## Regulatory preset UI rules
 
@@ -284,3 +303,4 @@ For PRs containing geometry processing, also confirm:
 - Hokkaido-area presets use 09:00–15:00 and include the 1.5-hour candidate.
 - Do not add a six-hour contour to statutory-time presets, but preserve technical generation of explicitly requested 360–480 minute contours.
 - Longitude does not directly affect calculations in true-solar-time mode.
+- Player exposes Fast and Standard accuracy choices. High accuracy remains an internal / advanced compatibility preset, not a public Player choice.
