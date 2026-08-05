@@ -1,6 +1,6 @@
 # Policy constants for Dynamo_Shadow diagnostics.
 
-CODE_BUILD_ID = "2026-08-05-area-site-boundary-masks-v1"
+CODE_BUILD_ID = "2026-08-05-selected-limit-comparison-v1"
 
 # Disabled by default because pythonnet CLR GetProperty caused a node-level
 # External component exception in Revit 2024.3 + Dynamo CPython3. Direct
@@ -384,6 +384,10 @@ SETTINGS_POLICY = {
 SITE_BOUNDARY_AREA_POLICY = {"formal_user_input": "one_placed_revit_area", "area_boundary_segments_selected_in_player": False, "family_required": False, "requires_placed_closed_area": True, "initial_scope": "single_loop_line_only_host_model_area", "optional_for_shadow_calculation": True}
 SITE_BOUNDARY_GEOMETRY_POLICY = {"method": "revit_area_single_outer_loop_v1", "single_loop_only": True, "line_only": True, "holes_supported": False, "arc_approximation_performed": False, "formal_polygon_units": "meters_model_xy"}
 MEASUREMENT_MASK_POLICY = {"method": "point_to_area_boundary_distance_v1", "zones": ["inside_site", "on_site_boundary", "outside_0_to_5m", "near_5_to_10m", "far_over_10m"], "offset_display_curves_generated": False, "legal_judgement_generated": False, "permit_ready_certified": False}
+
+SELECTED_LIMIT_COMPARISON_POLICY = {"purpose": "numerical_comparison_against_user_selected_preset", "method": "selected_regulatory_limit_comparison_v1", "comparison_basis": "Dynamo Player user-selected preset", "ordinance_applicability_certified": False, "numerical_prototype": True, "reports_grid_resolution_and_time_step": True, "legal_pass_fail_generated": False, "permit_ready_certified": False}
+
+LEGAL_JUDGEMENT_POLICY = {"current_status": "always_undetermined", "local_ordinance_applicability_schema_implemented": False, "requires_explicit_traceable_profile": True, "inferred_municipality_defaults": False, "guessed_zoning_or_floor_area_ratio_conditions": False, "legal_judgement_generated": False, "permit_ready_certified": False}
 
 SITE_BOUNDARY_POLICY = {
     "optional": True,

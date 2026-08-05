@@ -514,6 +514,31 @@ def _measurement_masks_debug_summary(v):
     far = v.get("far") if isinstance(v.get("far"), dict) else {}
     return _sanitize_for_debug({"available": v.get("available"), "complete": v.get("complete"), "method": v.get("method"), "zone_counts": v.get("zone_counts"), "near_maximum_shadow_duration_minutes": near.get("maximum_shadow_duration_minutes"), "far_maximum_shadow_duration_minutes": far.get("maximum_shadow_duration_minutes"), "boundary_dependent_ready": v.get("boundary_dependent_ready"), "blocker_count": len(v.get("blockers") or []), "warning_count": len(v.get("warnings") or [])})
 
+def _selected_limit_comparison_debug_summary(v):
+    v = v if isinstance(v, dict) else {}
+    preset = v.get("preset") if isinstance(v.get("preset"), dict) else {}
+    near = v.get("near") if isinstance(v.get("near"), dict) else {}
+    far = v.get("far") if isinstance(v.get("far"), dict) else {}
+    return _sanitize_for_debug({
+        "available": v.get("available"), "complete": v.get("complete"), "status": v.get("status"),
+        "preset_id": preset.get("preset_id"),
+        "near_status": near.get("status"), "near_observed": near.get("observed_maximum_minutes"),
+        "near_selected_limit": near.get("selected_limit_minutes"), "near_excess": near.get("excess_minutes"),
+        "near_point": near.get("point"),
+        "far_status": far.get("status"), "far_observed": far.get("observed_maximum_minutes"),
+        "far_selected_limit": far.get("selected_limit_minutes"), "far_excess": far.get("excess_minutes"),
+        "far_point": far.get("point"),
+        "blocker_count": len(v.get("blockers") or []), "warning_count": len(v.get("warnings") or []),
+    })
+
+def _legal_judgement_debug_summary(v):
+    v = v if isinstance(v, dict) else {}
+    return _sanitize_for_debug({"available": v.get("available"), "complete": v.get("complete"),
+        "status": v.get("status"), "reason": v.get("reason"), "blocker_count": len(v.get("blockers") or []),
+        "legal_judgement_generated": v.get("legal_judgement_generated"),
+        "ordinance_selection_certified": v.get("ordinance_selection_certified"),
+        "permit_ready_certified": v.get("permit_ready_certified")})
+
 def _summarize_out_for_debug(out_payload):
     out_payload = out_payload or {}
     settings = out_payload.get("settings_normalized") or {}
@@ -550,6 +575,8 @@ def _summarize_out_for_debug(out_payload):
         "site_boundary_area_extraction_summary": _site_area_debug_summary(out_payload.get("site_boundary_area_extraction")),
         "site_boundary_geometry_summary": _site_geometry_debug_summary(out_payload.get("site_boundary_geometry")),
         "measurement_masks_summary": _measurement_masks_debug_summary(out_payload.get("measurement_masks")),
+        "selected_limit_comparison": _selected_limit_comparison_debug_summary(out_payload.get("selected_limit_comparison")),
+        "legal_judgement": _legal_judgement_debug_summary(out_payload.get("legal_judgement")),
         "site_boundary_skipped": bool((out_payload.get("site_boundary") or {}).get("boundary_dependent_steps_skipped", False)),
         "measurement_plane_summary": _summary_counts(out_payload.get("measurement_plane")),
         "shadow_caster_geometry_summary": _summary_counts(out_payload.get("shadow_caster_geometry")),
@@ -591,6 +618,8 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "site_boundary_summary": summary["site_boundary_summary"],
         "site_boundary_skipped": summary["site_boundary_skipped"],
         "measurement_plane_summary": summary["measurement_plane_summary"],
+        "selected_limit_comparison": summary["selected_limit_comparison"],
+        "legal_judgement": summary["legal_judgement"],
         "shadow_caster_geometry_summary": summary["shadow_caster_geometry_summary"],
         "footprint_extraction_summary": summary["footprint_extraction_summary"],
         "formal_footprint_summary": summary["formal_footprint_summary"],

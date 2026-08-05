@@ -93,6 +93,8 @@ try:
         SITE_BOUNDARY_AREA_POLICY,
         SITE_BOUNDARY_GEOMETRY_POLICY,
         MEASUREMENT_MASK_POLICY,
+        SELECTED_LIMIT_COMPARISON_POLICY,
+        LEGAL_JUDGEMENT_POLICY,
     )
     from shadow_inputs import _read_inputs, _summarize_input, _diagnose_shadow_casters, _diagnose_site_boundary
     from shadow_regulatory_presets import overlay_player_settings, resolve_regulatory_shadow_preset
@@ -115,6 +117,10 @@ try:
     from shadow_site_area_adapter import extract_site_boundary_area
     from shadow_site_geometry import build_site_boundary_geometry
     from shadow_site_masks import build_measurement_masks
+    from shadow_regulatory_comparison import (
+        build_selected_limit_comparison,
+        build_legal_judgement_skeleton,
+    )
 except BaseException:
     _IMPORT_ERROR_TEXT = traceback.format_exc()
 else:
@@ -324,6 +330,12 @@ def _build_success():
     except BaseException as exc:
         measurement_masks = {"available": False, "complete": False, "method": "point_to_area_boundary_distance_v1", "boundary_dependent_ready": False, "blockers": [{"failure_code": "measurement_masks_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": [], "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
     try:
+        selected_limit_comparison = build_selected_limit_comparison(
+            resolved_preset, measurement_masks, shadow_duration, settings_normalized)
+    except BaseException as exc:
+        selected_limit_comparison = {"available": False, "complete": False, "method": "selected_regulatory_limit_comparison_v1", "status": "undetermined", "comparison_basis": "user_selected_dynamo_player_preset", "blockers": [{"failure_code": "selected_limit_comparison_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": [], "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
+    legal_judgement = build_legal_judgement_skeleton(selected_limit_comparison)
+    try:
         shadow_preview = _build_shadow_preview(unified_shadow_slices, measurement_plane, settings_normalized)
     except BaseException:
         shadow_preview = {"enabled": False, "mode": "off", "attempted": True, "available": False, "complete": False, "partial_success": False, "unified_shadow_source_available": bool(unified_shadow_slices.get("available")), "created_element_count": 0, "deleted_element_count": 0, "created_element_ids": [], "groups": [], "warnings": ["Preview failed non-fatally; unified formal shadow output remains available."]}
@@ -339,12 +351,13 @@ def _build_success():
             [{"failure_code": "contour_preview_unhandled_exception"}],
             "warnings": ["Contour preview failed non-fatally; equal-time contour output remains available."],
             "permit_ready_certified": False}
-    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks)
+    pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks, resolved_regulatory_preset=resolved_preset, selected_limit_comparison=selected_limit_comparison, legal_judgement=legal_judgement)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
     warnings.extend(site_boundary_area_extraction.get("warnings", []))
     warnings.extend(site_boundary_geometry.get("warnings", []))
     warnings.extend(measurement_masks.get("warnings", []))
+    warnings.extend(selected_limit_comparison.get("warnings", []))
     warnings.extend(settings_normalized.get("warnings", []))
     warnings.extend(law56_2_awareness.get("warnings", []))
     warnings.extend(measurement_plane.get("warnings", []))
@@ -374,6 +387,9 @@ def _build_success():
     if site_boundary_area_extraction.get("provided") and site_boundary_area_extraction.get("complete") is not True: degraded_components.append("site_boundary_area")
     if site_boundary_area_extraction.get("complete") is True and site_boundary_geometry.get("complete") is not True: degraded_components.append("site_boundary_geometry")
     if site_boundary_geometry.get("complete") is True and measurement_masks.get("complete") is not True: degraded_components.append("measurement_masks")
+    if (resolved_preset or {}).get("comparison_ready") is True and site_boundary_geometry.get("complete") is True and measurement_masks.get("complete") is True and selected_limit_comparison.get("complete") is not True:
+        degraded_components.append("selected_limit_comparison")
+        site_boundary_degraded = True
     out_payload = {
         "success": True,
         "partial_success": site_boundary_degraded,
@@ -431,6 +447,10 @@ def _build_success():
         "site_boundary_area_extraction": site_boundary_area_extraction,
         "site_boundary_geometry": site_boundary_geometry,
         "measurement_masks": measurement_masks,
+        "selected_limit_comparison": selected_limit_comparison,
+        "selected_limit_comparison_policy": SELECTED_LIMIT_COMPARISON_POLICY,
+        "legal_judgement": legal_judgement,
+        "legal_judgement_policy": LEGAL_JUDGEMENT_POLICY,
         "site_boundary_policy": SITE_BOUNDARY_POLICY,
         "site_boundary_area_policy": SITE_BOUNDARY_AREA_POLICY,
         "site_boundary_geometry_policy": SITE_BOUNDARY_GEOMETRY_POLICY,
@@ -510,6 +530,8 @@ def _build_failure(error_text):
     unified_shadow_slices = None
     shadow_preview = None
     measurement_masks = {"available": False, "complete": False, "boundary_dependent_ready": False, "blockers": []}
+    selected_limit_comparison = {"available": False, "complete": False, "status": "undetermined", "blockers": []}
+    legal_judgement = {"available": False, "complete": False, "status": "undetermined", "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
     try:
         unit_conversion_diagnostics = _build_unit_conversion_diagnostics()
     except Exception:
@@ -590,6 +612,10 @@ def _build_failure(error_text):
         "site_boundary_area_extraction": site_boundary_area_extraction,
         "site_boundary_geometry": site_boundary_geometry,
         "measurement_masks": measurement_masks,
+        "selected_limit_comparison": selected_limit_comparison,
+        "selected_limit_comparison_policy": SELECTED_LIMIT_COMPARISON_POLICY,
+        "legal_judgement": legal_judgement,
+        "legal_judgement_policy": LEGAL_JUDGEMENT_POLICY,
         "site_boundary_policy": SITE_BOUNDARY_POLICY,
         "site_boundary_area_policy": SITE_BOUNDARY_AREA_POLICY,
         "site_boundary_geometry_policy": SITE_BOUNDARY_GEOMETRY_POLICY,
