@@ -15,6 +15,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
     site_boundary_area_ready = site_boundary_input_ready
     site_boundary_geometry_ready = (site_boundary_geometry or {}).get("complete") is True
     measurement_masks_ready = (measurement_masks or {}).get("complete") is True
+    boundary_evaluation_coverage_complete = (shadow_duration or {}).get("boundary_evaluation_coverage_complete") is True
     legal_judgement_masks_ready = False
     future_projection_ready = footprint_ready and measurement_plane_ready and settings_ready
     blockers_fp = list(((footprint_extraction or {}).get("readiness") or {}).get("blockers_for_future_footprint_polygon_generation") or [])
@@ -48,7 +49,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
                       and union.get("ready_for_duration_accumulation") is True
                       and union.get("time_slice_count") == solar.get("slice_count"))
     duration_complete = (shadow_duration or {}).get("complete") is True
-    blockers_boundary.extend(list((shadow_duration or {}).get("blockers") or []))
+    blockers_boundary.extend(list((shadow_duration or {}).get("boundary_evaluation_blockers") or []))
     blockers_boundary.extend(list((measurement_masks or {}).get("blockers") or []))
     contours_complete = (equal_time_contours or {}).get("complete") is True
     next_steps = ([] if contours_complete else (["equal-time contour generation"] if duration_complete else
@@ -74,6 +75,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "site_boundary_area_ready": site_boundary_area_ready,
         "site_boundary_geometry_ready": site_boundary_geometry_ready,
         "measurement_masks_ready": measurement_masks_ready,
+        "boundary_evaluation_coverage_complete": boundary_evaluation_coverage_complete,
         "settings_ready_for_equal_time_shadow": settings_ready,
         "formal_solar_calculation_ready": solar.get("formal_solar_calculation_ready") is True,
         "regulatory_profile_resolved": solar.get("regulatory_profile_resolved") is True,
@@ -85,7 +87,7 @@ def _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized
         "site_boundary_input_ready": site_boundary_input_ready,
         "site_boundary_ready_for_boundary_dependent_steps": site_boundary_input_ready and site_boundary_geometry_ready,
         "equal_time_shadow_calculation_ready": equal_ready,
-        "boundary_dependent_steps_ready": site_boundary_area_ready and site_boundary_geometry_ready and duration_complete and measurement_masks_ready,
+        "boundary_dependent_steps_ready": site_boundary_area_ready and site_boundary_geometry_ready and duration_complete and boundary_evaluation_coverage_complete and measurement_masks_ready,
         "formal_shadow_polygon_generation_attempted": formal_shadow_polygons is not None,
         "formal_shadow_polygon_generation_available": formal.get("available") is True,
         "formal_shadow_polygon_generation_complete": formal.get("complete") is True,

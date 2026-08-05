@@ -84,6 +84,12 @@ def build_measurement_masks(shadow_duration, site_boundary_geometry, distance_to
         return _empty("site_boundary_geometry_required")
     if not (shadow_duration or {}).get("complete"):
         return _empty("complete_shadow_duration_required")
+    if shadow_duration.get("boundary_evaluation_coverage_complete") is not True:
+        result = _empty("site_boundary_evaluation_grid_points_exceeded")
+        blockers = list(shadow_duration.get("boundary_evaluation_blockers") or [])
+        if blockers:
+            result["blockers"] = blockers
+        return result
     grid = shadow_duration.get("duration_grid") or []
     if not grid:
         return _empty("shadow_duration_grid_missing")

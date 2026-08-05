@@ -48,7 +48,7 @@ def test_disconnected_and_nonplanar_blockers():
 
 def test_masks_distance_thresholds_and_tie_break():
     g=build_site_boundary_geometry(extraction_rect())
-    dur={"complete":True,"duration_grid":[
+    dur={"complete":True,"boundary_evaluation_coverage_complete":True,"duration_grid":[
         {"x_m":10,"y_m":10,"shadow_duration_minutes":1},
         {"x_m":0,"y_m":10,"shadow_duration_minutes":2},
         {"x_m":-4.99,"y_m":10,"shadow_duration_minutes":3},
@@ -193,7 +193,7 @@ def extraction_from_points(pts):
 
 def test_masks_l_shape_distances_invalid_empty_and_nan():
     g=build_site_boundary_geometry(extraction_from_points([(0,0,0),(4,0,0),(4,2,0),(2,2,0),(2,4,0),(0,4,0)]))
-    dur={"complete":True,"duration_grid":[
+    dur={"complete":True,"boundary_evaluation_coverage_complete":True,"duration_grid":[
         {"x_m":1,"y_m":1,"shadow_duration_minutes":1},
         {"x_m":3,"y_m":3,"shadow_duration_minutes":2},
         {"x_m":5,"y_m":3,"shadow_duration_minutes":3},
@@ -202,13 +202,13 @@ def test_masks_l_shape_distances_invalid_empty_and_nan():
     m=build_measurement_masks(dur,g)
     assert m["zone_counts"]["inside_site"] == 1
     assert m["zone_counts"]["outside_0_to_5m"] == 3
-    assert build_measurement_masks({"complete":True,"duration_grid":[]}, g)["blockers"][0]["failure_code"] == "shadow_duration_grid_missing"
-    bad={"complete":True,"duration_grid":[{"x_m":math.nan,"y_m":0,"shadow_duration_minutes":0}]}
+    assert build_measurement_masks({"complete":True,"boundary_evaluation_coverage_complete":True,"duration_grid":[]}, g)["blockers"][0]["failure_code"] == "shadow_duration_grid_missing"
+    bad={"complete":True,"boundary_evaluation_coverage_complete":True,"duration_grid":[{"x_m":math.nan,"y_m":0,"shadow_duration_minutes":0}]}
     assert build_measurement_masks(bad,g)["blockers"][0]["failure_code"] == "invalid_shadow_duration_grid_point"
     assert build_measurement_masks(dur,g,distance_tolerance_m=-1)["blockers"][0]["failure_code"] == "invalid_measurement_mask_distance_tolerance"
 
 def test_readiness_valid_area_no_legacy_boundary_blocker():
-    r=_build_pipeline_readiness({}, {}, {}, shadow_duration={"complete":True}, equal_time_contours={"complete":True}, site_boundary_area_extraction={"complete":True,"blockers":[]}, site_boundary_geometry={"complete":True,"blockers":[]}, measurement_masks={"complete":True,"blockers":[]})
+    r=_build_pipeline_readiness({}, {}, {}, shadow_duration={"complete":True,"boundary_evaluation_coverage_complete":True}, equal_time_contours={"complete":True}, site_boundary_area_extraction={"complete":True,"blockers":[]}, site_boundary_geometry={"complete":True,"blockers":[]}, measurement_masks={"complete":True,"blockers":[]})
     assert r["site_boundary_area_ready"] is True
     assert r["site_boundary_geometry_ready"] is True
     assert r["site_boundary_ready_for_boundary_dependent_steps"] is True
@@ -219,13 +219,45 @@ def test_readiness_valid_area_no_legacy_boundary_blocker():
     assert r["blockers_for_legal_judgement"] == [{"failure_code":"legal_judgement_not_implemented"}]
     assert r["legal_judgement_ready"] is False
 
-def test_duration_max_grid_blocker_keeps_bounds_metadata():
+def test_duration_boundary_grid_blocker_keeps_core_complete():
     slices={"complete":True,"slices":[{"complete":True,"true_solar_time":"08:00","polygons":[{"role":"outer","points_m":[{"x":100,"y":100},{"x":101,"y":100},{"x":100,"y":101}]}]},{"complete":True,"true_solar_time":"08:30","polygons":[{"role":"outer","points_m":[{"x":100,"y":100},{"x":101,"y":100},{"x":100,"y":101}]}]}]}
     settings={"normalized":{"grid_resolution_m":1,"analysis_margin_m":0,"max_duration_grid_points":10}}
     d=build_shadow_duration(slices, settings, site_boundary_geometry=build_site_boundary_geometry(extraction_rect()))
+    assert d["complete"] is True
+    assert d["blockers"] == []
+    assert d["site_boundary_bounds_included"] is False
+    assert d["boundary_evaluation_coverage_complete"] is False
+    assert d["boundary_evaluation_blockers"][0]["failure_code"] == "site_boundary_evaluation_grid_points_exceeded"
+    assert d["boundary_evaluation_blockers"][0]["automatic_accuracy_fallback_used"] is False
+    assert d["core_bounds_preflight"]["within_point_limit"] is True
+    assert d["boundary_bounds_preflight"]["within_point_limit"] is False
+    assert build_measurement_masks(d, build_site_boundary_geometry(extraction_rect()))["complete"] is False
+
+def test_core_grid_blocker_still_blocks_duration():
+    slices={"complete":True,"slices":[{"complete":True,"true_solar_time":"08:00","polygons":[{"role":"outer","points_m":[{"x":0,"y":0},{"x":100,"y":0},{"x":0,"y":100}]}]},{"complete":True,"true_solar_time":"08:30","polygons":[{"role":"outer","points_m":[{"x":0,"y":0},{"x":100,"y":0},{"x":0,"y":100}]}]}]}
+    settings={"normalized":{"grid_resolution_m":1,"analysis_margin_m":0,"max_duration_grid_points":10}}
+    d=build_shadow_duration(slices, settings)
     assert d["complete"] is False
     assert d["blockers"][0]["failure_code"] == "max_duration_grid_points_exceeded"
+    assert d["core_bounds_preflight"]["within_point_limit"] is False
+
+def shadow_slices_near_origin():
+    return {"complete": True, "slices": [
+        {"complete": True, "true_solar_time": "08:00", "polygons": [{"role": "outer", "points_m": [{"x": 0, "y": 0}, {"x": 1, "y": 0}, {"x": 0, "y": 1}]}]},
+        {"complete": True, "true_solar_time": "08:30", "polygons": [{"role": "outer", "points_m": [{"x": 0, "y": 0}, {"x": 1, "y": 0}, {"x": 0, "y": 1}]}]},
+    ]}
+
+def test_small_area_uses_boundary_bounds_and_masks_complete():
+    d=build_shadow_duration(shadow_slices_near_origin(), {"normalized":{"grid_resolution_m":10,"analysis_margin_m":0,"max_duration_grid_points":1000}}, site_boundary_geometry=build_site_boundary_geometry(extraction_rect()))
+    assert d["complete"] is True
     assert d["site_boundary_bounds_included"] is True
-    assert d["bounds_m"]["min_x"] <= -10
-    assert d["requested_grid_point_count"] is not None
-    assert d["maximum_grid_point_count"] == 10
+    assert d["boundary_evaluation_coverage_complete"] is True
+    assert build_measurement_masks(d, build_site_boundary_geometry(extraction_rect()))["complete"] is True
+
+def test_far_away_area_boundary_over_limit_core_success():
+    far=build_site_boundary_geometry(extraction_from_points([(1000,1000,0),(1020,1000,0),(1020,1020,0),(1000,1020,0)]))
+    d=build_shadow_duration(shadow_slices_near_origin(), {"normalized":{"grid_resolution_m":1,"analysis_margin_m":0,"max_duration_grid_points":100}}, site_boundary_geometry=far)
+    assert d["complete"] is True
+    assert d["core_bounds_preflight"]["within_point_limit"] is True
+    assert d["boundary_bounds_preflight"]["within_point_limit"] is False
+    assert d["boundary_evaluation_coverage_complete"] is False
