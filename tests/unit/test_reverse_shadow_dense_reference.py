@@ -25,17 +25,21 @@ def test_15_minute_envelope_does_not_exceed_test_only_dense_reference():
     dense_reference = build_true_solar_sun_ray_fan(settings, 570, 870, 1)
     assert production["complete"] and dense_reference["complete"]
 
-    measurements = ({"x_m": 0.0, "y_m": 0.0},
-                    {"x_m": 12.0, "y_m": -7.0},
-                    {"x_m": -9.0, "y_m": 15.0})
+    measurement = {"x_m": 0.0, "y_m": 0.0}
+    test_minutes = (607, 673, 728, 793, 847)
+    horizontal_distances_m = (10.0, 25.0, 50.0)
+    production_times = {sample["true_solar_minutes"] for sample in production["samples"]}
+    dense_times = {sample["true_solar_minutes"] for sample in dense_reference["samples"]}
     reference_by_time = {sample["true_solar_minutes"]: sample
                          for sample in dense_reference["samples"]}
     comparisons = []
-    for measurement in measurements:
-        for minute in (600, 660, 720, 780, 840):
-            horizontal = reference_by_time[minute]["sun_horizontal_model"]
-            site_point = (measurement["x_m"] + 20.0 * horizontal["x"],
-                          measurement["y_m"] + 20.0 * horizontal["y"])
+    for minute in test_minutes:
+        assert minute in dense_times
+        assert minute not in production_times
+        horizontal = reference_by_time[minute]["sun_horizontal_model"]
+        for distance_m in horizontal_distances_m:
+            site_point = (measurement["x_m"] + distance_m * horizontal["x"],
+                          measurement["y_m"] + distance_m * horizontal["y"])
             coarse = _constraint(site_point, measurement, production, 4.0)
             dense = _constraint(site_point, measurement, dense_reference, 4.0)
             assert coarse is not None and dense is not None
