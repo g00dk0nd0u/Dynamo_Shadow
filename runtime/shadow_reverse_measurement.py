@@ -56,15 +56,21 @@ def build_reverse_shadow_measurement_points(site_distance_contours, spacing_m):
                              min(p[1] for p in points), int(contour.get("contour_index", 0)), points))
     prepared.sort(key=lambda x: x[:5])
     global_index = 0
+    seen_by_zone = {"near": set(), "far": set()}
+    duplicate_tolerance = 1e-8
     for distance, _, _, _, contour_index, points in prepared:
-        zone = base["near" if distance == 5.0 else "far"]
+        zone_name = "near" if distance == 5.0 else "far"
+        zone = base[zone_name]
         zone["contour_count"] += 1
         samples, perimeter = _resample(points, spacing)
         for x, y, along in samples:
+            key = (round(x / duplicate_tolerance), round(y / duplicate_tolerance))
+            if key in seen_by_zone[zone_name]:
+                continue
+            seen_by_zone[zone_name].add(key)
             item = {"measurement_point_index": global_index, "contour_index": contour_index,
                     "distance_along_contour_m": along, "x_m": x, "y_m": y}
-            if not zone["points"] or math.hypot(x-zone["points"][-1]["x_m"], y-zone["points"][-1]["y_m"]) > 1e-8:
-                zone["points"].append(item); global_index += 1
+            zone["points"].append(item); global_index += 1
         zone["point_count"] = len(zone["points"])
     base["total_point_count"] = global_index
     if not base["near"]["point_count"] or not base["far"]["point_count"]:

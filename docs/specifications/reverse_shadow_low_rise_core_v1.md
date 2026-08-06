@@ -22,7 +22,7 @@ Adjacent sun rays define planar facets; the solver does not linearly interpolate
 
 ## Height field and mesh
 
-The deterministic row-major field records site classification, nullable bounded height, and the governing zone, measurement point, facet, and times. The JSON-safe top-surface mesh references field grid indices rather than duplicating vertices. A fully inside, fully bounded cell becomes two triangles on one fixed diagonal. Partial-boundary and unbounded cells are omitted; singly used triangle edges form the top-surface boundary. Plan area and volume are coarse reference summaries, not statutory maxima.
+The deterministic row-major field records site classification, nullable bounded height, governing zone, measurement point, facet, times, actual horizontal distance, and the 5 m/10 m measurement-line distance. The JSON-safe top-surface mesh references field grid indices rather than duplicating vertices. A fully inside, fully bounded cell becomes two triangles on one fixed diagonal only when no site-boundary segment crosses its interior. Partial-boundary and unbounded cells are omitted. Oriented triangle boundary edges are stitched into deterministic closed index loops for future side-face generation. Plan area and volume are coarse reference summaries, not statutory maxima. Empty bounded fields, empty meshes, and invalid candidate volumes are failures rather than complete results.
 
 Fixed guards stop oversized site grids, height grids, measurement sets, constraint checks, and meshes. They never coarsen the requested profile automatically. All certification flags remain `false`, including `permit_ready_certified=false`.
 

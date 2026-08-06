@@ -79,6 +79,59 @@ def _empty():
 def _recommend(preset): return {"high": "standard", "standard": "rough", "rough": None}.get(preset)
 
 
+def _cell_crossed_by_boundary(min_x, min_y, max_x, max_y, polygon, tolerance=1e-9):
+    """Conservatively detect a site segment passing through the open cell interior."""
+    for index, start in enumerate(polygon):
+        end = polygon[(index + 1) % len(polygon)]
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        lower, upper = 0.0, 1.0
+        for p, q in ((-dx, start[0]-min_x), (dx, max_x-start[0]),
+                     (-dy, start[1]-min_y), (dy, max_y-start[1])):
+            if abs(p) <= tolerance:
+                if q < -tolerance: lower, upper = 1.0, 0.0; break
+                continue
+            ratio = q / p
+            if p < 0: lower = max(lower, ratio)
+            else: upper = min(upper, ratio)
+            if lower > upper + tolerance: break
+        if lower <= upper + tolerance:
+            midpoint = (lower + upper) / 2.0
+            x, y = start[0] + midpoint*dx, start[1] + midpoint*dy
+            if min_x+tolerance < x < max_x-tolerance and min_y+tolerance < y < max_y-tolerance:
+                return True
+    return False
+
+
+def _boundary_loops(directed_edges, grid):
+    """Stitch oriented triangle boundary edges into deterministic closed loops."""
+    outgoing = {}
+    for start, end in directed_edges:
+        outgoing.setdefault(start, []).append(end)
+    if any(len(values) != 1 for values in outgoing.values()):
+        return None
+    unused = set(directed_edges); loops = []
+    while unused:
+        first = min(unused, key=lambda edge: (grid[edge[0]]["x_m"], grid[edge[0]]["y_m"], edge))
+        vertices = [first[0]]; current = first[0]
+        for _ in range(len(directed_edges) + 1):
+            nxt = outgoing.get(current, [None])[0]
+            edge = (current, nxt)
+            if nxt is None or edge not in unused: return None
+            unused.remove(edge); vertices.append(nxt); current = nxt
+            if current == vertices[0]: break
+        if vertices[-1] != vertices[0]: return None
+        area = 0.5 * sum(grid[a]["x_m"]*grid[b]["y_m"] - grid[b]["x_m"]*grid[a]["y_m"]
+                         for a, b in zip(vertices, vertices[1:]))
+        loops.append({"loop_index": 0, "closed": True, "vertex_grid_indices": vertices,
+                      "signed_plan_area_m2": area,
+                      "orientation": "counter_clockwise" if area > 0 else "clockwise"})
+    loops.sort(key=lambda loop: (-abs(loop["signed_plan_area_m2"]),
+                                grid[loop["vertex_grid_indices"][0]]["x_m"],
+                                grid[loop["vertex_grid_indices"][0]]["y_m"]))
+    for index, loop in enumerate(loops): loop["loop_index"] = index
+    return loops
+
+
 def _constraint(point, measurement, fan, measurement_height):
     dx, dy = point[0]-measurement["x_m"], point[1]-measurement["y_m"]
     az = math.degrees(math.atan2(dx, dy)) % 360.0
@@ -94,7 +147,8 @@ def _constraint(point, measurement, fan, measurement_height):
     value = evaluate_adjacent_ray_facet((measurement["x_m"], measurement["y_m"]), point, r0, r1)
     if value is None: return None
     value.update({"height": max(0.0, measurement_height+value["delta_z_m"]), "facet": facet,
-                  "start": samples[facet]["true_solar_minutes"], "end": samples[facet+1]["true_solar_minutes"]})
+                  "start": samples[facet]["true_solar_minutes"], "end": samples[facet+1]["true_solar_minutes"],
+                  "horizontal_distance_m": math.hypot(dx, dy)})
     return value
 
 
@@ -146,10 +200,16 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
     inside_count = sum(v is not False for v in classifications)
     checks = inside_count*measurements["total_point_count"]
     estimated_triangles = 2*(nx-1)*(ny-1)
-    if checks > MAX_REVERSE_CONSTRAINT_CHECKS or estimated_triangles > MAX_REVERSE_TOP_SURFACE_TRIANGLES:
-        result["blockers"].append({"failure_code": "reverse_shadow_complexity_limit_exceeded", "requested_preset": requested,
-                                   "recommended_preset": _recommend(requested), "estimated_constraint_checks": checks,
-                                   "maximum_constraint_checks": MAX_REVERSE_CONSTRAINT_CHECKS}); return result
+    if checks > MAX_REVERSE_CONSTRAINT_CHECKS:
+        result["blockers"].append({"failure_code": "reverse_shadow_complexity_limit_exceeded", "limit_type": "constraint_checks",
+                                   "requested_preset": requested, "recommended_preset": _recommend(requested),
+                                   "estimated_constraint_checks": checks, "maximum_constraint_checks": MAX_REVERSE_CONSTRAINT_CHECKS})
+    if estimated_triangles > MAX_REVERSE_TOP_SURFACE_TRIANGLES:
+        result["blockers"].append({"failure_code": "reverse_shadow_complexity_limit_exceeded", "limit_type": "top_surface_triangles",
+                                   "requested_preset": requested, "recommended_preset": _recommend(requested),
+                                   "estimated_top_surface_triangle_count": estimated_triangles,
+                                   "maximum_top_surface_triangles": MAX_REVERSE_TOP_SURFACE_TRIANGLES})
+    if result["blockers"]: return result
     try: measurement_height = float(measurement_plane["measurement_height_m"])
     except Exception:
         try: measurement_height = float(measurement_plane["elevation_m"])-float(measurement_plane["average_ground_level_elevation_m"])
@@ -161,7 +221,8 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
                 "inside_site": inside is not False, "on_site_boundary": inside is None, "bounded": False,
                 "height_limit_m": None, "governing_zone": None, "governing_measurement_point_index": None,
                 "governing_facet_index": None, "governing_true_solar_start_minutes": None,
-                "governing_true_solar_end_minutes": None, "governing_distance_m": None}
+                "governing_true_solar_end_minutes": None, "governing_distance_m": None,
+                "governing_horizontal_distance_m": None, "governing_measurement_line_distance_m": None}
         best = None
         if inside is not False:
             for zone_name in ("near", "far"):
@@ -172,15 +233,20 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
             value, zone_name, mp = best; item.update({"bounded": True, "height_limit_m": value["height"],
                 "governing_zone": zone_name, "governing_measurement_point_index": mp["measurement_point_index"],
                 "governing_facet_index": value["facet"], "governing_true_solar_start_minutes": value["start"],
-                "governing_true_solar_end_minutes": value["end"], "governing_distance_m": zones[zone_name]["distance_m"]})
+                "governing_true_solar_end_minutes": value["end"],
+                "governing_horizontal_distance_m": value["horizontal_distance_m"],
+                "governing_distance_m": value["horizontal_distance_m"],
+                "governing_measurement_line_distance_m": zones[zone_name]["distance_m"]})
         grid.append(item)
-    triangles, edge_counts, omitted_boundary, omitted_unbounded, area, volume = [], {}, 0, 0, 0.0, 0.0
+    triangles, edge_counts, directed_counts, omitted_boundary, omitted_unbounded, area, volume = [], {}, {}, 0, 0, 0.0, 0.0
     for iy in range(ny-1):
         for ix in range(nx-1):
             ids = [iy*nx+ix, iy*nx+ix+1, (iy+1)*nx+ix+1, (iy+1)*nx+ix]
             pts = [grid[i] for i in ids]
             center_inside = _inside((ox+(ix+.5)*resolution, oy+(iy+.5)*resolution), polygon, 1e-8) is not False
-            if not all(p["inside_site"] for p in pts) or not center_inside: omitted_boundary += 1; continue
+            crossed = _cell_crossed_by_boundary(pts[0]["x_m"], pts[0]["y_m"],
+                                                pts[2]["x_m"], pts[2]["y_m"], polygon)
+            if not all(p["inside_site"] for p in pts) or not center_inside or crossed: omitted_boundary += 1; continue
             if not all(p["bounded"] and math.isfinite(p["height_limit_m"]) for p in pts): omitted_unbounded += 1; continue
             for vertices in ((ids[0], ids[1], ids[2]), (ids[0], ids[2], ids[3])):
                 triangles.append({"triangle_index": len(triangles), "cell_ix": ix, "cell_iy": iy,
@@ -189,7 +255,11 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
                 volume += resolution*resolution/2.0*sum(grid[v]["height_limit_m"] for v in vertices)/3.0
                 for a, b in zip(vertices, (vertices[1], vertices[2], vertices[0])):
                     edge = tuple(sorted((a, b))); edge_counts[edge] = edge_counts.get(edge, 0)+1
+                    directed_counts[(a, b)] = directed_counts.get((a, b), 0)+1
     edges = [{"start_grid_index": a, "end_grid_index": b} for (a,b), uses in sorted(edge_counts.items()) if uses == 1]
+    directed_boundary = [(a, b) for (a, b), uses in directed_counts.items()
+                         if uses > directed_counts.get((b, a), 0)]
+    boundary_loops = _boundary_loops(directed_boundary, grid) if directed_boundary else []
     bounded = [p["height_limit_m"] for p in grid if p["bounded"]]
     result["complexity"] = {"site_distance_grid_point_count": contours["grid_spec"]["point_count"],
         "height_field_grid_point_count": count, "inside_site_height_grid_point_count": inside_count,
@@ -200,6 +270,7 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
         "bounded_grid_point_count": len(bounded), "unbounded_grid_point_count": inside_count-len(bounded),
         "minimum_bounded_height_m": min(bounded) if bounded else None, "maximum_bounded_height_m": max(bounded) if bounded else None}
     result["top_surface_mesh"] = {"vertices_source": "height_field.grid_points", "triangles": triangles, "boundary_edges": edges,
+        "top_surface_boundary_loops": boundary_loops or [],
         "top_surface_triangle_count": len(triangles), "top_surface_vertex_count": len(set(v for t in triangles for v in t["vertex_grid_indices"])),
         "top_surface_boundary_edge_count": len(edges), "omitted_boundary_cell_count": omitted_boundary,
         "omitted_unbounded_cell_count": omitted_unbounded, "bounded_candidate_plan_area_m2": area,
@@ -209,5 +280,17 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
         "sun_time_step_minutes": accuracy["sun_time_step_minutes"], "sun_cone_facets": "adjacent_ray_planar_facets",
         "conservative_endpoint_altitude_clamp": True, "partial_boundary_cells_omitted": True,
         "unbounded_cells_omitted": True, "exact_statutory_offset_used": False}
+    if not bounded:
+        result["blockers"].append({"failure_code": "reverse_shadow_no_bounded_height_points"})
+    if not triangles or area <= 0.0:
+        result["blockers"].append({"failure_code": "reverse_shadow_top_surface_mesh_empty"})
+    if triangles and boundary_loops is None:
+        result["blockers"].append({"failure_code": "reverse_shadow_boundary_loop_construction_failed"})
+    aggregates = [area, volume] + bounded
+    if not all(math.isfinite(value) for value in aggregates) or volume <= 0.0:
+        result["blockers"].append({"failure_code": "reverse_shadow_candidate_volume_invalid"})
+    if result["blockers"]:
+        result.update({"available": False, "complete": False})
+        return result
     result.update({"available": True, "complete": True})
     return result
