@@ -95,3 +95,21 @@ F. No Area selected
 - Confirm core shadow calculation continues.
 - Confirm site result preview is skipped.
 - Confirm old SiteResultPreview elements are not accidentally deleted.
+
+## Self-contained renamed bundle smoke test (pending)
+
+These checks are required before or after merge on Revit 2024.3 with Dynamo 3.3, but are not a PR creation prerequisite. The verification has not yet been performed.
+
+1. Run the repository copy at `runtime/Shadow.dyn`.
+2. Copy the complete `runtime/` directory to another location.
+3. Rename the copied directory to `日影図 社内試用版`.
+4. Run the renamed copy's `Shadow.dyn` from Dynamo Player.
+5. Confirm no `script.py not found` error is reported.
+6. Confirm no local shadow-module import error is reported.
+7. Confirm the forward-shadow calculation completes as before.
+8. Confirm equal-time contours are displayed.
+9. Confirm the 5 m and 10 m contours are displayed.
+10. Confirm the near and far maximum-point markers are displayed.
+11. Rerun and confirm preview elements do not multiply.
+
+Record the Revit machine, Dynamo version, model, results, and any warnings separately. Until that record exists, Revit runtime verification remains pending.

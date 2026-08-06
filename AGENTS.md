@@ -32,8 +32,8 @@ Future work should keep the repository aligned with three layers:
 
 ### Dynamo Host
 
-- Consists of `Shadow.dyn`, `dynamo_loader.py`, Dynamo Player inputs, `IN[]` / `INPUTS` mapping, `script.py` orchestration, and `OUT` inspection.
-- `script.py` should remain an orchestration layer. Put new processing in focused modules rather than expanding `script.py`.
+- Consists of `runtime/Shadow.dyn`, `runtime/dynamo_loader.py`, Dynamo Player inputs, `IN[]` / `INPUTS` mapping, `runtime/script.py` orchestration, and `OUT` inspection.
+- `runtime/script.py` should remain an orchestration layer. Put new processing in focused modules rather than expanding `runtime/script.py`.
 - Do not add new Dynamo Player inputs, change Python Node ports, or change graph structure without explicit approval.
 
 ## File roles
@@ -48,10 +48,10 @@ Future work should keep the repository aligned with three layers:
 
 ### dynamo_loader.py
 
-- Bridge layer between Dynamo and `script.py`.
+- Bridge layer between Dynamo and `runtime/script.py`.
 - Resolves workspace paths.
 - Maps `IN[]` to named `INPUTS`.
-- Executes `script.py`.
+- Executes `runtime/script.py`.
 - Returns diagnostic output when something fails.
 
 ### script.py
@@ -128,8 +128,8 @@ Future work should keep the repository aligned with three layers:
 - Keep changes small and focused.
 - Prefer one concern per PR.
 - Do not mix Dynamo graph edits with calculation logic edits unless explicitly requested.
-- If changing `Shadow.dyn`, explain exactly what changed and confirm graph structure was preserved.
-- If changing `script.py`, do not change Dynamo graph files unless required.
+- If changing `runtime/Shadow.dyn`, explain exactly what changed and confirm graph structure was preserved.
+- If changing `runtime/script.py`, do not change Dynamo graph files unless required.
 - If adding generated outputs, logs, backups, or exports, keep them out of Git.
 - Run lightweight syntax checks for Python files when possible.
 
@@ -198,8 +198,8 @@ Future work should keep the repository aligned with three layers:
 Before opening a PR, confirm:
 
 - [ ] The change is limited to the requested scope.
-- [ ] `Shadow.dyn` was not changed unless required.
-- [ ] `script.py` was not changed unless required.
+- [ ] `runtime/Shadow.dyn` was not changed unless required.
+- [ ] `runtime/script.py` was not changed unless required.
 - [ ] No fixed absolute paths were added.
 - [ ] `Shadow - Copy.json` was not created.
 - [ ] Generated files and logs were not committed.
@@ -245,12 +245,12 @@ For PRs containing geometry processing, also confirm:
 
 ## Module split rules
 
-- Keep `script.py` focused on orchestration, Dynamo import fallback, and top-level `OUT` construction.
+- Keep `runtime/script.py` focused on orchestration, Dynamo import fallback, and top-level `OUT` construction.
 - Keep policies, safe utilities, input diagnostics, settings normalization, measurement plane diagnostics, geometry diagnostics, footprint diagnostics, site geometry validation, site masks, distance contours, comparison, preview, and readiness checks in focused `shadow_*.py` modules.
 - Module split PRs must not add new calculation features or change diagnostic semantics.
 - Do not change the top-level `OUT` structure, warning semantics, readiness logic, or policy content during module-only refactors.
-- Do not touch `Shadow.dyn`, the Python Node bootstrap, or `dynamo_loader.py` for module-only refactors.
-- Avoid circular imports; `shadow_revit_api.py` must remain the lowest optional Revit API import layer.
+- Do not touch `runtime/Shadow.dyn`, the Python Node bootstrap, or `runtime/dynamo_loader.py` for module-only refactors.
+- Avoid circular imports; `runtime/shadow_revit_api.py` must remain the lowest optional Revit API import layer.
 - Keep Revit API imports optional so normal Python `py_compile` and smoke tests run without Revit.
 - Do not add `Autodesk.Revit.DB` imports to Shadow Core modules.
 
@@ -263,7 +263,7 @@ For PRs containing geometry processing, also confirm:
 - Do not log raw Revit objects, client/project names, personal paths, or huge geometry payloads.
 - Debug logging must be disabled by default.
 - Debug log write failure must not make diagnostics fail.
-- Do not change `Shadow.dyn` or `dynamo_loader.py` for debug logging unless explicitly requested.
+- Do not change `runtime/Shadow.dyn` or `runtime/dynamo_loader.py` for debug logging unless explicitly requested.
 
 ## Debug log privacy blocker rules
 
@@ -304,3 +304,16 @@ For PRs containing geometry processing, also confirm:
 - Do not add a six-hour contour to statutory-time presets, but preserve technical generation of explicitly requested 360–480 minute contours.
 - Longitude does not directly affect calculations in true-solar-time mode.
 - Player exposes Fast and Standard accuracy choices. High accuracy remains an internal / advanced compatibility preset, not a public Player choice.
+
+## Repository layout rules
+
+- Production runtime files belong under `runtime/`.
+- `runtime/` is both the source of truth and the directly distributable bundle.
+- Do not duplicate production Python under the repository root, `src/`, `dist/`, or `package/`.
+- New `shadow_*.py` runtime modules belong under `runtime/`.
+- Tests belong under `tests/`, and repository checks belong under `tools/`.
+- User documentation belongs under `docs/user/`; runtime QA documentation belongs under `docs/runtime/`; development notes belong under `docs/development/`; specifications belong under `docs/specifications/`.
+- Runtime code must not import from `tests/` or `tools/`.
+- Do not require the physical folder name `runtime`; distributed copies may be renamed.
+- Keep `Shadow.dyn`, `dynamo_loader.py`, `script.py`, and all local runtime modules together in the same folder.
+- Future reverse-shadow runtime code should share this bundle and common modules unless an explicit product or repository split is approved.

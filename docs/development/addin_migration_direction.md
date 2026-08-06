@@ -45,48 +45,48 @@ Shadow Core must not import `Autodesk.Revit.DB`, must not hold raw Revit objects
 
 The Dynamo Host layer owns the current execution host:
 
-- `Shadow.dyn`;
-- `dynamo_loader.py`;
+- `runtime/Shadow.dyn`;
+- `runtime/dynamo_loader.py`;
 - `IN[]` / `INPUTS` mapping;
 - Dynamo Player inputs;
-- `script.py` orchestration;
+- `runtime/script.py` orchestration;
 - top-level `OUT` inspection.
 
-`script.py` is currently the orchestrator. It should remain focused on input orchestration, calls to focused modules, failure handling, and `OUT` construction rather than becoming a calculation module.
+`runtime/script.py` is currently the orchestrator. It should remain focused on input orchestration, calls to focused modules, failure handling, and `OUT` construction rather than becoming a calculation module.
 
 ## Current module classification
 
 Current Revit Adapter candidates include:
 
-- `shadow_revit_api.py`
-- `shadow_geometry.py`
-- `shadow_footprint.py`
-- `shadow_formal_projection.py`
-- `shadow_union.py`
-- `shadow_site_area_adapter.py`
-- `shadow_preview.py`
-- `shadow_contour_preview.py`
-- Revit-facing parts of `shadow_units.py`
+- `runtime/shadow_revit_api.py`
+- `runtime/shadow_geometry.py`
+- `runtime/shadow_footprint.py`
+- `runtime/shadow_formal_projection.py`
+- `runtime/shadow_union.py`
+- `runtime/shadow_site_area_adapter.py`
+- `runtime/shadow_preview.py`
+- `runtime/shadow_contour_preview.py`
+- Revit-facing parts of `runtime/shadow_units.py`
 
 Current Shadow Core candidates include:
 
-- `shadow_sun.py`
-- `shadow_projection.py`
-- `shadow_duration.py`
-- `shadow_contours.py`
-- `shadow_site_geometry.py`
-- `shadow_site_masks.py`
-- `shadow_site_distance_contours.py`
-- `shadow_regulatory_presets.py`
-- `shadow_regulatory_comparison.py`
-- `shadow_accuracy_presets.py`
+- `runtime/shadow_sun.py`
+- `runtime/shadow_projection.py`
+- `runtime/shadow_duration.py`
+- `runtime/shadow_contours.py`
+- `runtime/shadow_site_geometry.py`
+- `runtime/shadow_site_masks.py`
+- `runtime/shadow_site_distance_contours.py`
+- `runtime/shadow_regulatory_presets.py`
+- `runtime/shadow_regulatory_comparison.py`
+- `runtime/shadow_accuracy_presets.py`
 - JSON-safe policy, settings, readiness, debug, and utility helpers that do not require Revit API imports
 
 Current Dynamo Host files include:
 
-- `Shadow.dyn`
-- `dynamo_loader.py`
-- `script.py`
+- `runtime/Shadow.dyn`
+- `runtime/dynamo_loader.py`
+- `runtime/script.py`
 
 This classification is a migration aid, not a code ownership lock. The important boundary is that Revit API objects and internal units stop at the adapter boundary, while Shadow Core remains portable and meter-based.
 
@@ -149,6 +149,6 @@ The following are also intentionally deferred because Revit実機 results and fi
 - Golden output tests;
 - floating-point canonicalization framework;
 - unit-layer module splits;
-- `script.py` splitting;
+- `runtime/script.py` splitting;
 - legal profile schema;
 - report schema.

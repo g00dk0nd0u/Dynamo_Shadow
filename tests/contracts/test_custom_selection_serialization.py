@@ -12,7 +12,7 @@ PYTHON_IN7_ID = "a4444444444444444444444444444444"
 
 
 def _graph():
-    return json.loads((ROOT / "Shadow.dyn").read_text(encoding="utf-8"))
+    return json.loads((ROOT / "runtime" / "Shadow.dyn").read_text(encoding="utf-8"))
 
 
 def _custom_selection_nodes(graph):

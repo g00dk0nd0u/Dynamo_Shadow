@@ -71,7 +71,7 @@ Player values take priority over settings JSON, which takes priority over Python
 
 ## Preview settings
 
-Preview is visualization-only. The policy default is `preview_mode="off"`; the current `Shadow.dyn` initial setting is `preview_mode="replace"`. The settings JSON input accepts, for example:
+Preview is visualization-only. The policy default is `preview_mode="off"`; the current `runtime/Shadow.dyn` initial setting is `preview_mode="replace"`. The settings JSON input accepts, for example:
 
 ```json
 {"preview_mode": "off"}
@@ -93,21 +93,22 @@ Future development should keep three boundaries clear:
 
 - **Revit Adapter**: reads Revit elements and placed Areas, preserves native Revit geometry where needed, performs formal Revit shadow projection and Revit-native Boolean / union work, owns Revit preview/write behavior, and converts Revit internal units.
 - **Shadow Core**: works on meter-based JSON-safe data, performs solar calculation, duration accumulation, equal-time contours, site geometry validation, distance masks, 5 m / 10 m distance contour data, selected limit comparison, and future reverse-shadow algorithms. Shadow Core must not import `Autodesk.Revit.DB` or operate on Revit internal units.
-- **Dynamo Host**: consists of `Shadow.dyn`, `dynamo_loader.py`, Player inputs, `IN[]` / `INPUTS` mapping, `script.py` orchestration, and `OUT` inspection.
+- **Dynamo Host**: consists of `runtime/Shadow.dyn`, `runtime/dynamo_loader.py`, Player inputs, `IN[]` / `INPUTS` mapping, `runtime/script.py` orchestration, and `OUT` inspection.
 
 A future C# Revit add-in is a development direction, not current product scope. The Python/Dynamo implementation should remain the reference implementation until Revit runtime behavior, display outputs, external software comparisons, reverse-shadow specifications, and fixed Golden fixtures are stable enough to justify migration.
 
 ## Project structure
 
-- `Shadow.dyn` is the Dynamo graph and contains the Python Node bootstrap.
-- `dynamo_loader.py` resolves workspace paths, maps Dynamo `IN[]` values to named `INPUTS`, runs `script.py`, and returns diagnostics.
-- `script.py` orchestrates imports, fallback behavior outside Dynamo, and top-level `OUT` construction.
-- `shadow_formal_projection.py`, `shadow_union.py`, `shadow_site_area_adapter.py`, `shadow_contour_preview.py`, and other Revit-facing modules act as current Revit Adapter pieces.
-- `shadow_sun.py`, `shadow_duration.py`, `shadow_contours.py`, `shadow_site_geometry.py`, `shadow_site_masks.py`, `shadow_site_distance_contours.py`, `shadow_regulatory_comparison.py`, and related pure-Python modules act as current Shadow Core pieces.
-- `shadow_accuracy_presets.py` resolves Player accuracy presets without changing legacy pure-Python defaults.
-- `tests/fixtures/debug_logs/` contains fixed, sanitized samples used by the privacy check; runtime output under `debug_logs/` remains ignored.
-- `docs/` groups user guidance, runtime notes, specifications, and development notes by role.
-- `tests/` groups unit, integration, and contract suites; fixed test data remains under `tests/fixtures/`.
+- `runtime/` is both the source of truth for development and the complete, directly distributable Dynamo/Revit runtime bundle. No separate `dist` copy is maintained.
+- `runtime/Shadow.dyn` is the Dynamo Player graph and contains the Python Node bootstrap.
+- `runtime/dynamo_loader.py` is the same-folder loader that maps Dynamo `IN[]` values to named `INPUTS` and runs `runtime/script.py`.
+- `runtime/script.py` is the orchestration entry for imports, fallback behavior outside Dynamo, and top-level `OUT` construction.
+- `runtime/shadow_*.py` contains the Revit Adapter, Shadow Core, and supporting runtime modules.
+- `tests/` contains development-only unit, integration, and contract tests; fixed test data remains under `tests/fixtures/`.
+- `tools/` contains development-only repository checks and is not part of the runtime distribution.
+- `docs/` contains user guidance, runtime QA notes, specifications, and development notes under their corresponding subdirectories.
+
+To run the graph, open `runtime/Shadow.dyn` with Dynamo Player. The `runtime/` directory alone may be copied for distribution and renamed after copying; keep `Shadow.dyn`, the loader, the script, and every local module together in that one directory. Future forward-shadow and reverse-shadow workflows should share this runtime bundle and common modules rather than creating duplicate distributions.
 
 ## Debug logs
 
@@ -152,4 +153,4 @@ Complete `unified_shadow_slices` can be sampled on a bounded meter grid and inte
 
 ## Equal-time contours v1
 
-`shadow_contours.py` reconstructs the row-major duration grid from `grid_spec`, resolves ambiguous Marching Squares cases deterministically from the cell mean, removes duplicate or zero-length segments, and joins segments into ordered open or closed polylines. Explicit `equal_time_contour_levels_minutes` take priority; otherwise levels use `equal_time_contour_interval_minutes=60`. `max_equal_time_contour_levels=100` bounds output work. These are technical/diagnostic levels, not statutory thresholds, and legal judgement remains unimplemented.
+`runtime/shadow_contours.py` reconstructs the row-major duration grid from `grid_spec`, resolves ambiguous Marching Squares cases deterministically from the cell mean, removes duplicate or zero-length segments, and joins segments into ordered open or closed polylines. Explicit `equal_time_contour_levels_minutes` take priority; otherwise levels use `equal_time_contour_interval_minutes=60`. `max_equal_time_contour_levels=100` bounds output work. These are technical/diagnostic levels, not statutory thresholds, and legal judgement remains unimplemented.

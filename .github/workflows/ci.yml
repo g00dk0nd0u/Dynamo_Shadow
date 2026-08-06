@@ -21,7 +21,8 @@ jobs:
       - name: Run tests and repository checks
         run: |
           python -m pytest -q
-          python -m compileall -q . -x '(^|[\\/])(\.git|\.pytest_cache|debug_logs)([\\/]|$)'
-          python -m json.tool Shadow.dyn > /dev/null
+          python tools/check_runtime_bundle.py
+          python -m compileall -q runtime tests tools -x '(^|[\\/])(\.git|\.pytest_cache|debug_logs)([\\/]|$)'
+          python -m json.tool runtime/Shadow.dyn > /dev/null
           python tools/check_debug_log_privacy.py
           git diff --check

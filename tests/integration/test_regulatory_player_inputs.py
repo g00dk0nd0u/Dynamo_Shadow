@@ -11,7 +11,7 @@ ROOT = Path(__file__).parents[2]
 
 
 def graph():
-    return json.loads((ROOT / "Shadow.dyn").read_text(encoding="utf-8"))
+    return json.loads((ROOT / "runtime" / "Shadow.dyn").read_text(encoding="utf-8"))
 
 
 def test_all_presets_resolve_in_sorted_order():

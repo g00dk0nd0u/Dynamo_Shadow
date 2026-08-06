@@ -8,7 +8,7 @@
 
 ## 2. Current Dynamo input contract
 
-`dynamo_loader.py` が `IN[]` を名前付き入力へ対応付ける前提で、Dynamo 入力契約は以下です。
+`runtime/dynamo_loader.py` が `IN[]` を名前付き入力へ対応付ける前提で、Dynamo 入力契約は以下です。
 
 - `building_elements = IN[0]`: 複数選択された shadow caster proxy elements。
 - `site_boundary = IN[1]`: optional な敷地境界。未選択でも等時間日影出力フローは継続し、敷地境界依存ステップだけを skip する。
@@ -184,7 +184,7 @@ Avoid overly complex, curved, or self-intersecting proxy shapes where possible. 
 
 ## Implementation organization note
 
-The Dynamo entry point remains `script.py`, but it now primarily orchestrates diagnostics and constructs `OUT`. The diagnostic implementation is organized into focused `shadow_*.py` modules, including policies, utilities, inputs, settings, measurement plane, geometry, footprint, and readiness modules. This is a code organization change only; the Dynamo graph, loader, input modeling expectations, and diagnostics-only scope are unchanged.
+The Dynamo entry point remains `runtime/script.py`, but it now primarily orchestrates diagnostics and constructs `OUT`. The diagnostic implementation is organized into focused `shadow_*.py` modules, including policies, utilities, inputs, settings, measurement plane, geometry, footprint, and readiness modules. This is a code organization change only; the Dynamo graph, loader, input modeling expectations, and diagnostics-only scope are unchanged.
 
 ## Development debug logs
 
