@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def _graph():
-    return json.loads((ROOT / "Shadow.dyn").read_text(encoding="utf-8"))
+    return json.loads((ROOT / "runtime" / "Shadow.dyn").read_text(encoding="utf-8"))
 
 
 def test_python_node_has_eight_connected_inputs():

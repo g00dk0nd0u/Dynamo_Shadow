@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def node_code():
-    data = json.loads((ROOT / "Shadow.dyn").read_text(encoding="utf-8"))
+    data = json.loads((ROOT / "runtime" / "Shadow.dyn").read_text(encoding="utf-8"))
     nodes = [node for node in data["Nodes"] if "Code" in node]
     assert len(nodes) == 1
     return nodes[0]["Code"]
@@ -58,7 +58,7 @@ def primitive_only(value):
 
 
 def test_shadow_dyn_is_json_and_embedded_node_compiles():
-    json.loads((ROOT / "Shadow.dyn").read_text(encoding="utf-8"))
+    json.loads((ROOT / "runtime" / "Shadow.dyn").read_text(encoding="utf-8"))
     compile(node_code(), "Shadow.dyn", "exec")
 
 

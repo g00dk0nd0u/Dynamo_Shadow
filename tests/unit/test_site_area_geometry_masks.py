@@ -120,7 +120,7 @@ def setup_adapter(monkeypatch):
 
 def test_adapter_accepts_db_area_and_contract_namespace(monkeypatch):
     setup_adapter(monkeypatch)
-    assert "Autodesk.Revit.DB.Architecture import Area" not in open("shadow_site_area_adapter.py", encoding="utf-8").read()
+    assert "Autodesk.Revit.DB.Architecture import Area" not in open("runtime/shadow_site_area_adapter.py", encoding="utf-8").read()
     r=adapter.extract_site_boundary_area(FakeArea(100, area_loop()))
     assert r["complete"] is True
     assert r["loop_count"] == 1

@@ -110,7 +110,7 @@ of already-unified time-slice polygons. Revit 2024.3 and Dynamo standard nodes
 do not provide the required Japanese-regulation time integration across slices.
 **Reason it was not sufficient:** neither exposes point-in-polygon temporal
 integration with outer/inner loop semantics. **Custom fallback scope:**
-`shadow_duration.py` operates only after the native union has completed, at the
+`runtime/shadow_duration.py` operates only after the native union has completed, at the
 explicit pure-Python calculation-model boundary. It samples the combined bounds
 plus margin, supports multiple components and holes, and applies trapezoidal
 integration. The grid is bounded by `max_duration_grid_points`. **Supported

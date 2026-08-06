@@ -17,7 +17,7 @@ No Dynamo Player input is added.
 
 ## Signed distance
 
-Each duration-grid point is evaluated against the site boundary using the same point-to-boundary distance meaning as `shadow_site_masks.py`:
+Each duration-grid point is evaluated against the site boundary using the same point-to-boundary distance meaning as `runtime/shadow_site_masks.py`:
 
 - outside the site: positive distance
 - on the site boundary: zero

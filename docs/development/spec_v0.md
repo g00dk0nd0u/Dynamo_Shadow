@@ -185,7 +185,7 @@ The current prototype uses `Face.GetEdgesAsCurveLoops` and native `CurveLoop` va
 
 ## Code organization note
 
-`script.py` is the Dynamo-facing orchestration layer that builds the top-level `OUT` payload. Implementation details are split into focused `shadow_*.py` modules for optional Revit API imports, policies, safe utilities, input diagnostics, settings normalization, measurement plane diagnostics, geometry diagnostics, footprint diagnostics, and pipeline readiness. This organization is intended to preserve the existing diagnostics-only behavior while keeping future implementation steps small and reviewable.
+`runtime/script.py` is the Dynamo-facing orchestration layer that builds the top-level `OUT` payload. Implementation details are split into focused `shadow_*.py` modules for optional Revit API imports, policies, safe utilities, input diagnostics, settings normalization, measurement plane diagnostics, geometry diagnostics, footprint diagnostics, and pipeline readiness. This organization is intended to preserve the existing diagnostics-only behavior while keeping future implementation steps small and reviewable.
 
 ## Unit conversion diagnostics v1
 

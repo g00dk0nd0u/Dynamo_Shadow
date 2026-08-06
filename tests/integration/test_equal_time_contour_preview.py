@@ -266,6 +266,6 @@ def test_time_and_contour_previews_share_plan_helper():
 
 
 def test_preview_exception_contract_is_nonfatal_in_script_source():
-    text = open("script.py", encoding="utf-8").read()
+    text = open("runtime/script.py", encoding="utf-8").read()
     assert "Contour preview failed non-fatally; equal-time contour output remains available." in text
     assert '"success": True' in text

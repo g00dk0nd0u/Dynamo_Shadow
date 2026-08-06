@@ -43,7 +43,7 @@ def test_optional_boundary_base_exception_degrades_without_stopping_pipeline(mon
 def test_no_boundary_is_successful_and_area_player_input(monkeypatch):
     _set_inputs(monkeypatch)
     result = script._build_success()
-    graph = json.loads(open("Shadow.dyn", encoding="utf-8").read())
+    graph = json.loads(open("runtime/Shadow.dyn", encoding="utf-8").read())
 
     assert result["success"] is True
     assert result["partial_success"] is False
