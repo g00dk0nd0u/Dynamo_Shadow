@@ -25,6 +25,7 @@ Implemented prototype capabilities include:
 - Numeric comparison against the selected regulatory preset.
 - Fast / Standard Dynamo Player accuracy selection, plus an internal high-accuracy compatibility preset.
 - Pure-Python regression tests.
+- Internal pure-Python low-rise reverse-shadow core prototype for coarse initial massing; it is not yet available from Dynamo Player and requires final forward equal-time shadow validation.
 
 Not implemented:
 
@@ -33,7 +34,7 @@ Not implemented:
 - Automatic municipal ordinance selection.
 - Road, water, elevation-difference, or similar relaxations.
 - Verification report output.
-- Reverse shadow.
+- Revit preview and Dynamo Player exposure for reverse shadow.
 - C# Revit add-in.
 - Product UI.
 - Installer.

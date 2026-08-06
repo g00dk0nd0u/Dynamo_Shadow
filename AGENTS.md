@@ -29,6 +29,8 @@ Future work should keep the repository aligned with three layers:
 - Owns solar calculation, duration accumulation, equal-time contours, site geometry validation, distance masks, 5 m / 10 m distance contours, selected limit comparison, and future reverse-shadow algorithms.
 - Must not import `Autodesk.Revit.DB`.
 - Must not operate on Revit internal units; use meters, degrees, and minutes after adapter conversion.
+- The unfinished low-rise reverse-shadow core belongs here and must not import `Autodesk.Revit.DB` or be exposed in `Shadow.dyn`.
+- Reverse-shadow spatial resolution must never be below 1 m. Its coarse envelope must not claim a legal maximum, and the final forward equal-time validation requirement must remain explicit.
 
 ### Dynamo Host
 
