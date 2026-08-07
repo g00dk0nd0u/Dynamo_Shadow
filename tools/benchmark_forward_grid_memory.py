@@ -28,15 +28,18 @@ def _shape(count):
 
 
 def _current_grid(count):
-    width, _ = _shape(count)
-    return [
-        {
-            "x_m": float(index % width),
-            "y_m": float(index // width),
-            "shadow_duration_minutes": float((index * 17) % 481),
-        }
-        for index in range(count)
-    ]
+    width, height = _shape(count)
+    grid = []
+    for iy in range(height):
+        y = float(iy)
+        for ix in range(width):
+            index = iy * width + ix
+            grid.append({
+                "x_m": float(ix),
+                "y_m": y,
+                "shadow_duration_minutes": float((index * 17) % 481),
+            })
+    return grid
 
 
 def _duration_list(count):
@@ -100,14 +103,21 @@ def measure_contours(count):
     from shadow_contours import build_equal_time_contours
 
     width, height = _shape(count)
+    if width < 2 or height < 2:
+        raise ValueError(
+            "contour benchmark requires a count with a two-dimensional factorization"
+        )
     grid = []
     center_x, center_y = (width - 1) / 2.0, (height - 1) / 2.0
     tracemalloc.start()
-    for index in range(count):
-        x, y = index % width, index // width
-        duration = max(0.0, 480.0 - math.hypot(x - center_x, y - center_y) * 3.0)
-        grid.append({"x_m": float(x), "y_m": float(y),
-                     "shadow_duration_minutes": duration})
+    for iy in range(height):
+        y = float(iy)
+        for ix in range(width):
+            duration = max(
+                0.0, 480.0 - math.hypot(ix - center_x, iy - center_y) * 3.0
+            )
+            grid.append({"x_m": float(ix), "y_m": y,
+                         "shadow_duration_minutes": duration})
     baseline, _ = tracemalloc.get_traced_memory()
     result = build_equal_time_contours({
         "complete": True,
@@ -135,6 +145,15 @@ def main():
     args = parser.parse_args()
     if args.repeats < 1 or any(count < 1 for count in args.counts):
         parser.error("counts and repeats must be positive")
+    if args.with_contours:
+        invalid = [count for count in args.counts if min(_shape(count)) < 2]
+        if invalid:
+            parser.error(
+                "contour benchmark requires counts with a two-dimensional "
+                "factorization; invalid counts: {}".format(
+                    ", ".join(str(count) for count in invalid)
+                )
+            )
 
     rows = []
     for count in args.counts:

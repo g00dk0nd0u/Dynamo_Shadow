@@ -13,6 +13,8 @@ The representative row chunk is the existing three-field dict shape, capped at
 1,024 points. The two-row case retains two `array('d')` rows. Coordinates for
 duration-only representations are reconstructed from `grid_spec` (origin,
 resolution, width, and row-major index), rather than stored at every point.
+The current-grid case matches production's allocation topology: one y-coordinate
+float is created by the outer row loop and shared by every point dict in that row.
 
 `tracemalloc` reports Python-traced allocations, not process RSS, allocator
 fragmentation, Revit/libG objects, or Dynamo serialization copies. Results are
@@ -27,17 +29,17 @@ resident allocation rather than a meaningful full-grid bytes/point ratio.
 
 | Points | Current list of dict | Duration list | `array('d')` | `array('f')` | Two `array('d')` rows | Representative dict row chunk |
 |---:|---:|---:|---:|---:|---:|---:|
-| 10k | 2.52 MiB / 264.53 B | 0.31 MiB / 32.52 B | 0.08 MiB / 8.08 B | 0.04 MiB / 4.05 B | 1.88 KiB | 23.66 KiB |
-| 40k | 10.10 MiB / 264.78 B | 1.25 MiB / 32.78 B | 0.31 MiB / 8.21 B | 0.16 MiB / 4.11 B | 3.42 KiB | 47.03 KiB |
-| 160k | 40.29 MiB / 264.02 B | 4.89 MiB / 32.02 B | 1.27 MiB / 8.29 B | 0.63 MiB / 4.15 B | 6.56 KiB | 93.91 KiB |
-| 250k | 63.00 MiB / 264.22 B | 7.68 MiB / 32.22 B | 1.93 MiB / 8.12 B | 0.97 MiB / 4.06 B | 8.20 KiB | 117.50 KiB |
-| 1M | 252.20 MiB / 264.45 B | 30.95 MiB / 32.45 B | 7.80 MiB / 8.18 B | 3.90 MiB / 4.09 B | 16.38 KiB | 235.31 KiB |
+| 10k | 2.30 MiB / 240.77 B | 0.31 MiB / 32.52 B | 0.08 MiB / 8.08 B | 0.04 MiB / 4.05 B | 1.88 KiB | 23.66 KiB |
+| 40k | 9.19 MiB / 240.90 B | 1.25 MiB / 32.78 B | 0.31 MiB / 8.21 B | 0.16 MiB / 4.11 B | 3.42 KiB | 47.03 KiB |
+| 160k | 36.63 MiB / 240.08 B | 4.89 MiB / 32.02 B | 1.27 MiB / 8.29 B | 0.63 MiB / 4.15 B | 6.56 KiB | 93.91 KiB |
+| 250k | 57.28 MiB / 240.27 B | 7.68 MiB / 32.22 B | 1.93 MiB / 8.12 B | 0.97 MiB / 4.06 B | 8.20 KiB | 117.50 KiB |
+| 1M | 229.33 MiB / 240.47 B | 30.95 MiB / 32.45 B | 7.80 MiB / 8.18 B | 3.90 MiB / 4.09 B | 16.38 KiB | 235.31 KiB |
 
-The current shape therefore costs about **264 bytes/point** on this runtime.
-Keeping only durations in a Python list saves about **87.7%**. A full
-`array('d')` saves about **96.9%**, while retaining double precision. The x/y
+The current shape therefore costs about **240 bytes/point** on this runtime.
+Keeping only durations in a Python list saves about **86.5%**. A full
+`array('d')` saves about **96.6%**, while retaining double precision. The x/y
 saving cannot be isolated completely from the container change in these cases;
-the measured current-to-duration-only-list difference is about 232 bytes/point
+the measured current-to-duration-only-list difference is about 208 bytes/point
 and includes the removal of per-point dicts as well as x/y float objects.
 
 ## Estimated full-grid memory
@@ -48,9 +50,9 @@ included as a projection cross-check and is close to its direct measurement.
 
 | Points | Current list of dict | Duration list | `array('d')` | `array('f')` |
 |---:|---:|---:|---:|---:|
-| 250k | 63.05 MiB | 7.74 MiB | 1.95 MiB | 0.98 MiB |
-| 1M | 252.20 MiB | 30.95 MiB | 7.80 MiB | 3.90 MiB |
-| 2M | 504.40 MiB | 61.89 MiB | 15.61 MiB | 7.80 MiB |
+| 250k | 57.33 MiB | 7.74 MiB | 1.95 MiB | 0.98 MiB |
+| 1M | 229.33 MiB | 30.95 MiB | 7.80 MiB | 3.90 MiB |
+| 2M | 458.67 MiB | 61.89 MiB | 15.61 MiB | 7.80 MiB |
 
 These are container-only estimates. During a migration, simultaneously holding
 the old grid, new buffer, `OUT`/JSON-safe conversion, and contour results can
@@ -64,10 +66,10 @@ list-of-dict grid was already retained before measuring the incremental peak.
 
 | Points | Input grid baseline | Additional peak | Additional retained result | Contours |
 |---:|---:|---:|---:|---:|
-| 10k | 2.51 MiB | 0.08 MiB | 0.00 MiB | 0 |
-| 40k | 10.08 MiB | 1.11 MiB | 0.49 MiB | 13 |
-| 160k | 38.45 MiB | 2.46 MiB | 0.92 MiB | 4 |
-| 250k | 59.10 MiB | 3.20 MiB | 0.92 MiB | 4 |
+| 10k | 2.28 MiB | 0.08 MiB | 0.00 MiB | 0 |
+| 40k | 9.17 MiB | 1.11 MiB | 0.49 MiB | 13 |
+| 160k | 34.80 MiB | 2.46 MiB | 0.92 MiB | 4 |
+| 250k | 53.39 MiB | 3.20 MiB | 0.92 MiB | 4 |
 
 The current contour function first creates a full Python `values` list, which
 alone adds roughly 8 bytes/point for references when the existing float objects
@@ -76,6 +78,12 @@ sets, adjacency lists, and JSON-safe point dicts. Consequently, contour memory
 is data-dependent: a smooth field is modest, while checkerboard/noisy fields or
 many levels can create far more segments. The table is representative, not a
 worst-case bound and not a 1M/2M estimate.
+
+Container measurements accept any positive point count. Contour measurements
+additionally require a regular grid with at least two rows and two columns. If
+factorization collapses a requested count to one dimension (for example, the
+prime count 101), `--with-contours` exits with an explicit error instead of
+recording a silent zero-contour success.
 
 ## Recommendation
 
