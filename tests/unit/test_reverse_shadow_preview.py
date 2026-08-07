@@ -83,6 +83,51 @@ def test_zero_height_has_no_valid_volume():
         preview.plan_reverse_shadow_preview_faces(_core(height=0), {"average_ground_level_elevation_m": 0})
 
 
+def test_unused_null_unbounded_grid_point_is_ignored():
+    source = _core()
+    source["height_field"]["grid_points"].append({
+        "grid_index": 9999, "x_m": 100, "y_m": 100,
+        "bounded": False, "height_limit_m": None})
+    plan = preview.plan_reverse_shadow_preview_faces(
+        source, {"average_ground_level_elevation_m": 0})
+    assert 9999 not in plan["vertices"]
+
+
+def _ring_core():
+    coordinates = [(0, 0), (3, 0), (3, 3), (0, 3),
+                   (1, 1), (2, 1), (2, 2), (1, 2)]
+    triangles = [(0, 1, 5), (0, 5, 4), (1, 2, 6), (1, 6, 5),
+                 (2, 3, 7), (2, 7, 6), (3, 0, 4), (3, 4, 7)]
+    return {"available": True, "complete": True, "method": preview.METHOD,
+        "height_field": {"grid_points": [
+            {"grid_index": index, "x_m": xy[0], "y_m": xy[1], "height_limit_m": 2}
+            for index, xy in enumerate(coordinates)]},
+        "top_surface_mesh": {
+            "triangles": [{"vertex_grid_indices": list(ids)} for ids in triangles],
+            "top_surface_boundary_loops": [
+                {"closed": True, "vertex_grid_indices": [0, 1, 2, 3, 0],
+                 "signed_plan_area_m2": 9, "orientation": "counter_clockwise"},
+                {"closed": True, "vertex_grid_indices": [4, 7, 6, 5, 4],
+                 "signed_plan_area_m2": -1, "orientation": "clockwise"}]}}
+
+
+def test_hole_boundary_winding_and_outward_side_normal_are_preserved():
+    plan = preview.plan_reverse_shadow_preview_faces(
+        _ring_core(), {"average_ground_level_elevation_m": 0})
+    component = plan["components"][0]
+    assert len(plan["components"]) == 1
+    assert (plan["top_face_count"], plan["bottom_face_count"],
+            plan["side_face_count"]) == (8, 8, 16)
+    # The first hole side follows source edge 4 -> 7 (clockwise loop). Its
+    # horizontal outward normal points +X, into the hole, not into the solid.
+    assert component["side_faces"][8] == (
+        (4, "top"), (4, "bottom"), (7, "bottom"))
+    a = plan["vertices"][4]; b = plan["vertices"][7]
+    edge_dx, edge_dy = b["x_m"] - a["x_m"], b["y_m"] - a["y_m"]
+    horizontal_normal = (2 * edge_dy, -2 * edge_dx)
+    assert horizontal_normal[0] > 0 and horizontal_normal[1] == 0
+
+
 def test_off_and_api_unavailable_preserve_certification(monkeypatch):
     off = preview.build_reverse_shadow_preview(_core(), {"average_ground_level_elevation_m": 0}, {})
     assert not off["attempted"] and not off["permit_ready_certified"]

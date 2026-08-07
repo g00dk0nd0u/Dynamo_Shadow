@@ -32,7 +32,9 @@ class _Mesh: pass
 
 class _Result:
     kind = "solid"
-    def GetGeometricalObjects(self): return [_Solid() if self.kind == "solid" else _Mesh()]
+    def GetGeometricalObjects(self):
+        if self.kind == "empty": return []
+        return [_Solid() if self.kind == "solid" else _Mesh()]
 
 
 class _Builder:
@@ -129,4 +131,14 @@ def test_replace_failure_rolls_back_old_delete_and_new_shape(monkeypatch):
                                                   {"reverse_shadow_preview_mode": "replace"})
     assert not result["complete"] and result["deleted_element_count"] == 0
     assert result["created_element_count"] == 0 and document.deleted == [] and document.new_shape is None
+    assert _SubTransaction.last == "rollback"
+
+
+def test_empty_tessellated_build_result_is_rejected_before_set_shape(monkeypatch):
+    document = _Document(); _install(monkeypatch, document); _Result.kind = "empty"
+    result = preview.build_reverse_shadow_preview(
+        _source(), {"average_ground_level_elevation_m": 0},
+        {"reverse_shadow_preview_mode": "replace"})
+    assert not result["complete"] and document.new_shape is None
+    assert result["blockers"][0]["failure_code"] == "reverse_shadow_preview_geometry_build_failed"
     assert _SubTransaction.last == "rollback"

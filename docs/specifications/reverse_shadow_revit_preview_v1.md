@@ -29,6 +29,12 @@ interpolates unbounded/null heights nor invents a closing height. A component
 containing a zero-height vertex is omitted rather than creating a degenerate
 shell; no valid remaining volume is a blocker.
 
+Validation is limited to grid indices referenced by mesh triangles or boundary
+loops. Unused outside/unbounded grid points may therefore retain the core's
+normal `height_limit_m=null` value. Boundary-loop winding is preserved: outer
+loops remain counter-clockwise and hole loops remain clockwise so both sets of
+side faces point away from the solid material.
+
 No Material, family, Mass, adaptive component, point element, per-cell
 DirectShape, or Revit Boolean geometry is created. Pure-Python validation and
 adjacency planning are the narrow fallback logic required to translate the

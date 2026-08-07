@@ -128,10 +128,30 @@ def plan_reverse_shadow_preview_faces(reverse_shadow_core, measurement_plane):
     except (KeyError, TypeError, ValueError):
         raise ValueError("reverse_shadow_preview_mesh_invalid")
     if not math.isfinite(ground): raise ValueError("reverse_shadow_preview_mesh_invalid")
+    required_grid_indices = set()
+    for triangle in triangles:
+        ids = triangle.get("vertex_grid_indices") if isinstance(triangle, dict) else None
+        if not isinstance(ids, (list, tuple)) or len(ids) != 3:
+            raise ValueError("reverse_shadow_preview_mesh_invalid")
+        required_grid_indices.update(ids)
+    for loop in loops:
+        ids = loop.get("vertex_grid_indices") if isinstance(loop, dict) else None
+        if not isinstance(ids, (list, tuple)) or len(ids) < 4:
+            raise ValueError("reverse_shadow_preview_mesh_invalid")
+        required_grid_indices.update(ids)
+
     by_index = {}
     for point in points:
         try:
-            index = point["grid_index"]; x = float(point["x_m"]); y = float(point["y_m"])
+            index = point["grid_index"]
+        except (KeyError, TypeError):
+            continue
+        if index not in required_grid_indices:
+            continue
+        if index in by_index:
+            raise ValueError("reverse_shadow_preview_mesh_invalid")
+        try:
+            x = float(point["x_m"]); y = float(point["y_m"])
             height = float(point["height_limit_m"])
         except (KeyError, TypeError, ValueError):
             raise ValueError("reverse_shadow_preview_mesh_invalid")
@@ -139,6 +159,8 @@ def plan_reverse_shadow_preview_faces(reverse_shadow_core, measurement_plane):
             raise ValueError("reverse_shadow_preview_mesh_invalid")
         by_index[index] = {"x_m": x, "y_m": y, "bottom_z_m": ground, "top_z_m": ground + height,
                            "height_limit_m": height}
+    if set(by_index) != required_grid_indices:
+        raise ValueError("reverse_shadow_preview_mesh_invalid")
     components = build_reverse_shadow_mesh_components(reverse_shadow_core)
     planned = []; normalized = 0; skipped = 0
     for triangle_indices in components:
@@ -168,7 +190,6 @@ def plan_reverse_shadow_preview_faces(reverse_shadow_core, measurement_plane):
         for ids in component_loops:
             area = sum(by_index[a]["x_m"] * by_index[b]["y_m"] - by_index[b]["x_m"] * by_index[a]["y_m"] for a, b in zip(ids, ids[1:])) / 2.0
             if abs(area) <= _AREA_TOLERANCE: raise ValueError("reverse_shadow_preview_mesh_invalid")
-            if area < 0: ids = list(reversed(ids))
             for a, b in zip(ids, ids[1:]):
                 pa, pb = by_index[a], by_index[b]
                 if math.hypot(pb["x_m"] - pa["x_m"], pb["y_m"] - pa["y_m"]) <= _AREA_TOLERANCE:
@@ -223,6 +244,8 @@ def _build_geometry(plan):
     builder.Fallback = TessellatedShapeBuilderFallback.Mesh
     builder.Build(); objects = builder.GetBuildResult().GetGeometricalObjects()
     values = list(objects)
+    if not values:
+        raise ValueError("reverse_shadow_preview_geometry_build_failed")
     if Solid is not None and any(isinstance(item, Solid) for item in values): geometry_type = "tessellated_solid"
     elif Mesh is not None and values and all(isinstance(item, Mesh) for item in values): geometry_type = "tessellated_mesh"
     else: geometry_type = "tessellated_geometry"
