@@ -47,7 +47,7 @@ def _empty(config, core, plane):
         "source_complete": bool((core or {}).get("complete")),
         "source_method": (core or {}).get("method"),
         "geometry_kind": "TessellatedShapeBuilder", "geometry_type": "unavailable",
-        "target": "Solid", "fallback": "Mesh", "connected_component_count": 0,
+        "target": "AnyGeometry", "fallback": "Mesh", "connected_component_count": 0,
         "source_top_triangle_count": 0, "top_face_count": 0,
         "side_face_count": 0, "bottom_face_count": 0,
         "total_tessellated_face_count": 0,
@@ -240,13 +240,18 @@ def _build_geometry(plan):
             for face in component[kind]:
                 builder.AddFace(TessellatedFace(_xyz_list([native(key) for key in face]), _material_id()))
         builder.CloseConnectedFaceSet()
-    builder.Target = TessellatedShapeBuilderTarget.Solid
-    builder.Fallback = TessellatedShapeBuilderFallback.Mesh
+    target = TessellatedShapeBuilderTarget.AnyGeometry
+    fallback = TessellatedShapeBuilderFallback.Mesh
+    if (hasattr(builder, "AreTargetAndFallbackCompatible")
+            and not builder.AreTargetAndFallbackCompatible(target, fallback)):
+        raise ValueError("reverse_shadow_preview_target_fallback_incompatible")
+    builder.Target = target
+    builder.Fallback = fallback
     builder.Build(); objects = builder.GetBuildResult().GetGeometricalObjects()
     values = list(objects)
     if not values:
         raise ValueError("reverse_shadow_preview_geometry_build_failed")
-    if Solid is not None and any(isinstance(item, Solid) for item in values): geometry_type = "tessellated_solid"
+    if Solid is not None and all(isinstance(item, Solid) for item in values): geometry_type = "tessellated_solid"
     elif Mesh is not None and values and all(isinstance(item, Mesh) for item in values): geometry_type = "tessellated_mesh"
     else: geometry_type = "tessellated_geometry"
     return objects, geometry_type
@@ -298,6 +303,8 @@ def build_reverse_shadow_preview(reverse_shadow_core, measurement_plane, setting
             result["created_element_ids"].append(_element_id(shape)); result["geometry_type"] = geometry_type
             if geometry_type == "tessellated_mesh":
                 result["warnings"].append("Reverse-shadow preview used TessellatedShapeBuilder Mesh fallback.")
+            elif geometry_type == "tessellated_geometry":
+                result["warnings"].append("Reverse-shadow preview returned mixed or non-Solid tessellated geometry.")
         sub.Commit(); sub = None
     except BaseException as exc:
         if sub is not None:

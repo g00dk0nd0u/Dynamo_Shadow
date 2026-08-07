@@ -18,9 +18,10 @@ final forward equal-time validation. `permit_ready_certified` remains `false`.
 For each connected triangle component, the adapter opens one closed face set,
 adds source top triangles, two vertical triangles per boundary-loop edge, and
 reverse-wound bottom triangles. Multiple closed face sets are built by one
-`TessellatedShapeBuilder` and ordinarily stored in one DirectShape. The target
-is `Solid` and the explicit fallback is `Mesh`; a Mesh result is a complete
-preview with a warning.
+`TessellatedShapeBuilder` and ordinarily stored in one DirectShape. The Revit
+2024-compatible strategy is an `AnyGeometry` target with `Mesh` fallback, with
+Solid expected for valid closed face sets. A Mesh result is a complete preview
+with a warning; the actual geometry type is diagnosed from the build result.
 
 The bottom elevation is average ground level. Each top elevation is average
 ground level plus the core's relative `height_limit_m`; measurement-plane

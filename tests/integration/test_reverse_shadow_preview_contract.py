@@ -34,15 +34,20 @@ class _Result:
     kind = "solid"
     def GetGeometricalObjects(self):
         if self.kind == "empty": return []
+        if self.kind == "mixed": return [_Solid(), _Mesh()]
         return [_Solid() if self.kind == "solid" else _Mesh()]
 
 
 class _Builder:
     face_sets = 0
+    compatibility_check = None
     def __init__(self): self.faces = []
     def OpenConnectedFaceSet(self, closed): assert closed; type(self).face_sets += 1
     def AddFace(self, face): self.faces.append(face)
     def CloseConnectedFaceSet(self): pass
+    def AreTargetAndFallbackCompatible(self, target, fallback):
+        type(self).compatibility_check = (target, fallback)
+        return target == "AnyGeometry" and fallback == "Mesh"
     def Build(self): pass
     def GetBuildResult(self): return _Result()
 
@@ -89,7 +94,7 @@ def _install(monkeypatch, document):
     monkeypatch.setattr(preview, "SubTransaction", _SubTransaction)
     monkeypatch.setattr(preview, "TessellatedShapeBuilder", _Builder)
     monkeypatch.setattr(preview, "TessellatedFace", _Face)
-    monkeypatch.setattr(preview, "TessellatedShapeBuilderTarget", type("Target", (), {"Solid": "Solid"}))
+    monkeypatch.setattr(preview, "TessellatedShapeBuilderTarget", type("Target", (), {"AnyGeometry": "AnyGeometry"}))
     monkeypatch.setattr(preview, "TessellatedShapeBuilderFallback", type("Fallback", (), {"Mesh": "Mesh"}))
     monkeypatch.setattr(preview, "XYZ", _XYZ)
     monkeypatch.setattr(preview, "Solid", _Solid); monkeypatch.setattr(preview, "Mesh", _Mesh)
@@ -102,12 +107,14 @@ def _install(monkeypatch, document):
 
 
 def test_replace_uses_one_direct_shape_and_solid_result(monkeypatch):
-    document = _Document(); _install(monkeypatch, document); _Result.kind = "solid"; _Builder.face_sets = 0
+    document = _Document(); _install(monkeypatch, document); _Result.kind = "solid"; _Builder.face_sets = 0; _Builder.compatibility_check = None
     result = preview.build_reverse_shadow_preview(_source(), {"average_ground_level_elevation_m": 0},
                                                   {"reverse_shadow_preview_mode": "replace"})
     assert result["complete"] and result["geometry_type"] == "tessellated_solid"
     assert result["created_element_count"] == 1 and result["deleted_element_count"] == 1
     assert _SubTransaction.last == "commit" and _Builder.face_sets == 1
+    assert result["target"] == "AnyGeometry" and result["fallback"] == "Mesh"
+    assert _Builder.compatibility_check == ("AnyGeometry", "Mesh")
 
 
 def test_mesh_fallback_is_complete_with_warning(monkeypatch):
@@ -116,6 +123,15 @@ def test_mesh_fallback_is_complete_with_warning(monkeypatch):
                                                   {"reverse_shadow_preview_mode": "replace"})
     assert result["complete"] and result["geometry_type"] == "tessellated_mesh"
     assert any("Mesh fallback" in warning for warning in result["warnings"])
+
+
+def test_mixed_build_result_is_tessellated_geometry_with_warning(monkeypatch):
+    document = _Document(); _install(monkeypatch, document); _Result.kind = "mixed"
+    result = preview.build_reverse_shadow_preview(
+        _source(), {"average_ground_level_elevation_m": 0},
+        {"reverse_shadow_preview_mode": "replace"})
+    assert result["complete"] and result["geometry_type"] == "tessellated_geometry"
+    assert any("mixed or non-Solid" in warning for warning in result["warnings"])
 
 
 def test_clear_deletes_without_creating(monkeypatch):
