@@ -87,6 +87,14 @@ try:
 except Exception:
     ViewShapeBuilder = None
 
+try:
+    from Autodesk.Revit.DB import (
+        TessellatedShapeBuilder, TessellatedFace,
+        TessellatedShapeBuilderTarget, TessellatedShapeBuilderFallback)
+except Exception:
+    TessellatedShapeBuilder = TessellatedFace = None
+    TessellatedShapeBuilderTarget = TessellatedShapeBuilderFallback = None
+
 
 def _has_methods(value, names):
     return value is not None and all(hasattr(value, name) for name in names)
@@ -135,6 +143,12 @@ REVIT_API_CAPABILITIES = {
     ),
     "project_location_available": ProjectLocation is not None and SiteLocation is not None,
     "sun_and_shadow_settings_available": SunAndShadowSettings is not None,
+    "tessellated_shape_builder_available": TessellatedShapeBuilder is not None,
+    "tessellated_face_available": TessellatedFace is not None,
+    "tessellated_solid_preview_expected": all(item is not None for item in (
+        TessellatedShapeBuilder, TessellatedFace, TessellatedShapeBuilderTarget,
+        TessellatedShapeBuilderFallback, XYZ, DirectShape, ElementId,
+        BuiltInCategory)),
     "unit_utils_available": UnitUtils is not None,
     **_PREVIEW_API_CAPABILITIES,
     "unit_type_id_available": UnitTypeId is not None,
