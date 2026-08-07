@@ -44,15 +44,20 @@ def _inside_loop(x, y, points):
     return inside
 
 
-def _slice_contains(polygons, x, y):
+def _compile_slice_polygons(polygons):
     groups = {}
     for polygon in polygons:
-        points = [(float(p["x"]), float(p["y"])) for p in polygon.get("points_m", [])]
+        points = tuple((float(p["x"]), float(p["y"])) for p in polygon.get("points_m", []))
         if len(points) < 3: continue
         groups.setdefault(polygon.get("component_index", polygon.get("classification_group_key", 0)), []).append((polygon.get("role"), points))
-    for loops in groups.values():
-        outers = [points for role, points in loops if role == "outer"]
-        inners = [points for role, points in loops if role == "inner"]
+    return tuple((
+        tuple(points for role, points in loops if role == "outer"),
+        tuple(points for role, points in loops if role == "inner"),
+    ) for loops in groups.values())
+
+
+def _compiled_slice_contains(compiled_polygons, x, y):
+    for outers, inners in compiled_polygons:
         if any(_inside_loop(x, y, outer) for outer in outers) and not any(_inside_loop(x, y, inner) for inner in inners):
             return True
     return False
@@ -161,12 +166,13 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
         "boundary_evaluation_blockers": boundary_blockers,
         "bounds_m": bounds})
 
+    compiled_slices = [_compile_slice_polygons(s.get("polygons") or []) for s in slices]
     grid = []; max_duration = 0.0; shadowed = 0
     for iy in range(ny):
         y = min_y + iy * resolution
         for ix in range(nx):
             x = min_x + ix * resolution
-            states = [_slice_contains(s.get("polygons") or [], x, y) for s in slices]
+            states = [_compiled_slice_contains(compiled, x, y) for compiled in compiled_slices]
             duration = sum(intervals[i] * (float(states[i])+float(states[i+1])) / 2.0 for i in range(len(intervals)))
             if duration > 0: shadowed += 1
             max_duration = max(max_duration, duration)
