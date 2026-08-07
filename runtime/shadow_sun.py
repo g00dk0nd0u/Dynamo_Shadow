@@ -215,6 +215,61 @@ def _sun_position_for_true_solar_minutes(minutes, latitude_deg, declination_deg,
     }
 
 
+def build_true_solar_sun_ray_fan(settings_normalized, start_minutes, end_minutes, step_minutes):
+    """Return upward unit rays at an inclusive, explicitly stepped true-solar interval."""
+    result = {"available": False, "complete": False, "method": "true_solar_adjacent_ray_fan_v1",
+              "start_minutes": start_minutes, "end_minutes": end_minutes, "step_minutes": step_minutes,
+              "sample_count": 0, "facet_count": 0, "samples": [], "blockers": [], "warnings": [],
+              "permit_ready_certified": False}
+    try:
+        start, end, step = float(start_minutes), float(end_minutes), int(step_minutes)
+        if not all(math.isfinite(v) for v in (start, end, float(step))) or end <= start or step <= 0:
+            raise ValueError()
+    except Exception:
+        result["blockers"].append({"failure_code": "reverse_shadow_sun_ray_invalid"}); return result
+    resolved = _build_solar_calculation_v1(settings_normalized)
+    if not resolved.get("solar_parameters_resolved"):
+        result["blockers"].append({"failure_code": "reverse_shadow_sun_ray_invalid",
+                                   "details": list(resolved.get("blockers") or [])}); return result
+    times, current = [start], start + step
+    while current < end - 1e-9:
+        times.append(current); current += step
+    if abs(times[-1] - end) > 1e-9: times.append(end)
+    samples, previous = [], None
+    for index, minute in enumerate(times):
+        solar = _sun_position_for_true_solar_minutes(minute, resolved["site_latitude_deg"],
+                                                     resolved["solar_declination_deg"], resolved["true_north_deg"])
+        altitude = solar.get("solar_altitude_deg")
+        shadow = solar.get("shadow_direction_model")
+        if altitude is None or not math.isfinite(altitude) or altitude <= 0.0 or shadow is None:
+            result["blockers"].append({"failure_code": "reverse_shadow_sun_below_horizon", "sample_index": index}); return result
+        sx, sy = -float(shadow["x"]), -float(shadow["y"])
+        azimuth = math.degrees(math.atan2(sx, sy)) % 360.0
+        if previous is not None:
+            while azimuth < previous - 180.0: azimuth += 360.0
+            while azimuth > previous + 180.0: azimuth -= 360.0
+        rad = math.radians(altitude); horizontal = math.cos(rad)
+        ray = {"x": horizontal*sx, "y": horizontal*sy, "z": math.sin(rad)}
+        if not all(math.isfinite(v) for v in ray.values()) or abs(sum(v*v for v in ray.values())-1.0) > 1e-6:
+            result["blockers"].append({"failure_code": "reverse_shadow_sun_ray_invalid", "sample_index": index}); return result
+        samples.append({"sample_index": index, "true_solar_minutes": minute,
+                        "solar_altitude_deg": altitude,
+                        "solar_azimuth_true_north_deg": solar.get("solar_azimuth_deg"),
+                        "sun_azimuth_model_deg": azimuth, "sun_azimuth_model_unwrapped_deg": azimuth,
+                        "sun_horizontal_model": {"x": sx, "y": sy}, "ray_vector_model": ray})
+        previous = azimuth
+    if len(samples) < 2:
+        result["blockers"].append({"failure_code": "reverse_shadow_sun_ray_fan_too_short"}); return result
+    deltas = [samples[i+1]["sun_azimuth_model_unwrapped_deg"]-samples[i]["sun_azimuth_model_unwrapped_deg"] for i in range(len(samples)-1)]
+    if not (all(d >= -1e-8 for d in deltas) or all(d <= 1e-8 for d in deltas)):
+        result["blockers"].append({"failure_code": "reverse_shadow_sun_azimuth_not_monotonic"}); return result
+    # Facet search assumes ascending azimuth; reverse samples while retaining chronological metadata when needed.
+    result.update({"available": True, "complete": True, "sample_count": len(samples),
+                   "facet_count": len(samples)-1, "samples": samples,
+                   "azimuth_monotonic_direction": "increasing" if deltas[0] >= 0 else "decreasing"})
+    return result
+
+
 def _build_solar_calculation_v1(settings_normalized):
     """Build the reproducible v1 solar contract and its formal direction slices."""
     normalized = settings_normalized.get("normalized", {}) if isinstance(settings_normalized, dict) else {}

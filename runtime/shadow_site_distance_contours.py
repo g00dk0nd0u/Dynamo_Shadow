@@ -8,6 +8,7 @@ METHOD = "signed_distance_grid_marching_squares_v1"
 DISTANCE_LEVELS_M = [5.0, 10.0]
 WARNING_APPROX = "Distance contours are grid-based display geometry, not exact statutory offset curves."
 WARNING_NOT_GENERATED = "site_distance_contour_not_generated"
+MAX_SITE_DISTANCE_GRID_POINTS = 250000
 
 
 def _empty(blocker=None):
@@ -170,4 +171,87 @@ def build_site_distance_contours(shadow_duration, site_boundary_geometry, distan
                    "closed_contour_count": sum(1 for c in contours if c["closed"]),
                    "open_contour_count": sum(1 for c in contours if not c["closed"]),
                    "contours": contours, "ready_for_revit_preview": True})
+    return result
+
+
+def build_site_distance_contours_from_site(site_boundary_geometry, resolution_m=1.0,
+                                           maximum_grid_point_count=MAX_SITE_DISTANCE_GRID_POINTS,
+                                           distance_tolerance_m=1e-6):
+    """Build approximate outside distance contours without a shadow-duration grid."""
+    tolerance = _finite(distance_tolerance_m)
+    resolution = _finite(resolution_m)
+    polygon = _valid_polygon(site_boundary_geometry)
+    if polygon is None:
+        return _empty("site_boundary_geometry_required")
+    if tolerance is None or tolerance < 0.0 or resolution is None or resolution < 1.0:
+        return _empty("invalid_site_distance_generated_grid_resolution")
+    try:
+        maximum = int(maximum_grid_point_count)
+        if maximum <= 0 or maximum != float(maximum_grid_point_count):
+            raise ValueError()
+    except Exception:
+        return _empty("invalid_site_distance_generated_grid_limit")
+    margin = 10.0 + 2.0 * resolution
+    min_x, max_x = min(p[0] for p in polygon), max(p[0] for p in polygon)
+    min_y, max_y = min(p[1] for p in polygon), max(p[1] for p in polygon)
+    ox = math.floor((min_x - margin) / resolution) * resolution
+    oy = math.floor((min_y - margin) / resolution) * resolution
+    end_x = math.ceil((max_x + margin) / resolution) * resolution
+    end_y = math.ceil((max_y + margin) / resolution) * resolution
+    nx = int(round((end_x - ox) / resolution)) + 1
+    ny = int(round((end_y - oy) / resolution)) + 1
+    count = nx * ny
+    if count > maximum:
+        result = _empty("site_distance_generated_grid_limit_exceeded")
+        result["grid_spec"] = {"x_count": nx, "y_count": ny, "point_count": count,
+                               "origin_x_m": ox, "origin_y_m": oy, "resolution_m": resolution,
+                               "ordering": "row_major_y_then_x"}
+        return result
+    points = [(ox + ix * resolution, oy + iy * resolution)
+              for iy in range(ny) for ix in range(nx)]
+    signed_values = [_signed_distance(point, polygon, tolerance) for point in points]
+    result = _empty()
+    result.update({"available": True, "complete": True,
+                   "source": {"site_boundary_method": site_boundary_geometry.get("method"),
+                              "grid_source": "site_boundary_generated_grid",
+                              "spatial_resolution_m": resolution},
+                   "grid_spec": {"x_count": nx, "y_count": ny, "point_count": count,
+                                 "origin_x_m": ox, "origin_y_m": oy, "resolution_m": resolution,
+                                 "ordering": "row_major_y_then_x"}})
+    result["approximation"]["exact_statutory_offset"] = False
+    contours, generated = [], set()
+    for level in DISTANCE_LEVELS_M:
+        segments = []
+        for iy in range(ny - 1):
+            for ix in range(nx - 1):
+                indices = (iy * nx + ix, iy * nx + ix + 1,
+                           (iy + 1) * nx + ix + 1, (iy + 1) * nx + ix)
+                corners = [(points[i][0], points[i][1], signed_values[i]) for i in indices]
+                segments.extend(_cell_segments(corners, level))
+        lines = _stitch(segments)
+        if not lines:
+            result["complete"] = False
+            result["blockers"].append({"failure_code": "site_distance_{0}m_contour_missing".format(int(level))})
+            continue
+        generated.add(level)
+        for line in lines:
+            closed = len(line) > 2 and line[0] == line[-1]
+            length = sum(math.hypot(b[0]-a[0], b[1]-a[1]) for a, b in zip(line, line[1:]))
+            contours.append({"distance_m": level, "contour_index": 0, "closed": closed,
+                             "point_count": len(line), "length_m": length,
+                             "points_m": [{"x": p[0], "y": p[1]} for p in line]})
+            if not closed:
+                result["complete"] = False
+                result["blockers"].append({"failure_code": "site_distance_open_contour_unsupported_for_reverse_shadow",
+                                           "distance_m": level})
+    contours.sort(key=lambda c: (c["distance_m"], c["points_m"][0]["x"], c["points_m"][0]["y"], c["point_count"]))
+    indices = {}
+    for contour in contours:
+        level = contour["distance_m"]
+        contour["contour_index"] = indices.get(level, 0)
+        indices[level] = contour["contour_index"] + 1
+    result.update({"generated_distances_m": sorted(generated), "contour_count": len(contours),
+                   "closed_contour_count": sum(c["closed"] for c in contours),
+                   "open_contour_count": sum(not c["closed"] for c in contours),
+                   "contours": contours, "ready_for_revit_preview": False})
     return result
