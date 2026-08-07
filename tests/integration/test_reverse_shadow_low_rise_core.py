@@ -1,6 +1,7 @@
 import math
 
 import shadow_reverse_low_rise as core
+from shadow_reverse_preview import plan_reverse_shadow_preview_faces
 from shadow_regulatory_presets import resolve_regulatory_shadow_preset
 from shadow_settings import _normalize_settings
 
@@ -70,3 +71,25 @@ def test_complexity_reports_each_exceeded_limit(monkeypatch):
     blockers = [b for b in result["blockers"] if b["failure_code"] == "reverse_shadow_complexity_limit_exceeded"]
     assert {b["limit_type"] for b in blockers} == {"constraint_checks", "top_surface_triangles"}
     assert all(b["recommended_preset"] == "rough" for b in blockers)
+
+
+def test_actual_concave_core_output_plans_preview_while_ignoring_unused_null_points():
+    _, preset, plane, settings = _inputs()
+    site = {"complete": True, "method": "test_concave", "outer_loop": [
+        {"x_m": 0, "y_m": 0}, {"x_m": 12, "y_m": 0},
+        {"x_m": 12, "y_m": 4}, {"x_m": 4, "y_m": 4},
+        {"x_m": 4, "y_m": 12}, {"x_m": 0, "y_m": 12}]}
+    result = core.build_low_rise_reverse_shadow_core(site, preset, plane, settings, "standard")
+    assert result["available"] and result["complete"]
+    null_indices = {point["grid_index"] for point in result["height_field"]["grid_points"]
+                    if point["height_limit_m"] is None}
+    referenced = {index for triangle in result["top_surface_mesh"]["triangles"]
+                  for index in triangle["vertex_grid_indices"]}
+    assert null_indices and null_indices.isdisjoint(referenced)
+
+    plan = plan_reverse_shadow_preview_faces(result, plane)
+    assert null_indices.isdisjoint(plan["vertices"])
+    assert plan["top_face_count"] > 0
+    assert all(math.isfinite(value) for vertex in plan["vertices"].values()
+               for value in (vertex["x_m"], vertex["y_m"], vertex["top_z_m"], vertex["bottom_z_m"]))
+    assert result["legal_judgement_generated"] is result["ordinance_selection_certified"] is result["permit_ready_certified"] is False

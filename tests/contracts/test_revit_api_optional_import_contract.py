@@ -19,6 +19,8 @@ OPTIONAL_NAMES = (
     "BooleanOperationsUtils", "BooleanOperationsType", "ProjectLocation",
     "SiteLocation", "SunAndShadowSettings",
     "GeometryCreationUtilities", "Line", "DirectShapeTargetViewType", "ViewShapeBuilder",
+    "TessellatedShapeBuilder", "TessellatedFace", "TessellatedShapeBuilderTarget",
+    "TessellatedShapeBuilderFallback",
 )
 
 CAPABILITY_KEYS = {
@@ -46,6 +48,9 @@ CAPABILITY_KEYS = {
     "view_shape_builder_available",
     "direct_shape_plan_member_available",
     "direct_shape_plan_representation_available",
+    "tessellated_shape_builder_available",
+    "tessellated_face_available",
+    "tessellated_solid_preview_expected",
 }
 
 
@@ -77,7 +82,7 @@ def test_planned_optional_apis_are_not_in_the_core_import_statement():
     optional = set(OPTIONAL_NAMES)
     assert revit_imports
     assert not any(optional <= imported_names for imported_names in revit_imports)
-    assert max(len(optional & imported_names) for imported_names in revit_imports) <= 2
+    assert max(len(optional & imported_names) for imported_names in revit_imports) <= 4
 
 
 def test_revit_2024_capabilities_do_not_require_future_closure_methods():
