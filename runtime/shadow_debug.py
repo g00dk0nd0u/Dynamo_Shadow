@@ -499,6 +499,29 @@ def _contour_preview_summary(value):
         "warnings": value.get("warnings"), "blockers": value.get("blockers")})
 
 
+def _reverse_shadow_debug_summary(value):
+    value = value if isinstance(value, dict) else {}
+    mesh = value.get("top_surface_mesh") if isinstance(value.get("top_surface_mesh"), dict) else {}
+    return _sanitize_for_debug({
+        "available": value.get("available"), "complete": value.get("complete"),
+        "method": value.get("method"),
+        "reverse_shadow_accuracy": value.get("reverse_shadow_accuracy"),
+        "complexity": value.get("complexity"), "approximation": value.get("approximation"),
+        "blockers": value.get("blockers"), "warnings": value.get("warnings"),
+        "top_surface_triangle_count": mesh.get("top_surface_triangle_count"),
+        "bounded_candidate_plan_area_m2": mesh.get("bounded_candidate_plan_area_m2"),
+        "bounded_candidate_volume_m3": mesh.get("bounded_candidate_volume_m3"),
+    })
+
+
+def _reverse_shadow_preview_debug_summary(value):
+    value = value if isinstance(value, dict) else {}
+    keys = ("available", "complete", "mode", "geometry_type", "connected_component_count",
+            "source_top_triangle_count", "top_face_count", "side_face_count", "bottom_face_count",
+            "created_element_count", "deleted_element_count", "blockers", "warnings")
+    return _sanitize_for_debug({key: value.get(key) for key in keys})
+
+
 def _site_area_debug_summary(v):
     v = v if isinstance(v, dict) else {}
     seg_count = sum(int((loop or {}).get("segment_count") or 0) for loop in v.get("loops") or [])
@@ -598,6 +621,7 @@ def _summarize_out_for_debug(out_payload):
     normalized = settings.get("normalized") or {}
     preset = out_payload.get("regulatory_shadow_preset") or {}
     return {
+        "analysis_mode": _sanitize_for_debug(out_payload.get("analysis_mode")),
         "success": bool(out_payload.get("success")),
         "message": _sanitize_for_debug(out_payload.get("message")),
         "input_summary": _sanitize_for_debug(out_payload.get("inputs")),
@@ -643,6 +667,9 @@ def _summarize_out_for_debug(out_payload):
         "shadow_preview": _sanitize_for_debug(out_payload.get("shadow_preview")),
         "equal_time_contour_preview": _contour_preview_summary(out_payload.get("equal_time_contour_preview")),
         "site_result_preview": _site_result_preview_debug_summary(out_payload.get("site_result_preview")),
+        "reverse_shadow_summary": _reverse_shadow_debug_summary(out_payload.get("reverse_shadow")),
+        "reverse_shadow_preview_summary": _reverse_shadow_preview_debug_summary(
+            out_payload.get("reverse_shadow_preview")),
         "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
         "solar_specification_summary": _solar_specification_debug_summary(out_payload.get("solar_calculation_v1")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
@@ -666,6 +693,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "tool": _sanitize_for_debug((out_payload or {}).get("tool", TOOL_NAME)),
         "stage": _sanitize_for_debug((out_payload or {}).get("stage", STAGE_NAME)),
         "success": summary["success"],
+        "analysis_mode": summary["analysis_mode"],
         "message": summary["message"],
         "input_summary": summary["input_summary"],
         "settings_summary": summary["settings_summary"],
@@ -686,6 +714,8 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "shadow_preview": summary["shadow_preview"],
         "equal_time_contour_preview": summary["equal_time_contour_preview"],
         "site_result_preview": summary["site_result_preview"],
+        "reverse_shadow_summary": summary["reverse_shadow_summary"],
+        "reverse_shadow_preview_summary": summary["reverse_shadow_preview_summary"],
         "solar_calculation_summary": summary["solar_calculation_summary"],
         "solar_specification_summary": summary["solar_specification_summary"],
         "pipeline_readiness": summary["pipeline_readiness"],

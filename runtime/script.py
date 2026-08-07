@@ -697,7 +697,33 @@ def _dispatch_analysis_mode():
             "warnings": [],
         }
     if resolution.get("mode_id") == REVERSE_SHADOW:
-        return build_reverse_workflow(raw_inputs, input_source, _summarize_input)
+        try:
+            result = build_reverse_workflow(raw_inputs, input_source, _summarize_input)
+        except BaseException as exc:
+            result = {
+                "success": False, "partial_success": False,
+                "analysis_mode": resolution, "forward_pipeline_executed": False,
+                "error_code": "reverse_shadow_workflow_unhandled_exception",
+                "error_type": type(exc).__name__,
+                "error": _sanitize_text_for_debug(exc),
+                "legal_judgement_generated": False,
+                "ordinance_selection_certified": False,
+                "permit_ready_certified": False,
+                "warnings": [],
+            }
+        result["runtime_code_diagnostics"] = _RUNTIME_CODE_DIAGNOSTICS
+        result["tool"] = TOOL_NAME
+        result["stage"] = "v1_reverse_shadow_initial_massing"
+        result["message"] = ("Low-rise reverse-shadow coarse initial massing guidance. "
+                             "Final forward equal-time shadow validation is required.")
+        debug_settings = result.get("settings_normalized")
+        if not isinstance(debug_settings, dict) and isinstance(raw_inputs.get("settings"), dict):
+            debug_settings = {"normalized": dict(raw_inputs.get("settings"))}
+        debug_log_status = _write_debug_log_if_enabled(result, debug_settings)
+        result["debug_log"] = debug_log_status
+        if debug_log_status.get("warnings"):
+            result.setdefault("warnings", []).extend(debug_log_status.get("warnings"))
+        return result
     cleanup = clear_reverse_preview()
     cleanup_ok = cleanup.get("complete") is True
     result = _build_success(cleanup_ok, resolution, cleanup)
