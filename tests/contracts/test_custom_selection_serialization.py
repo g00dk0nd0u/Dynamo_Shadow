@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 REGULATORY_ID = "b1111111111111111111111111111111"
 ACCURACY_ID = "b4444444444444444444444444444444"
+ANALYSIS_MODE_ID = "b5555555555555555555555555555555"
 REGULATORY_OUTPUT_ID = "c1111111111111111111111111111111"
 ACCURACY_OUTPUT_ID = "c4444444444444444444444444444444"
 PYTHON_IN4_ID = "a1111111111111111111111111111111"
@@ -29,11 +30,12 @@ def _selected_item(node):
 def test_custom_selection_nodes_use_dynamo_serialized_items_contract():
     graph = _graph()
     nodes = {node["Id"]: node for node in _custom_selection_nodes(graph)}
-    assert set(nodes) == {REGULATORY_ID, ACCURACY_ID}
-    assert len(nodes) == 2
+    assert set(nodes) == {REGULATORY_ID, ACCURACY_ID, ANALYSIS_MODE_ID}
+    assert len(nodes) == 3
 
-    expected_lengths = {REGULATORY_ID: 8, ACCURACY_ID: 2}
-    expected_selected_items = {REGULATORY_ID: "standard_all", ACCURACY_ID: "standard"}
+    expected_lengths = {REGULATORY_ID: 8, ACCURACY_ID: 2, ANALYSIS_MODE_ID: 2}
+    expected_selected_items = {REGULATORY_ID: "standard_all", ACCURACY_ID: "standard",
+                               ANALYSIS_MODE_ID: "forward_shadow"}
     for node_id, node in nodes.items():
         assert "Items" not in node
         assert node["IsVisibleDropDownTextBlock"] is True
@@ -51,7 +53,7 @@ def test_top_level_player_values_match_selected_display_strings():
     nodes = {node["Id"]: node for node in _custom_selection_nodes(graph)}
     inputs = {item["Id"]: item for item in graph["Inputs"]}
 
-    for node_id in (REGULATORY_ID, ACCURACY_ID):
+    for node_id in (REGULATORY_ID, ACCURACY_ID, ANALYSIS_MODE_ID):
         selected_string = nodes[node_id]["SelectedString"]
         assert inputs[node_id]["Value"] == selected_string
         assert inputs[node_id]["SelectedIndex"] == nodes[node_id]["SelectedIndex"]
@@ -87,10 +89,10 @@ def test_player_menu_display_names_and_defaults_are_bilingual_and_stable():
 
     accuracy = nodes[ACCURACY_ID]
     assert accuracy["SelectedIndex"] == 1
-    assert accuracy["SelectedString"] == "Standard / 標準｜0.5m・15min"
+    assert accuracy["SelectedString"] == "Standard / 標準"
     assert accuracy["SerializedItems"] == [
-        {"Name": "Fast / 高速｜0.5m・30min", "Item": "rough"},
-        {"Name": "Standard / 標準｜0.5m・15min", "Item": "standard"},
+        {"Name": "Fast / 高速", "Item": "rough"},
+        {"Name": "Standard / 標準", "Item": "standard"},
     ]
 
 
@@ -105,7 +107,7 @@ def test_custom_selection_outputs_and_python_connectors_are_preserved():
     graph = _graph()
     nodes = {node["Id"]: node for node in graph["Nodes"]}
     python_node = next(node for node in graph["Nodes"] if node["NodeType"] == "PythonScriptNode")
-    assert [port["Name"] for port in python_node["Inputs"]] == ["IN[{0}]".format(i) for i in range(8)]
+    assert [port["Name"] for port in python_node["Inputs"]] == ["IN[{0}]".format(i) for i in range(9)]
 
     for node_id, output_id in ((REGULATORY_ID, REGULATORY_OUTPUT_ID), (ACCURACY_ID, ACCURACY_OUTPUT_ID)):
         output = nodes[node_id]["Outputs"][0]

@@ -12,6 +12,13 @@
 2. フォルダ内の `Shadow.dyn` をDynamo Playerから開く
 3. 必要な入力を選択して実行する
 
+## 解析モード
+
+- `Forward Shadow / 順日影`: Buildingを選択し、従来の順日影計算を実行する。
+- `Reverse Shadow / 逆日影`: Site Boundary、特定のShadow Limitsペア、Accuracy、settings/緯度等から逆日影候補ボリュームを表示する。BuildingとLevelは使用しない。`All / 全候補`では生成できない。
+
+Fast / Standardはモード別の解像度を使う。順日影は0.5 m / 30分と0.5 m / 15分、逆日影は4 m height grid / 30分と2 m height grid / 15分。逆日影結果は必ず最終的な順日影で検証する。
+
 ## フォルダ名
 
 このフォルダは「日影図」「日影検討ツール」などへ改名してよい。
