@@ -12,7 +12,7 @@ TOOL_NAME = "Dynamo_Shadow"
 STAGE_NAME = "v1_formal_shadow_visual_validation"
 
 CURRENT_IMPLEMENTATION_STATUS = {
-    "dynamo_python_node_input_count": 8,
+    "dynamo_python_node_input_count": 9,
     "player_independent_inputs": ["regulatory_shadow_preset", "calculation_accuracy_preset", "site_latitude_deg", "site_longitude_deg"],
     "implemented_technical_prototypes": [
         "formal_footprint", "formal_solar_specification", "formal_time_slice_shadow_polygons",
@@ -81,6 +81,7 @@ INPUT_KEYS = [
     "site_latitude_deg",
     "site_longitude_deg",
     "calculation_accuracy_preset",
+    "analysis_mode",
 ]
 
 SUPPORTED_CATEGORY_NAMES = set([

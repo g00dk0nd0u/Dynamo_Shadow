@@ -25,8 +25,7 @@ Implemented prototype capabilities include:
 - Numeric comparison against the selected regulatory preset.
 - Fast / Standard Dynamo Player accuracy selection, plus an internal high-accuracy compatibility preset.
 - Pure-Python regression tests.
-- Internal pure-Python low-rise reverse-shadow core prototype for coarse initial massing; it is not yet available from Dynamo Player and requires final forward equal-time shadow validation.
-- Internal low-rise reverse-shadow Revit tessellated preview adapter; it is not yet exposed in Dynamo Player and adds no legal or permit-certified meaning.
+- Low-rise reverse-shadow core and Revit tessellated preview, accessible from the same Dynamo Player graph as forward shadow. The coarse candidate volume still requires final forward equal-time shadow validation.
 
 Not implemented:
 
@@ -35,7 +34,6 @@ Not implemented:
 - Automatic municipal ordinance selection.
 - Road, water, elevation-difference, or similar relaxations.
 - Verification report output.
-- Dynamo Player exposure for reverse shadow.
 - C# Revit add-in.
 - Product UI.
 - Installer.
@@ -43,17 +41,20 @@ Not implemented:
 
 ## Dynamo inputs
 
-The Dynamo Player UI exposes seven inputs:
+The single `Shadow.dyn` graph exposes eight Dynamo Player inputs:
 
-1. `Levels`
-2. `Select Model Element`
-3. `Site Boundary Area / 敷地境界エリア`
-4. `Shadow Limits / 日影規制時間`
-5. `Calculation Accuracy / 計算精度`
-6. `Site Latitude / 緯度`
-7. `Site Longitude / 経度`
+1. `Analysis Mode / 解析モード`
+2. `Levels`
+3. `Select Model Element`
+4. `Site Boundary Area / 敷地境界エリア`
+5. `Shadow Limits / 日影規制時間`
+6. `Calculation Accuracy / 計算精度`
+7. `Site Latitude / 緯度`
+8. `Site Longitude / 経度`
 
-The Python Node has eight ports, `IN[0]` through `IN[7]`, because it also receives an internal settings input. The Player input count and Python port count therefore intentionally differ.
+The Python Node has nine ports, `IN[0]` through `IN[8]`, because it also receives an internal settings input. `IN[0]` through `IN[7]` retain their existing meanings; Analysis Mode is append-only at `IN[8]`. Missing mode values default to Forward for legacy compatibility.
+
+Forward uses the existing Building and Level inputs. Reverse ignores both Building and Level, requires a valid Site Boundary and a specific near/far Shadow Limits pair, and never treats Level as average ground or the measurement plane. Reverse Fast uses a 4 m height grid / 30-minute step; Reverse Standard uses a 2 m height grid / 15-minute step. Forward mappings remain 0.5 m / 30 minutes and 0.5 m / 15 minutes respectively.
 
 ## Intended Revit inputs
 

@@ -8,12 +8,21 @@
   },
   "Inputs": [
     {
+      "Id": "b5555555555555555555555555555555",
+      "Name": "Analysis Mode / 解析モード",
+      "Type": "selection",
+      "Type2": "dropdownSelection",
+      "Value": "Forward Shadow / 順日影",
+      "Description": "Choose Forward or Reverse analysis. Legacy graphs default to Forward.\n順日影または逆日影を選択します。従来グラフは順日影が既定です。",
+      "SelectedIndex": 0
+    },
+    {
       "Id": "3daad2f0de954b2a971f92fd9f671601",
       "Name": "Levels",
       "Type": "selection",
       "Type2": "dropdownSelection",
       "Value": "1FL",
-      "Description": "アクティブなドキュメントでレベルを選択",
+      "Description": "Retained for existing workflow compatibility. Reverse Shadow does not use Level as average ground level or measurement plane.\n既存互換性のため表示。逆日影では平均地盤面・測定面には使用しない。",
       "SelectedIndex": 0
     },
     {
@@ -22,14 +31,14 @@
       "Type": "selection",
       "Type2": "hostSelection",
       "Value": "bb22dfe1-e330-43c5-8837-ba31a4d21c8b-00650c73",
-      "Description": "ドキュメントからモデル要素を選択します。"
+      "Description": "Forward only. Ignored in Reverse Shadow.\n順日影で使用。逆日影では無視。"
     },
     {
       "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
       "Name": "Site Boundary Area / 敷地境界エリア",
       "Type": "selection",
       "Type2": "hostSelection",
-      "Description": "Select one placed Revit Area representing the site boundary.\n敷地境界を表す配置済みのエリアを1個選択してください。\nエリア境界線ではなく、エリア本体を選択します。"
+      "Description": "Required for Reverse Shadow. Select one placed Revit Area body.\n逆日影では必須。配置済みRevitエリア本体を1個選択。"
     },
     {
       "Id": "b1111111111111111111111111111111",
@@ -37,7 +46,7 @@
       "Type": "selection",
       "Type2": "dropdownSelection",
       "Value": "Standard / 標準｜All / 全候補",
-      "Description": "Order: 5–10m zone / over-10m zone.\n表示順：5m超～10m以内 / 10m超。\n条例による適用区分は別途確認してください。",
+      "Description": "Reverse Shadow requires a specific near/far pair; All cannot generate a reverse volume.\n逆日影には特定の近距離/遠距離ペアが必要です。全候補では逆日影ボリュームを生成できません。",
       "SelectedIndex": 0
     },
     {
@@ -45,8 +54,8 @@
       "Name": "Calculation Accuracy / 計算精度",
       "Type": "selection",
       "Type2": "dropdownSelection",
-      "Value": "Standard / 標準｜0.5m・15min",
-      "Description": "Fast: 0.5m / 30min.\nStandard: 0.5m / 15min.\nStandard is the default.",
+      "Value": "Standard / 標準",
+      "Description": "Forward: Fast = 0.5m / 30min; Standard = 0.5m / 15min.\nReverse: Fast = 4m height grid / 30min; Standard = 2m height grid / 15min.",
       "SelectedIndex": 1
     },
     {
@@ -155,6 +164,15 @@
           "Level": 2,
           "UseLevels": false,
           "KeepListStructure": false
+        },
+        {
+          "Id": "a5555555555555555555555555555555",
+          "Name": "IN[8]",
+          "Description": "Input #8",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
         }
       ],
       "Outputs": [
@@ -220,7 +238,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Select one placed Revit Area representing the site boundary. 敷地境界を表す配置済みのエリアを1個選択してください。エリア境界線ではなく、エリア本体を選択します。"
+      "Description": "Required for Reverse Shadow. Select one placed Revit Area body.\n逆日影では必須。配置済みRevitエリア本体を1個選択。"
     },
     {
       "ConcreteType": "DSRevitNodesUI.Levels, DSRevitNodesUI",
@@ -241,7 +259,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "アクティブなドキュメントでレベルを選択"
+      "Description": "Retained for existing workflow compatibility. Reverse Shadow does not use Level as average ground level or measurement plane.\n既存互換性のため表示。逆日影では平均地盤面・測定面には使用しない。"
     },
     {
       "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
@@ -263,7 +281,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "ドキュメントからモデル要素を選択します。"
+      "Description": "Forward only. Ignored in Reverse Shadow.\n順日影で使用。逆日影では無視。"
     },
     {
       "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
@@ -303,7 +321,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Order: 5–10m zone / over-10m zone.\n表示順：5m超～10m以内 / 10m超。\n条例による適用区分は別途確認してください。",
+      "Description": "Reverse Shadow requires a specific near/far pair; All cannot generate a reverse volume.\n逆日影には特定の近距離/遠距離ペアが必要です。全候補では逆日影ボリュームを生成できません。",
       "IsVisibleDropDownTextBlock": true,
       "SerializedItems": [
         {
@@ -401,19 +419,51 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Fast: 0.5m / 30min.\nStandard: 0.5m / 15min.\nStandard is the default.",
+      "Description": "Forward: Fast = 0.5m / 30min; Standard = 0.5m / 15min.\nReverse: Fast = 4m height grid / 30min; Standard = 2m height grid / 15min.",
       "IsVisibleDropDownTextBlock": true,
       "SerializedItems": [
         {
-          "Name": "Fast / 高速｜0.5m・30min",
+          "Name": "Fast / 高速",
           "Item": "rough"
         },
         {
-          "Name": "Standard / 標準｜0.5m・15min",
+          "Name": "Standard / 標準",
           "Item": "standard"
         }
       ],
-      "SelectedString": "Standard / 標準｜0.5m・15min"
+      "SelectedString": "Standard / 標準"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.CustomSelection, CoreNodeModels",
+      "SelectedIndex": 0,
+      "Id": "b5555555555555555555555555555555",
+      "NodeType": "ExtensionNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c5555555555555555555555555555555",
+          "Name": "Value",
+          "Description": "The selected Value",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Choose Forward or Reverse analysis. Legacy graphs default to Forward.\n順日影または逆日影を選択します。従来グラフは順日影が既定です。",
+      "IsVisibleDropDownTextBlock": true,
+      "SerializedItems": [
+        {
+          "Name": "Forward Shadow / 順日影",
+          "Item": "forward_shadow"
+        },
+        {
+          "Name": "Reverse Shadow / 逆日影",
+          "Item": "reverse_shadow"
+        }
+      ],
+      "SelectedString": "Forward Shadow / 順日影"
     }
   ],
   "Connectors": [
@@ -469,6 +519,12 @@
       "Start": "c4444444444444444444444444444444",
       "End": "a4444444444444444444444444444444",
       "Id": "d4444444444444444444444444444444",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "c5555555555555555555555555555555",
+      "End": "a5555555555555555555555555555555",
+      "Id": "d5555555555555555555555555555555",
       "IsHidden": "False"
     }
   ],
@@ -621,6 +677,16 @@
         "ShowGeometry": true,
         "X": -320.0,
         "Y": 350
+      },
+      {
+        "Id": "b5555555555555555555555555555555",
+        "Name": "Analysis Mode / 解析モード",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -320.0,
+        "Y": 30.0
       }
     ],
     "Annotations": [],

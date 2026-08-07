@@ -125,6 +125,10 @@ try:
         build_selected_limit_comparison,
         build_legal_judgement_skeleton,
     )
+    from shadow_analysis_mode import (
+        FORWARD_SHADOW, REVERSE_SHADOW, build_reverse_workflow,
+        clear_reverse_preview, resolve_analysis_mode,
+    )
 except BaseException:
     _IMPORT_ERROR_TEXT = traceback.format_exc()
 else:
@@ -257,7 +261,7 @@ def _minimal_import_failure(error_text):
     }
 
 
-def _build_success():
+def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None):
     _sync_dynamo_runtime_globals()
     raw_inputs, input_source = _read_inputs()
     warnings = []
@@ -287,6 +291,12 @@ def _build_success():
     if resolved_accuracy is not None and not resolved_accuracy.get("valid"):
         warnings.extend(resolved_accuracy.get("blockers", []))
     settings_normalized = _normalize_settings(overlaid_settings, raw_inputs.get("level"))
+    if not preview_allowed:
+        normalized_for_calculation = dict(settings_normalized.get("normalized") or {})
+        normalized_for_calculation.update({
+            "preview_mode": "off", "equal_time_contour_preview_mode": "off"})
+        settings_normalized = dict(settings_normalized)
+        settings_normalized["normalized"] = normalized_for_calculation
     law56_2_awareness = _build_law56_2_awareness_context(settings_normalized, site_boundary)
     measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
     shadow_caster_geometry, runtime_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized, measurement_plane, return_runtime_geometry=True)
@@ -418,6 +428,9 @@ def _build_success():
         site_boundary_degraded = True
     out_payload = {
         "success": True,
+        "analysis_mode": mode_resolution or resolve_analysis_mode(FORWARD_SHADOW),
+        "forward_pipeline_executed": True,
+        "mode_cleanup": mode_cleanup,
         "partial_success": site_boundary_degraded,
         "degraded_components": degraded_components,
         "shadow_calculation_completed": True,
@@ -439,6 +452,7 @@ def _build_success():
             "site_latitude_deg": _summarize_input(raw_inputs.get("site_latitude_deg")),
             "site_longitude_deg": _summarize_input(raw_inputs.get("site_longitude_deg")),
             "calculation_accuracy_preset": _summarize_input(raw_inputs.get("calculation_accuracy_preset")),
+            "analysis_mode": _summarize_input(raw_inputs.get("analysis_mode")),
         },
         "shadow_casters": shadow_casters,
         "shadow_caster_policy": SHADOW_CASTER_POLICY,
@@ -669,6 +683,57 @@ def _build_failure(error_text):
     return out_payload
 
 
+def _dispatch_analysis_mode():
+    raw_inputs, input_source = _read_inputs()
+    resolution = resolve_analysis_mode(raw_inputs.get("analysis_mode"))
+    if not resolution.get("valid"):
+        return {
+            "success": False, "partial_success": False,
+            "analysis_mode": resolution, "forward_pipeline_executed": False,
+            "error_code": "invalid_analysis_mode",
+            "legal_judgement_generated": False,
+            "ordinance_selection_certified": False,
+            "permit_ready_certified": False,
+            "warnings": [],
+        }
+    if resolution.get("mode_id") == REVERSE_SHADOW:
+        try:
+            result = build_reverse_workflow(raw_inputs, input_source, _summarize_input)
+        except BaseException as exc:
+            result = {
+                "success": False, "partial_success": False,
+                "analysis_mode": resolution, "forward_pipeline_executed": False,
+                "error_code": "reverse_shadow_workflow_unhandled_exception",
+                "error_type": type(exc).__name__,
+                "error": _sanitize_text_for_debug(exc),
+                "legal_judgement_generated": False,
+                "ordinance_selection_certified": False,
+                "permit_ready_certified": False,
+                "warnings": [],
+            }
+        result["runtime_code_diagnostics"] = _RUNTIME_CODE_DIAGNOSTICS
+        result["tool"] = TOOL_NAME
+        result["stage"] = "v1_reverse_shadow_initial_massing"
+        result["message"] = ("Low-rise reverse-shadow coarse initial massing guidance. "
+                             "Final forward equal-time shadow validation is required.")
+        debug_settings = result.get("settings_normalized")
+        if not isinstance(debug_settings, dict) and isinstance(raw_inputs.get("settings"), dict):
+            debug_settings = {"normalized": dict(raw_inputs.get("settings"))}
+        debug_log_status = _write_debug_log_if_enabled(result, debug_settings)
+        result["debug_log"] = debug_log_status
+        if debug_log_status.get("warnings"):
+            result.setdefault("warnings", []).extend(debug_log_status.get("warnings"))
+        return result
+    cleanup = clear_reverse_preview()
+    cleanup_ok = cleanup.get("complete") is True
+    result = _build_success(cleanup_ok, resolution, cleanup)
+    if not cleanup_ok:
+        result["partial_success"] = True
+        result.setdefault("warnings", []).append(
+            "analysis_mode_opposite_preview_cleanup_incomplete")
+    return result
+
+
 if _IMPORT_ERROR_TEXT is not None:
     OUT = _minimal_import_failure(_IMPORT_ERROR_TEXT)
 elif not _RUNTIME_CODE_DIAGNOSTICS.get("all_local_modules_from_workspace"):
@@ -677,7 +742,7 @@ elif not _RUNTIME_CODE_DIAGNOSTICS.get("all_local_modules_from_workspace"):
 else:
     try:
         _checkpoint("BUILD_SUCCESS_BEFORE")
-        OUT = _build_success()
+        OUT = _dispatch_analysis_mode()
         _checkpoint("BUILD_SUCCESS_AFTER", "dict")
     except BaseException:
         _checkpoint("SCRIPT_EXCEPTION", "failure")

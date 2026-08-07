@@ -6,11 +6,11 @@ This repository is an experimental Dynamo / Revit tool for studying equal-time s
 
 The project is still a diagnostic and research prototype. It must not be treated as a complete building permit calculation tool, and `permit_ready_certified` must remain `false` until a separate certification workflow is explicitly implemented.
 
-The current Dynamo graph exposes seven Dynamo Player inputs, while the Python Node has eight `IN[0]` through `IN[7]` ports because it also receives an internal settings input. Do not describe the graph only as an "8 input" Player UI.
+The current single Dynamo graph exposes eight Dynamo Player inputs, while the Python Node has nine `IN[0]` through `IN[8]` ports because it also receives an internal settings input. Analysis Mode is append-only at `IN[8]`; `IN[0]` through `IN[7]` retain their established meanings.
 
-Current implemented prototype scope includes: multiple Mass / Generic Model shadow-caster selection, Revit geometry extraction, footprint extraction prototype, NOAA solar calculation, true solar time, formal time-slice shadow projection, per-time-slice Revit-native union, grid/trapezoidal shadow-duration accumulation, equal-time contour generation, equal-time contour DirectShape preview, placed Revit Area site-boundary extraction for one outer straight-segment loop with no holes, 5 m / 10 m / beyond-10 m distance masks, near/far maximum shadow duration and maximum points, fixed 5 m / 10 m signed-distance contour data, selected regulatory preset comparison, Fast / Standard Player accuracy selection, internal high-accuracy compatibility preset, and pure-Python regression tests.
+Current implemented prototype scope includes: Forward / Reverse Analysis Mode selection in one Player graph, low-rise reverse-shadow calculation and preview, multiple Mass / Generic Model shadow-caster selection, Revit geometry extraction, footprint extraction prototype, NOAA solar calculation, true solar time, formal time-slice shadow projection, per-time-slice Revit-native union, grid/trapezoidal shadow-duration accumulation, equal-time contour generation, equal-time contour DirectShape preview, placed Revit Area site-boundary extraction for one outer straight-segment loop with no holes, 5 m / 10 m / beyond-10 m distance masks, near/far maximum shadow duration and maximum points, fixed 5 m / 10 m signed-distance contour data, selected regulatory preset comparison, Fast / Standard Player accuracy selection, internal high-accuracy compatibility preset, and pure-Python regression tests.
 
-Currently unimplemented scope includes: Revit display elements for the fixed 5 m / 10 m contours, Revit display of near/far maximum points, formal legal pass/fail judgement, automatic municipal ordinance selection, road/water/elevation-difference relaxations, verification report output, reverse-shadow workflows, C# Revit add-in, product UI, installer, and permit certification. The 5 m / 10 m contour polyline data exists; only Revit element display for those contours remains unimplemented.
+Currently unimplemented scope includes: formal legal pass/fail judgement, automatic municipal ordinance selection, road/water/elevation-difference relaxations, verification report output, high-rise reverse-shadow workflows, C# Revit add-in, product UI, installer, and permit certification.
 
 ## Architecture direction
 
@@ -29,7 +29,7 @@ Future work should keep the repository aligned with three layers:
 - Owns solar calculation, duration accumulation, equal-time contours, site geometry validation, distance masks, 5 m / 10 m distance contours, selected limit comparison, and future reverse-shadow algorithms.
 - Must not import `Autodesk.Revit.DB`.
 - Must not operate on Revit internal units; use meters, degrees, and minutes after adapter conversion.
-- The unfinished low-rise reverse-shadow core belongs here and must not import `Autodesk.Revit.DB` or be exposed in `Shadow.dyn`.
+- The low-rise reverse-shadow core belongs here and must not import `Autodesk.Revit.DB`; the Dynamo Host exposes it through Analysis Mode.
 - Reverse-shadow spatial resolution must never be below 1 m. Its coarse envelope must not claim a legal maximum, and the final forward equal-time validation requirement must remain explicit.
 
 ### Dynamo Host

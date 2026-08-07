@@ -115,6 +115,7 @@ INPUTS = {
     "site_latitude_deg": get_in(5),
     "site_longitude_deg": get_in(6),
     "calculation_accuracy_preset": get_in(7),
+    "analysis_mode": get_in(8),
 }
 
 input_summary = {
