@@ -54,7 +54,7 @@ The single `Shadow.dyn` graph exposes eight Dynamo Player inputs:
 
 The Python Node has nine ports, `IN[0]` through `IN[8]`, because it also receives an internal settings input. `IN[0]` through `IN[7]` retain their existing meanings; Analysis Mode is append-only at `IN[8]`. Missing mode values default to Forward for legacy compatibility.
 
-Forward uses the existing Building and Level inputs. Reverse ignores both Building and Level, requires a valid Site Boundary and a specific near/far Shadow Limits pair, and never treats Level as average ground or the measurement plane. Reverse Fast uses a 4 m height grid / 30-minute step; Reverse Standard uses a 2 m height grid / 15-minute step. Forward mappings remain 0.5 m / 30 minutes and 0.5 m / 15 minutes respectively.
+Forward uses the existing Building and Level inputs. Reverse ignores both Building and Level, requires a valid Site Boundary and a specific near/far Shadow Limits pair, and never treats Level as average ground or the measurement plane. Reverse Fast uses a 4 m height grid / 4 m measurement spacing / 30-minute step; Reverse Standard uses a 1 m height grid / 1 m measurement spacing / 15-minute step. Reverse height limits use a conservative 0.5 m vertical floor. Forward mappings remain 0.5 m / 30 minutes and 0.5 m / 15 minutes respectively.
 
 ## Intended Revit inputs
 

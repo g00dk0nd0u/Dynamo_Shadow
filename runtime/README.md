@@ -17,7 +17,7 @@
 - `Forward Shadow / 順日影`: Buildingを選択し、従来の順日影計算を実行する。
 - `Reverse Shadow / 逆日影`: Site Boundary、特定のShadow Limitsペア、Accuracy、settings/緯度等から逆日影候補ボリュームを表示する。BuildingとLevelは使用しない。`All / 全候補`では生成できない。
 
-Fast / Standardはモード別の解像度を使う。順日影は0.5 m / 30分と0.5 m / 15分、逆日影は4 m height grid / 30分と2 m height grid / 15分。逆日影結果は必ず最終的な順日影で検証する。
+Fast / Standardはモード別の解像度を使う。順日影は0.5 m / 30分と0.5 m / 15分、逆日影は4 m height grid / 4 m measurement / 30分と1 m height grid / 1 m measurement / 15分で、最終高さは0.5 m単位に安全側へ切り下げる。逆日影結果は必ず最終的な順日影で検証する。
 
 ## フォルダ名
 

@@ -63,4 +63,4 @@ and CI can import the runtime bundle without Revit. Pure-Python/fake API tests
 cover the adapter contract, but an actual Revit 2024.3 runtime test is required.
 Known v1 limitations include no Player entry point, no Analysis Mode, no
 material/style contract, and no automatic final forward validation. The
-reverse-shadow minimum spatial resolution remains 1 m.
+reverse-shadow XY and vertical resolutions are independently preset-managed; preview consumes the already conservative quantized `height_limit_m`.

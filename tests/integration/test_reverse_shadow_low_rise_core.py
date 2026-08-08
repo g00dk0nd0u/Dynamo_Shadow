@@ -40,7 +40,9 @@ def test_standard_top_level_core_has_nonempty_safe_mesh_and_governing_distances(
     assert mesh["top_surface_triangle_count"] > 0 and mesh["bounded_candidate_volume_m3"] > 0
     assert mesh["top_surface_boundary_loops"] and all(loop["closed"] for loop in mesh["top_surface_boundary_loops"])
     assert result["zones"]["near"] and result["zones"]["far"]
-    assert result["reverse_shadow_accuracy"]["height_field_grid_resolution_m"] == 2
+    assert result["reverse_shadow_accuracy"]["height_field_grid_resolution_m"] == 1
+    assert result["reverse_shadow_accuracy"]["measurement_point_spacing_m"] == 1
+    assert result["reverse_shadow_accuracy"]["vertical_height_step_m"] == .5
     assert result["reverse_shadow_accuracy"]["sun_time_step_minutes"] == 15
     governed = next(p for p in result["height_field"]["grid_points"] if p["bounded"])
     assert governed["governing_distance_m"] == governed["governing_horizontal_distance_m"]
@@ -80,10 +82,10 @@ def test_standard_and_high_complete_with_fixed_resolutions_and_denser_high_outpu
     standard = _build()
     high = core.build_low_rise_reverse_shadow_core(*_inputs(), "high")
     assert standard["complete"] and high["complete"]
-    assert standard["reverse_shadow_accuracy"]["height_field_grid_resolution_m"] == 2
+    assert standard["reverse_shadow_accuracy"]["height_field_grid_resolution_m"] == 1
     assert high["reverse_shadow_accuracy"]["height_field_grid_resolution_m"] == 1
-    assert high["complexity"]["height_field_grid_point_count"] > standard["complexity"]["height_field_grid_point_count"]
-    assert high["top_surface_mesh"]["top_surface_triangle_count"] > standard["top_surface_mesh"]["top_surface_triangle_count"]
+    assert high["complexity"]["height_field_grid_point_count"] == standard["complexity"]["height_field_grid_point_count"]
+    assert high["top_surface_mesh"]["top_surface_triangle_count"] == standard["top_surface_mesh"]["top_surface_triangle_count"]
     assert math.isfinite(high["top_surface_mesh"]["bounded_candidate_volume_m3"])
     assert high["legal_judgement_generated"] is high["ordinance_selection_certified"] is high["permit_ready_certified"] is False
 
@@ -103,10 +105,13 @@ def test_empty_mesh_is_not_complete(monkeypatch):
 
 
 def test_complexity_reports_each_exceeded_limit(monkeypatch):
-    monkeypatch.setattr(core, "MAX_REVERSE_CONSTRAINT_CHECKS", -1)
+    monkeypatch.setattr(core, "MAX_REVERSE_CONSTRAINT_CHECKS", 0)
+    constraint_result = _build()
+    monkeypatch.setattr(core, "MAX_REVERSE_CONSTRAINT_CHECKS", 25000000)
     monkeypatch.setattr(core, "MAX_REVERSE_TOP_SURFACE_TRIANGLES", -1)
-    result = _build()
-    blockers = [b for b in result["blockers"] if b["failure_code"] == "reverse_shadow_complexity_limit_exceeded"]
+    mesh_result = _build()
+    blockers = [b for result in (constraint_result, mesh_result) for b in result["blockers"]
+                if b["failure_code"] == "reverse_shadow_complexity_limit_exceeded"]
     assert {b["limit_type"] for b in blockers} == {"constraint_checks", "top_surface_triangles"}
     assert all(b["recommended_preset"] == "rough" for b in blockers)
 
@@ -131,3 +136,40 @@ def test_actual_concave_core_output_plans_preview_while_ignoring_unused_null_poi
     assert all(math.isfinite(value) for vertex in plan["vertices"].values()
                for value in (vertex["x_m"], vertex["y_m"], vertex["top_z_m"], vertex["bottom_z_m"]))
     assert result["legal_judgement_generated"] is result["ordinance_selection_certified"] is result["permit_ready_certified"] is False
+
+
+def test_chunk_size_does_not_change_selection_volume_or_quantized_mesh(monkeypatch):
+    monkeypatch.setattr(core, "REVERSE_CANDIDATE_CHUNK_SIZE", 20)
+    small = _build()
+    monkeypatch.setattr(core, "REVERSE_CANDIDATE_CHUNK_SIZE", 8192)
+    default = _build()
+    assert small["reverse_shadow_interval_optimization"]["selected"] == default["reverse_shadow_interval_optimization"]["selected"]
+    assert small["top_surface_mesh"]["bounded_candidate_volume_m3"] == default["top_surface_mesh"]["bounded_candidate_volume_m3"]
+    assert [p["height_limit_m"] for p in small["height_field"]["grid_points"]] == [p["height_limit_m"] for p in default["height_field"]["grid_points"]]
+    for result in (small, default):
+        assert result["complexity"]["pass_count"] == 2
+        assert result["complexity"]["compact_buffer_type"] == "array('d')"
+        assert result["complexity"]["candidate_field_full_materialization"] is False
+        assert result["complexity"]["single_process"] is True
+        assert all(point["height_limit_m"] * 2 == round(point["height_limit_m"] * 2)
+                   for point in result["height_field"]["grid_points"] if point["bounded"])
+        governed = next(point for point in result["height_field"]["grid_points"] if point["bounded"])
+        assert governed["raw_height_limit_m"] >= governed["height_limit_m"]
+        assert result["approximation"]["vertical_height_step_m"] == .5
+        assert result["approximation"]["vertical_height_quantization"] == "floor_conservative"
+
+
+def test_exact_azimuth_pruning_preserves_selected_pair_and_heights(monkeypatch):
+    monkeypatch.setattr(core, "REVERSE_AZIMUTH_PRUNING_ENABLED", True)
+    pruned = _build()
+    monkeypatch.setattr(core, "REVERSE_AZIMUTH_PRUNING_ENABLED", False)
+    unpruned = _build()
+    assert pruned["reverse_shadow_interval_optimization"]["selected"] == unpruned["reverse_shadow_interval_optimization"]["selected"]
+    assert [point["height_limit_m"] for point in pruned["height_field"]["grid_points"]] == [
+        point["height_limit_m"] for point in unpruned["height_field"]["grid_points"]]
+    complexity = pruned["complexity"]
+    assert complexity["actually_evaluated_constraint_count"] <= complexity["theoretical_constraint_pair_count"]
+    assert complexity["azimuth_pruned_constraint_count"] > 0
+    assert (complexity["actually_evaluated_constraint_count"] +
+            complexity["azimuth_pruned_constraint_count"] ==
+            complexity["theoretical_constraint_pair_count"])
