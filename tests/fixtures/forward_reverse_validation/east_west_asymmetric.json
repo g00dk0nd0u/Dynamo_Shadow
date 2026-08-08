@@ -1,0 +1,46 @@
+{
+  "fixture_id": "east_west_asymmetric",
+  "site_boundary": [
+    [
+      0,
+      0
+    ],
+    [
+      24,
+      0
+    ],
+    [
+      24,
+      16
+    ],
+    [
+      0,
+      16
+    ]
+  ],
+  "building_footprint": [
+    [
+      2,
+      4
+    ],
+    [
+      12,
+      4
+    ],
+    [
+      12,
+      12
+    ],
+    [
+      2,
+      12
+    ]
+  ],
+  "building_height_m": 8,
+  "average_ground_level_elevation_m": 0.0,
+  "measurement_height_m": 4.0,
+  "site_latitude_deg": 35.6812,
+  "site_longitude_deg": 139.7671,
+  "true_north_deg": 0.0,
+  "preset_id": "standard_4_2_5"
+}

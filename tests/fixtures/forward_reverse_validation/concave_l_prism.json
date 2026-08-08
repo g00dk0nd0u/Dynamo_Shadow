@@ -1,0 +1,62 @@
+{
+  "fixture_id": "concave_l_prism",
+  "site_boundary": [
+    [
+      0,
+      0
+    ],
+    [
+      24,
+      0
+    ],
+    [
+      24,
+      10
+    ],
+    [
+      12,
+      10
+    ],
+    [
+      12,
+      24
+    ],
+    [
+      0,
+      24
+    ]
+  ],
+  "building_footprint": [
+    [
+      2,
+      2
+    ],
+    [
+      10,
+      2
+    ],
+    [
+      10,
+      6
+    ],
+    [
+      6,
+      6
+    ],
+    [
+      6,
+      10
+    ],
+    [
+      2,
+      10
+    ]
+  ],
+  "building_height_m": 8,
+  "average_ground_level_elevation_m": 0.0,
+  "measurement_height_m": 4.0,
+  "site_latitude_deg": 35.6812,
+  "site_longitude_deg": 139.7671,
+  "true_north_deg": 0.0,
+  "preset_id": "standard_3_2"
+}
