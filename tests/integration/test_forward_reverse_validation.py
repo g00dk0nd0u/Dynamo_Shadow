@@ -51,12 +51,20 @@ def test_fixed_fixture_completes_json_safe_comparison(fixture_path):
         assert forward["far_max_minutes"] == 52.5
         assert result["delta_summary"]["mismatch_classification"] == "forward_within_reverse_outside"
         assert reverse["envelope_fit"]["maximum_height_excess_m"] == 0.5
-        first_summary = (result["forward_equivalent"], reverse, result["delta_summary"])
+        feasibility = result["general_pattern_fixture_feasibility"]
+        assert feasibility["complete"] is True
+        assert feasibility["near_feasible_general_pattern_count"] == 0
+        assert feasibility["far_feasible_general_pattern_count"] == 0
+        assert feasibility["fixture_feasible_under_pattern_family"] is False
+        first_summary = (result["forward_equivalent"], reverse, reverse_v3,
+                         result["delta_summary"], feasibility)
         del result
         repeated = build_forward_reverse_validation(fixture)
         assert repeated["forward_equivalent"] == first_summary[0]
         assert repeated["reverse_v2"] == first_summary[1]
-        assert repeated["delta_summary"] == first_summary[2]
+        assert repeated["reverse_v3"] == first_summary[2]
+        assert repeated["delta_summary"] == first_summary[3]
+        assert repeated["general_pattern_fixture_feasibility"] == first_summary[4]
 
     if fixture_path.stem == "concave_l_prism":
         assert reverse["envelope_fit"]["validation_point_count"] > 0
@@ -66,3 +74,16 @@ def test_fixed_fixture_completes_json_safe_comparison(fixture_path):
 def test_fixed_fixtures_preserve_required_preset_coverage():
     presets = {_load_fixture(path)["preset_id"] for path in FIXTURE_PATHS}
     assert presets.issuperset(EXPECTED_PRESETS)
+
+
+def test_v3_atomic_constraint_budget_returns_explicit_blocker(monkeypatch):
+    import shadow_reverse_low_rise
+    monkeypatch.setattr(shadow_reverse_low_rise, "MAX_REVERSE_CONSTRAINT_CHECKS", 0)
+    fixture = _load_fixture(FIXTURE_DIRECTORY / "centered_mismatch.json")
+    result = build_forward_reverse_validation(fixture)
+    reverse_v3 = result["reverse_v3"]
+    assert reverse_v3["complete"] is False
+    blocker = reverse_v3["blockers"][0]
+    assert blocker["failure_code"] == "reverse_shadow_complexity_limit_exceeded"
+    assert blocker["limit_type"] == "constraint_checks"
+    assert blocker["automatic_accuracy_fallback_used"] is False

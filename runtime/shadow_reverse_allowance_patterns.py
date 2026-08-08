@@ -25,11 +25,17 @@ def build_trapezoidal_sample_ownership_cells(sample_minutes):
             for index in range(len(samples))]
 
 
-def map_pattern_to_geometric_constraints(pattern):
-    """Map a safe sample mask to continuous constraints without changing v2 intervals."""
-    mapped = pattern
+GEOMETRY_MAPPING_PRESERVE_V2_EXACT = "preserve_v2_exact"
+GEOMETRY_MAPPING_SAMPLE_OWNERSHIP = "sample_ownership"
+
+
+def map_pattern_to_geometric_constraints(pattern, mode=GEOMETRY_MAPPING_PRESERVE_V2_EXACT):
+    """Purely map a mask using explicit exact-v2 or ownership-cell semantics."""
+    if mode not in (GEOMETRY_MAPPING_PRESERVE_V2_EXACT, GEOMETRY_MAPPING_SAMPLE_OWNERSHIP):
+        raise ValueError("invalid_reverse_shadow_geometry_mapping_mode")
+    mapped = dict(pattern)
     source = pattern.get("source_continuous_sunlight_interval")
-    if source is not None:
+    if source is not None and mode == GEOMETRY_MAPPING_PRESERVE_V2_EXACT:
         intervals = [{"start_minutes": float(source["start_minutes"]),
                       "end_minutes": float(source["end_minutes"]),
                       "source_start_sample_index": None, "source_end_sample_index": None,

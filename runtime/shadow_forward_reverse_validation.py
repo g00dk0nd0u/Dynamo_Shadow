@@ -5,7 +5,8 @@ from shadow_forward_equivalent_validator import build_prismatic_forward_equivale
 from shadow_regulatory_comparison import build_selected_limit_comparison
 from shadow_regulatory_presets import resolve_regulatory_shadow_preset
 from shadow_reverse_low_rise import (METHOD_V2, METHOD_V3,
-    build_low_rise_reverse_shadow_core_v2, build_low_rise_reverse_shadow_core_v3)
+    build_low_rise_reverse_shadow_core_v2, build_low_rise_reverse_shadow_core_v3,
+    diagnose_general_pattern_fixture_feasibility)
 from shadow_settings import _normalize_settings
 from shadow_site_masks import build_measurement_masks
 
@@ -103,6 +104,12 @@ def build_forward_reverse_validation(fixture):
     reverse_v3 = build_low_rise_reverse_shadow_core_v3(site, preset, plane, settings, "standard")
     fit = evaluate_prism_against_reverse_envelope(fixture["building_footprint"], fixture["building_height_m"], reverse)
     fit_v3 = evaluate_prism_against_reverse_envelope(fixture["building_footprint"], fixture["building_height_m"], reverse_v3)
+    feasibility = None
+    if fixture.get("fixture_id") == "centered_mismatch":
+        validation_points = _sample_polygon(
+            [(float(point[0]), float(point[1])) for point in fixture["building_footprint"]], 0.5)
+        feasibility = diagnose_general_pattern_fixture_feasibility(
+            site, preset, plane, settings, "standard", validation_points, fixture["building_height_m"])
     forward_within = comparison.get("status") == "within_selected_limits"
     reverse_inside = fit["fully_inside"]
     classification = (("forward_within" if forward_within else "forward_exceeds") +
@@ -123,6 +130,7 @@ def build_forward_reverse_validation(fixture):
                 "bounded_candidate_volume_m3": reverse.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3"),
                 "vertical_height_step_m": 0.5, "envelope_fit": fit},
             "reverse_v3": {"method": METHOD_V3,
+                "complete": reverse_v3.get("complete"), "blockers": reverse_v3.get("blockers") or [],
                 "bounded_candidate_volume_m3": reverse_v3.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3"),
                 "vertical_height_step_m": 0.5, "envelope_fit": fit_v3,
                 "pattern_optimization": reverse_v3.get("reverse_shadow_pattern_optimization")},
@@ -132,6 +140,7 @@ def build_forward_reverse_validation(fixture):
                 "height_excess_improvement_m": (fit["maximum_height_excess_m"]-fit_v3["maximum_height_excess_m"]),
                 "v2_bounded_volume_m3": reverse.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3"),
                 "v3_bounded_volume_m3": reverse_v3.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3")},
+            "general_pattern_fixture_feasibility": feasibility,
             "delta_summary": {"forward_within_selected_limits": forward_within,
                 "candidate_fully_inside_reverse_envelope": reverse_inside, "mismatch_classification": classification,
                 "maximum_height_excess_m": fit["maximum_height_excess_m"]},

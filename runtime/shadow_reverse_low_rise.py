@@ -9,7 +9,8 @@ from shadow_site_distance_contours import build_site_distance_contours_from_site
 from shadow_site_masks import _inside
 from shadow_sun import build_true_solar_sun_ray_fan, build_true_solar_sun_ray_fan_for_minutes
 from shadow_reverse_allowance_patterns import (build_trapezoidal_sample_ownership_cells,
-                                               generate_shadow_allowance_patterns)
+    generate_shadow_allowance_patterns, map_pattern_to_geometric_constraints,
+    GEOMETRY_MAPPING_SAMPLE_OWNERSHIP)
 
 METHOD_V2 = "low_rise_optimized_continuous_sunlight_envelope_v2"
 METHOD_V3 = "low_rise_zone_common_shadow_allowance_envelope_v3"
@@ -248,6 +249,8 @@ def _candidate_height(point, measurement_points, candidate, measurement_height, 
                 evaluation_counts["limit_exceeded"] = True
                 return None
             evaluation_counts["actually_evaluated_constraint_count"] += 1
+            evaluation_counts["v2_exact_constraint_evaluation_count"] = evaluation_counts.get(
+                "v2_exact_constraint_evaluation_count", 0) + 1
         value = _constraint(point, measurement, candidate["sun_ray_fan"], measurement_height,
                             compiled, facet)
         if value is None:
@@ -281,6 +284,10 @@ def _atomic_cell_height_limits(point, measurement_points, candidate, measurement
         if facet is None:
             continue
         if evaluation_counts is not None:
+            if evaluation_counts["actually_evaluated_constraint_count"] >= evaluation_counts["maximum"]:
+                evaluation_counts["limit_exceeded"] = True
+                return limits
+            evaluation_counts["actually_evaluated_constraint_count"] += 1
             evaluation_counts["atomic_constraint_evaluation_count"] = evaluation_counts.get(
                 "atomic_constraint_evaluation_count", 0) + 1
         value = _constraint(point, measurement, candidate["sun_ray_fan"], measurement_height,
@@ -618,6 +625,8 @@ def build_low_rise_reverse_shadow_core_v3(site_boundary_geometry, resolved_regul
         atomic_candidates[name] = {"candidate_family": "general_v3", "sun_ray_fan": fan,
             "compiled_sun_fan": _compile_sun_fan(fan), "sun_ray_sample_count": fan["sample_count"],
             "sun_facet_count": fan["facet_count"]}
+        ownership_patterns = [map_pattern_to_geometric_constraints(
+            pattern, mode=GEOMETRY_MAPPING_SAMPLE_OWNERSHIP) for pattern in patterns["candidates"]]
         compact_patterns = [{"pattern_id": pattern["pattern_id"],
             "generation_family": pattern["generation_family"],
             "allowed_shadow_duration_minutes": pattern["allowed_shadow_duration_minutes"],
@@ -625,7 +634,7 @@ def build_low_rise_reverse_shadow_core_v3(site_boundary_geometry, resolved_regul
             "sunlight_required_sample_blocks": pattern["sunlight_required_sample_blocks"],
             "geometric_constraint_intervals": pattern["geometric_constraint_intervals"],
             "geometry_constraint_ready": pattern["geometry_constraint_ready"]}
-            for pattern in patterns["candidates"]]
+            for pattern in ownership_patterns]
         allowance_sets[name] = {"candidate_count": patterns["candidate_count"],
                                 "candidates": compact_patterns}
         zone_candidates[name] = candidates
@@ -646,21 +655,33 @@ def build_low_rise_reverse_shadow_core_v3(site_boundary_geometry, resolved_regul
     points = [(ox+(i%nx)*resolution, oy+(i//nx)*resolution) for i in range(count)]
     classifications = [_inside(point, polygon, 1e-8) for point in points]
     inside_count = sum(value is not False for value in classifications)
+    evaluation_counts = {"actually_evaluated_constraint_count": 0,
+                         "v2_exact_constraint_evaluation_count": 0,
+                         "atomic_constraint_evaluation_count": 0,
+                         "azimuth_pruned_constraint_count": 0,
+                         "maximum": MAX_REVERSE_CONSTRAINT_CHECKS, "limit_exceeded": False}
     proxy_indices = _deterministic_even_sample(
         [index for index, value in enumerate(classifications) if value is not False],
         REVERSE_V3_PROXY_GRID_POINT_LIMIT)
     proxy_atomic_evaluations = 0
-    shortlist_counts = {}
+    shortlist_counts = {}; proxy_evaluated_counts = {}
     for zone_name in ("near", "far"):
         atomic = atomic_candidates[zone_name]
         proxy_limits = []
-        proxy_counts = {"atomic_constraint_evaluation_count": 0}
+        atomic_before = evaluation_counts["atomic_constraint_evaluation_count"]
         for index in proxy_indices:
             proxy_limits.append(_atomic_cell_height_limits(points[index], measurements[zone_name]["points"],
-                atomic, measurement_height, accuracy["vertical_height_step_m"], proxy_counts))
-        proxy_atomic_evaluations += proxy_counts["atomic_constraint_evaluation_count"]
-        general = [pattern for pattern in allowance_sets[zone_name]["candidates"]
-                   if pattern["generation_family"] != "v2_baseline"]
+                atomic, measurement_height, accuracy["vertical_height_step_m"], evaluation_counts))
+            if evaluation_counts["limit_exceeded"]:
+                result["blockers"].append({"failure_code": "reverse_shadow_complexity_limit_exceeded",
+                    "limit_type": "constraint_checks", "phase": "proxy",
+                    "actually_evaluated_constraint_count": evaluation_counts["actually_evaluated_constraint_count"],
+                    "maximum_constraint_checks": MAX_REVERSE_CONSTRAINT_CHECKS,
+                    "automatic_accuracy_fallback_used": False})
+                return result
+        proxy_atomic_evaluations += evaluation_counts["atomic_constraint_evaluation_count"] - atomic_before
+        general = list(allowance_sets[zone_name]["candidates"])
+        proxy_evaluated_counts[zone_name] = len(general)
         range_minima = []
         for limits in proxy_limits:
             table = {}
@@ -719,9 +740,6 @@ def build_low_rise_reverse_shadow_core_v3(site_boundary_geometry, resolved_regul
     chunk_size = max(2, int(REVERSE_CANDIDATE_CHUNK_SIZE))
     cell_rows_per_chunk = max(1, chunk_size // nx - 1)
     vertical_step = accuracy["vertical_height_step_m"]
-    evaluation_counts = {"actually_evaluated_constraint_count": 0,
-                         "azimuth_pruned_constraint_count": 0,
-                         "maximum": MAX_REVERSE_CONSTRAINT_CHECKS, "limit_exceeded": False}
     carry_fields = None
 
     for first_row in range(0, ny - 1, cell_rows_per_chunk):
@@ -739,6 +757,15 @@ def build_low_rise_reverse_shadow_core_v3(site_boundary_geometry, resolved_regul
                         atomic_limits[global_index] = _atomic_cell_height_limits(
                             points[global_index], measurements[zone_name]["points"], atomic,
                             measurement_height, vertical_step, evaluation_counts)
+                        if evaluation_counts["limit_exceeded"]:
+                            result["blockers"].append({"failure_code": "reverse_shadow_complexity_limit_exceeded",
+                                "limit_type": "constraint_checks", "phase": "pass_1_atomic",
+                                "actually_evaluated_constraint_count": evaluation_counts["actually_evaluated_constraint_count"],
+                                "v2_exact_constraint_evaluation_count": evaluation_counts["v2_exact_constraint_evaluation_count"],
+                                "atomic_constraint_evaluation_count": evaluation_counts["atomic_constraint_evaluation_count"],
+                                "maximum_constraint_checks": MAX_REVERSE_CONSTRAINT_CHECKS,
+                                "automatic_accuracy_fallback_used": False})
+                            return result
             for candidate_index, candidate in enumerate(zone_candidates[zone_name]):
                 heights = array("d", [nan]) * local_count
                 evaluation_start = first_index
@@ -869,6 +896,8 @@ def build_low_rise_reverse_shadow_core_v3(site_boundary_geometry, resolved_regul
         "estimated_constraint_check_count":theoretical_constraint_pairs,
         "theoretical_constraint_pair_count":theoretical_constraint_pairs,
         "actually_evaluated_constraint_count":evaluation_counts["actually_evaluated_constraint_count"],
+        "v2_exact_constraint_evaluation_count":evaluation_counts["v2_exact_constraint_evaluation_count"],
+        "atomic_constraint_evaluation_count":evaluation_counts["atomic_constraint_evaluation_count"],
         "azimuth_pruned_constraint_count":evaluation_counts["azimuth_pruned_constraint_count"],
         "constraint_count_scope":"pass_1_candidate_selection",
         "selected_metadata_constraint_check_count":inside_count*measurements["total_point_count"],
@@ -912,12 +941,13 @@ def build_low_rise_reverse_shadow_core_v3(site_boundary_geometry, resolved_regul
         "far_generated_pattern_count": allowance_sets["far"]["candidate_count"],
         "near_v2_pinned_candidate_count": sum(c.get("candidate_family") == "v2_exact" for c in zone_candidates["near"]),
         "far_v2_pinned_candidate_count": sum(c.get("candidate_family") == "v2_exact" for c in zone_candidates["far"]),
-        "near_general_proxy_evaluated_count": len(allowance_sets["near"]["candidates"]),
-        "far_general_proxy_evaluated_count": len(allowance_sets["far"]["candidates"]),
+        "near_general_proxy_evaluated_count": proxy_evaluated_counts["near"],
+        "far_general_proxy_evaluated_count": proxy_evaluated_counts["far"],
         "near_general_shortlist_count": shortlist_counts["near"], "far_general_shortlist_count": shortlist_counts["far"],
         "proxy_grid_point_count": len(proxy_indices),
         "atomic_cell_count": atomic_candidates["near"]["sun_facet_count"],
-        "atomic_constraint_evaluation_count": proxy_atomic_evaluations + evaluation_counts.get("atomic_constraint_evaluation_count", 0),
+        "v2_exact_constraint_evaluation_count": evaluation_counts["v2_exact_constraint_evaluation_count"],
+        "atomic_constraint_evaluation_count": evaluation_counts["atomic_constraint_evaluation_count"],
         "full_near_candidate_count": len(zone_candidates["near"]), "full_far_candidate_count": len(zone_candidates["far"]),
         "full_candidate_pair_count": len(zone_candidates["near"])*len(zone_candidates["far"]),
         "selected_near_pattern_id": selected_candidates["near"].get("pattern_id"),
@@ -939,6 +969,67 @@ def build_low_rise_reverse_shadow_core_v3(site_boundary_geometry, resolved_regul
     if not all(math.isfinite(v) for v in [area,volume]+bounded) or volume<=0: result["blockers"].append({"failure_code":"reverse_shadow_candidate_volume_invalid"})
     if result["blockers"]: return result
     result.update({"available":True,"complete":True})
+    return result
+
+
+def diagnose_general_pattern_fixture_feasibility(site_boundary_geometry, resolved_regulatory_preset,
+        measurement_plane, settings_normalized, calculation_accuracy_preset,
+        validation_points, building_height_m):
+    """Exhaustively test masks per zone without constructing a near/far Cartesian product."""
+    accuracy = resolve_reverse_shadow_accuracy(calculation_accuracy_preset)
+    result = {"complete": False, "near_feasible_general_pattern_count": 0,
+              "far_feasible_general_pattern_count": 0, "near_best_feasible_pattern_id": None,
+              "far_best_feasible_pattern_id": None, "fixture_feasible_under_pattern_family": False,
+              "automatic_accuracy_fallback_used": False, "blockers": []}
+    if not accuracy.get("valid"):
+        result["blockers"].extend(accuracy.get("blockers") or []); return result
+    contours = build_site_distance_contours_from_site(
+        site_boundary_geometry, accuracy["site_distance_resolution_m"], MAX_SITE_DISTANCE_GRID_POINTS)
+    measurements = build_reverse_shadow_measurement_points(contours, accuracy["measurement_point_spacing_m"])
+    if not contours.get("complete") or not measurements.get("complete"):
+        result["blockers"].extend(contours.get("blockers") or [])
+        result["blockers"].extend(measurements.get("blockers") or []); return result
+    preset = resolved_regulatory_preset
+    window_start, window_end = _minutes(preset["true_solar_start_time"]), _minutes(preset["true_solar_end_time"])
+    height = float(building_height_m); measurement_height = float(measurement_plane["measurement_height_m"])
+    budget = {"actually_evaluated_constraint_count": 0, "atomic_constraint_evaluation_count": 0,
+              "v2_exact_constraint_evaluation_count": 0, "maximum": MAX_REVERSE_CONSTRAINT_CHECKS,
+              "limit_exceeded": False}
+    for zone_name, limit in (("near", preset["near_limit_minutes"]), ("far", preset["far_limit_minutes"])):
+        patterns = generate_shadow_allowance_patterns(window_start, window_end, limit,
+                                                       accuracy["sun_time_step_minutes"])
+        cells = build_trapezoidal_sample_ownership_cells(patterns["sample_minutes"])
+        boundaries = [cells[0]["start_minutes"]] + [cell["end_minutes"] for cell in cells]
+        fan = build_true_solar_sun_ray_fan_for_minutes(settings_normalized, boundaries)
+        if not patterns.get("complete") or not fan.get("complete"):
+            result["blockers"].extend(patterns.get("blockers") or [])
+            result["blockers"].extend(fan.get("blockers") or []); return result
+        atomic = {"sun_ray_fan": fan, "compiled_sun_fan": _compile_sun_fan(fan),
+                  "sun_facet_count": fan["facet_count"]}
+        limits_by_point = []
+        for point in validation_points:
+            limits_by_point.append(_atomic_cell_height_limits(
+                point, measurements[zone_name]["points"], atomic, measurement_height,
+                accuracy["vertical_height_step_m"], budget))
+            if budget["limit_exceeded"]:
+                result["blockers"].append({"failure_code": "reverse_shadow_complexity_limit_exceeded",
+                    "limit_type": "constraint_checks", "phase": "fixture_feasibility",
+                    "maximum_constraint_checks": MAX_REVERSE_CONSTRAINT_CHECKS,
+                    "automatic_accuracy_fallback_used": False}); return result
+        feasible = []
+        for pattern in patterns["candidates"]:
+            candidate_heights = [_general_candidate_height_from_limits(values, pattern)
+                                 for values in limits_by_point]
+            if all(value is None or value + 1e-9 >= height for value in candidate_heights):
+                bounded = [value for value in candidate_heights if value is not None]
+                feasible.append((sum(bounded), min(bounded) if bounded else float("inf"),
+                                 pattern["pattern_id"]))
+        result[zone_name + "_feasible_general_pattern_count"] = len(feasible)
+        if feasible:
+            result[zone_name + "_best_feasible_pattern_id"] = max(feasible)[2]
+    result["fixture_feasible_under_pattern_family"] = bool(
+        result["near_feasible_general_pattern_count"] and result["far_feasible_general_pattern_count"])
+    result["complete"] = True
     return result
 
 

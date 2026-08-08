@@ -1,7 +1,8 @@
 import pytest
 from shadow_duration import integrate_shadow_states_trapezoidal
 from shadow_reverse_allowance_patterns import (build_pattern_from_continuous_sunlight_interval,
-    build_trapezoidal_sample_ownership_cells, map_pattern_to_geometric_constraints)
+    build_trapezoidal_sample_ownership_cells, map_pattern_to_geometric_constraints,
+    GEOMETRY_MAPPING_PRESERVE_V2_EXACT, GEOMETRY_MAPPING_SAMPLE_OWNERSHIP)
 
 
 def test_ownership_cells_partition_window_and_match_trapezoidal_boolean_weights():
@@ -27,3 +28,18 @@ def test_general_run_uses_midpoints_but_v2_keeps_exact_interval():
     mapped = map_pattern_to_geometric_constraints(exact)
     assert mapped["geometric_constraint_intervals"][0]["start_minutes"] == 600
     assert mapped["geometric_constraint_intervals"][0]["end_minutes"] == 840
+
+
+def test_same_mask_retains_exact_and_ownership_geometry_variants_without_mutation():
+    pattern = build_pattern_from_continuous_sunlight_interval(480, 960, 600, 840, 15, 240)
+    original = dict(pattern)
+    exact = map_pattern_to_geometric_constraints(pattern, GEOMETRY_MAPPING_PRESERVE_V2_EXACT)
+    ownership = map_pattern_to_geometric_constraints(pattern, GEOMETRY_MAPPING_SAMPLE_OWNERSHIP)
+    assert pattern == original
+    assert exact["sunlight_required_states"] == ownership["sunlight_required_states"]
+    assert (exact["geometric_constraint_intervals"][0]["start_minutes"],
+            exact["geometric_constraint_intervals"][0]["end_minutes"]) == (600, 840)
+    assert (ownership["geometric_constraint_intervals"][0]["start_minutes"],
+            ownership["geometric_constraint_intervals"][0]["end_minutes"]) == (592.5, 832.5)
+    assert integrate_shadow_states_trapezoidal(
+        ownership["shadow_allowed_states"], ownership["sample_minutes"]) <= 240

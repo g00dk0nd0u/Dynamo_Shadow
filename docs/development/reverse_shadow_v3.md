@@ -11,6 +11,11 @@ length exactly equals Forward trapezoidal integration. Adjacent required cells m
 boundaries. V2-derived candidates instead retain their exact continuous interval, preserving the
 legacy endpoint clamp, quantization, and candidate parity.
 
+A canonical mask has two deliberately distinct geometry variants when it originated from v2:
+the pinned v2 candidate preserves the exact source interval, while the general candidate maps the
+same mask through ownership-cell boundaries. Mask deduplication therefore never removes the
+general geometry variant.
+
 One explicit-time NOAA/true-solar fan is shared by all general patterns; facet index equals atomic
 cell index. Per site point, measurement constraints are aggregated into a strictest limit per
 cell. A deterministic, geometry-aware proxy uses at most 64 evenly distributed inside grid points
@@ -24,3 +29,7 @@ runtime remains Revit 2024.3/Dynamo 3.3, with normal-Python tests as the custom-
 Final Forward equal-time validation remains required. The output is not legal judgement or permit
 certification. The known `centered_mismatch` fixture is not improved by the current safe shortlist,
 so the public production entry point intentionally remains v2 and this work is only part of #95.
+An exhaustive per-zone diagnostic finds zero feasible near patterns and zero feasible far patterns
+among all canonical one/two-block masks. This is a pattern-family limitation rather than a
+shortlist-cap problem; increasing the cap cannot resolve it. A later stage needs a different safe
+pattern-family design.
