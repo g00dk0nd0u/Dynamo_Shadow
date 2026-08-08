@@ -2,12 +2,58 @@
 import math
 
 from shadow_duration import integrate_shadow_states_trapezoidal
-from shadow_reverse_low_rise import build_sunlight_interval_candidates
 
 
 METHOD = "reverse_shadow_allowance_patterns_v1"
 MAX_REVERSE_ALLOWANCE_PATTERN_CANDIDATES = 50000
 _DURATION_TOLERANCE_MINUTES = 1e-9
+
+
+def build_trapezoidal_sample_ownership_cells(sample_minutes):
+    """Partition a sampled window into the cells owned by trapezoidal states."""
+    samples = [float(value) for value in sample_minutes]
+    if len(samples) < 2 or any(not math.isfinite(value) for value in samples) or any(
+            samples[index + 1] <= samples[index] for index in range(len(samples) - 1)):
+        raise ValueError("invalid_reverse_shadow_sample_minutes")
+    boundaries = [samples[0]] + [
+        (samples[index] + samples[index + 1]) / 2.0
+        for index in range(len(samples) - 1)] + [samples[-1]]
+    return [{"sample_index": index, "start_minutes": boundaries[index],
+             "end_minutes": boundaries[index + 1],
+             "duration_minutes": boundaries[index + 1] - boundaries[index],
+             "semantics": "trapezoidal_sample_ownership_cell"}
+            for index in range(len(samples))]
+
+
+def map_pattern_to_geometric_constraints(pattern):
+    """Map a safe sample mask to continuous constraints without changing v2 intervals."""
+    mapped = pattern
+    source = pattern.get("source_continuous_sunlight_interval")
+    if source is not None:
+        intervals = [{"start_minutes": float(source["start_minutes"]),
+                      "end_minutes": float(source["end_minutes"]),
+                      "source_start_sample_index": None, "source_end_sample_index": None,
+                      "semantics": "v2_exact_continuous_sunlight_interval"}]
+    else:
+        cells = build_trapezoidal_sample_ownership_cells(pattern["sample_minutes"])
+        indices = [index for index, required in enumerate(pattern["sunlight_required_states"]) if required]
+        intervals = []
+        if indices:
+            first = previous = indices[0]
+            for index in indices[1:] + [None]:
+                if index is not None and index == previous + 1:
+                    previous = index
+                    continue
+                intervals.append({"start_minutes": cells[first]["start_minutes"],
+                                  "end_minutes": cells[previous]["end_minutes"],
+                                  "source_start_sample_index": first,
+                                  "source_end_sample_index": previous,
+                                  "semantics": "trapezoidal_sample_ownership_cell_union"})
+                if index is not None:
+                    first = previous = index
+    mapped["geometric_constraint_intervals"] = intervals
+    mapped["geometry_constraint_ready"] = True
+    return mapped
 
 
 def _timeline(start_minutes, end_minutes, step_minutes):
@@ -98,6 +144,7 @@ def generate_shadow_allowance_patterns(start_minutes, end_minutes,
                                        selected_limit_minutes, step_minutes,
                                        maximum_candidate_count=MAX_REVERSE_ALLOWANCE_PATTERN_CANDIDATES):
     """Enumerate deterministic one/two sunlight-block masks, never arbitrary masks."""
+    from shadow_reverse_low_rise import build_sunlight_interval_candidates
     base = {
         "available": False, "complete": False, "method": METHOD,
         "regulation_window_start_minutes": start_minutes,
@@ -183,7 +230,8 @@ def generate_shadow_allowance_patterns(start_minutes, end_minutes,
         })
         return base
 
-    ordered = sorted((item[1] for item in candidates.values()), key=_sort_key)
+    ordered = [map_pattern_to_geometric_constraints(item)
+               for item in sorted((item[1] for item in candidates.values()), key=_sort_key)]
     for index, candidate in enumerate(ordered):
         if candidate["pattern_id"] is None:
             candidate["pattern_id"] = "allowance-%05d" % index
