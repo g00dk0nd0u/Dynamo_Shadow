@@ -1,12 +1,24 @@
 import math
 from shadow_reverse_low_rise import (_boundary_loops, _cell_crossed_by_boundary,
-                                     build_midday_sunlight_interval, evaluate_adjacent_ray_facet)
+                                     build_midday_sunlight_interval,
+                                     build_sunlight_interval_candidates,
+                                     evaluate_adjacent_ray_facet)
 
 
 def test_midday_interval_example():
     value = build_midday_sunlight_interval(480, 960, 180)
     assert value["required_sunlight_minutes"] == 300
     assert (value["sunlight_start_minutes"], value["sunlight_end_minutes"]) == (570, 870)
+
+
+def test_interval_candidates_include_center_endpoints_and_keep_duration():
+    value = build_sunlight_interval_candidates(480, 960, 240, 15)
+    intervals = [(item["sunlight_start_minutes"], item["sunlight_end_minutes"])
+                 for item in value["candidates"]]
+    assert intervals[0] == (480, 720) and intervals[-1] == (720, 960)
+    assert (600, 840) in intervals
+    assert intervals == sorted(set(intervals))
+    assert all(end-start == 240 and start >= 480 and end <= 960 for start, end in intervals)
 
 
 def test_analytic_facet_45_degrees():

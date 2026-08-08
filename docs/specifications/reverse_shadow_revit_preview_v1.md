@@ -50,7 +50,7 @@ one SubTransaction, so a write failure rolls back both. `clear` deletes owned
 shapes without requiring a source.
 
 - ApplicationId: `Dynamo_Shadow.ReverseShadowPreview`
-- ApplicationDataId: `method=low_rise_midday_continuous_sunlight_envelope_v1;output_kind=reverse_shadow_volume`
+- ApplicationDataId: `method=low_rise_optimized_continuous_sunlight_envelope_v2;output_kind=reverse_shadow_volume`
 - Name: `Dynamo_Shadow_ReverseShadowVolume`
 
 Cleanup does not own formal forward-shadow previews, equal-time contour

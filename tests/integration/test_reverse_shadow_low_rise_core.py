@@ -50,6 +50,34 @@ def test_standard_top_level_core_has_nonempty_safe_mesh_and_governing_distances(
     _assert_safe(result)
 
 
+def test_asymmetric_site_selects_better_than_centered_and_is_deterministic():
+    _, preset, plane, settings = _inputs()
+    site = {"complete": True, "method": "test_asymmetric", "outer_loop": [
+        {"x_m": 0, "y_m": 0}, {"x_m": 18, "y_m": 0},
+        {"x_m": 18, "y_m": 8}, {"x_m": 4, "y_m": 8},
+        {"x_m": 4, "y_m": 16}, {"x_m": 0, "y_m": 16}]}
+    first = core.build_low_rise_reverse_shadow_core(site, preset, plane, settings, "standard")
+    second = core.build_low_rise_reverse_shadow_core(site, preset, plane, settings, "standard")
+    optimization = first["reverse_shadow_interval_optimization"]
+    assert first["complete"] and optimization["gain_vs_centered"]["volume_m3"] > 0
+    assert optimization["selected"] != optimization["centered_baseline"]
+    assert optimization["selected"] == second["reverse_shadow_interval_optimization"]["selected"]
+    assert optimization["selected"]["bounded_candidate_volume_m3"] >= optimization["centered_baseline"]["bounded_candidate_volume_m3"]-1e-9
+    assert first["approximation"]["conservative_endpoint_altitude_clamp"] is True
+
+
+def test_standard_and_high_complete_with_fixed_resolutions_and_denser_high_output():
+    standard = _build()
+    high = core.build_low_rise_reverse_shadow_core(*_inputs(), "high")
+    assert standard["complete"] and high["complete"]
+    assert standard["reverse_shadow_accuracy"]["height_field_grid_resolution_m"] == 2
+    assert high["reverse_shadow_accuracy"]["height_field_grid_resolution_m"] == 1
+    assert high["complexity"]["height_field_grid_point_count"] > standard["complexity"]["height_field_grid_point_count"]
+    assert high["top_surface_mesh"]["top_surface_triangle_count"] > standard["top_surface_mesh"]["top_surface_triangle_count"]
+    assert math.isfinite(high["top_surface_mesh"]["bounded_candidate_volume_m3"])
+    assert high["legal_judgement_generated"] is high["ordinance_selection_certified"] is high["permit_ready_certified"] is False
+
+
 def test_no_bounded_points_is_not_complete(monkeypatch):
     monkeypatch.setattr(core, "_constraint", lambda *args: None)
     result = _build()
