@@ -737,13 +737,11 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
 
 
 def _get_debug_base_dir():
-    try:
-        module_file = globals().get("__file__")
-        if module_file:
-            return os.path.dirname(os.path.abspath(module_file)), None
-    except Exception as exc:
-        return os.getcwd(), "debug log base directory fallback used; module path unavailable: {0}".format(_sanitize_text_for_debug(exc))
-    return os.getcwd(), "debug log base directory fallback used; module path unavailable."
+    """Return the distributable runtime folder, independent of process cwd."""
+    module_file = globals().get("__file__")
+    if not module_file:
+        raise RuntimeError("debug log base directory unavailable; shadow_debug module path is missing")
+    return os.path.dirname(os.path.abspath(module_file)), None
 
 
 def _safe_debug_log_dir(settings_normalized=None):
@@ -771,11 +769,12 @@ def _write_debug_log_if_enabled(out_payload, settings_normalized=None):
     if not enabled:
         return _build_debug_log_status(False, False)
 
-    path_info = _safe_debug_log_path(settings_normalized)
+    path_info = None
     warnings = []
-    if path_info.get("warning"):
-        warnings.append(path_info.get("warning"))
     try:
+        path_info = _safe_debug_log_path(settings_normalized)
+        if path_info.get("warning"):
+            warnings.append(path_info.get("warning"))
         directory = os.path.dirname(path_info["absolute_path"])
         if directory and not os.path.isdir(directory):
             os.makedirs(directory)
@@ -787,4 +786,5 @@ def _write_debug_log_if_enabled(out_payload, settings_normalized=None):
     except Exception as exc:
         warning = "debug log write failed; diagnostics continue: {0}".format(_sanitize_text_for_debug(exc))
         warnings.append(warning)
-        return _build_debug_log_status(True, True, path=path_info["relative_path"], written=False, error=warning, warnings=warnings)
+        relative_path = path_info.get("relative_path") if path_info else None
+        return _build_debug_log_status(True, True, path=relative_path, written=False, error=warning, warnings=warnings)

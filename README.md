@@ -115,7 +115,7 @@ To run the graph, open `runtime/Shadow.dyn` with Dynamo Player. The `runtime/` d
 
 ## Debug logs
 
-Debug logging is disabled by default. Runtime files are written under the ignored `debug_logs/` directory and must not be committed. Fixed samples needed by tests or repository checks belong under `tests/fixtures/debug_logs/`, must remain small and sanitized, and must not contain local paths, usernames, email addresses, client or project names, personal cloud paths, raw Revit object representations, or large geometry payloads.
+Debug logging is disabled by default. Runtime files are written to `debug_logs/latest_debug.json` inside the copied `runtime/` bundle (relative to `Shadow.dyn`, not the process working directory) and must not be committed. The repository-root `debug_logs/` directory is not a runtime output location. Fixed samples needed by tests or repository checks belong under `tests/fixtures/debug_logs/`, must remain small and sanitized, and must not contain local paths, usernames, email addresses, client or project names, personal cloud paths, raw Revit object representations, or large geometry payloads.
 
 ## Units
 
