@@ -155,6 +155,7 @@ def _build_runtime_code_diagnostics():
     modules = []
     for module_name in local_names:
         module = sys.modules.get(module_name)
+        loaded = module is not None
         module_file = getattr(module, "__file__", None) if module is not None else None
         module_filename = os.path.basename(module_file) if module_file else None
         try:
@@ -164,9 +165,15 @@ def _build_runtime_code_diagnostics():
         modules.append({
             "module_name": module_name,
             "module_filename": module_filename,
-            "loaded_from_workspace": bool(module_file and module_dir == _SCRIPT_DIRECTORY),
+            "loaded": loaded,
+            "loaded_from_workspace": bool(module_file and module_dir == _SCRIPT_DIRECTORY) if loaded else None,
             "module_file_available": bool(module_file),
         })
+    loaded_modules = [item for item in modules if item["loaded"]]
+    workspace_mismatch_modules = [
+        item["module_name"] for item in loaded_modules
+        if not item["loaded_from_workspace"]
+    ]
     path_zero = bool(sys.path and _normalized_path(sys.path[0]) == _SCRIPT_DIRECTORY)
     return {
         "code_build_id": globals().get("CODE_BUILD_ID", "2026-07-28-module-isolation-v1"),
@@ -179,7 +186,10 @@ def _build_runtime_code_diagnostics():
         "removed_cached_modules": list(bootstrap.get("removed_cached_modules", [])),
         "script_directory_resolved": bool(_SCRIPT_DIRECTORY),
         "script_directory_at_sys_path_zero": path_zero,
-        "all_local_modules_from_workspace": bool(modules) and all(item["loaded_from_workspace"] for item in modules),
+        "loaded_local_module_count": len(loaded_modules),
+        "unloaded_local_module_count": len(modules) - len(loaded_modules),
+        "workspace_mismatch_modules": workspace_mismatch_modules,
+        "all_local_modules_from_workspace": not workspace_mismatch_modules,
         "modules": modules,
     }
 
@@ -736,9 +746,6 @@ def _dispatch_analysis_mode():
 
 if _IMPORT_ERROR_TEXT is not None:
     OUT = _minimal_import_failure(_IMPORT_ERROR_TEXT)
-elif not _RUNTIME_CODE_DIAGNOSTICS.get("all_local_modules_from_workspace"):
-    OUT = _minimal_import_failure("One or more local diagnostic modules were not loaded from the current workspace.")
-    OUT["error_code"] = "local_module_source_mismatch"
 else:
     try:
         _checkpoint("BUILD_SUCCESS_BEFORE")

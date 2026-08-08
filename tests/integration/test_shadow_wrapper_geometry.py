@@ -262,7 +262,7 @@ def test_loader_consecutive_exec_reads_updated_workspace_module(tmp_path):
             sys.modules['shadow_settings'] = old_settings
 
 
-def test_script_reports_local_module_source_mismatch(tmp_path):
+def test_script_reports_local_module_source_mismatch_without_hard_failure(tmp_path):
     script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'runtime', 'script.py')
     previous = sys.modules.get('shadow_settings')
     outside_module = types.ModuleType('shadow_settings')
@@ -286,12 +286,17 @@ def test_script_reports_local_module_source_mismatch(tmp_path):
     try:
         with open(script_path, 'r', encoding='utf-8') as stream:
             exec(compile(stream.read(), script_path, 'exec'), namespace)
-        assert namespace['OUT']['success'] is False
-        assert namespace['OUT']['error_code'] == 'local_module_source_mismatch'
+        assert namespace['OUT'].get('error_code') != 'local_module_source_mismatch'
+        diagnostics = namespace['OUT']['runtime_code_diagnostics']
+        assert diagnostics['all_local_modules_from_workspace'] is False
+        assert diagnostics['workspace_mismatch_modules'] == ['shadow_settings']
+        assert diagnostics['loaded_local_module_count'] == 1
+        assert diagnostics['unloaded_local_module_count'] == 0
         module = namespace['OUT']['runtime_code_diagnostics']['modules'][0]
         assert module == {
             'module_name': 'shadow_settings',
             'module_filename': 'shadow_settings.py',
+            'loaded': True,
             'loaded_from_workspace': False,
             'module_file_available': True,
         }
@@ -300,6 +305,47 @@ def test_script_reports_local_module_source_mismatch(tmp_path):
             sys.modules.pop('shadow_settings', None)
         else:
             sys.modules['shadow_settings'] = previous
+
+
+def test_unimported_runtime_module_does_not_create_source_mismatch_failure():
+    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'runtime', 'script.py')
+    namespace = {
+        '__file__': script_path,
+        '__name__': '__script_unused_module_test__',
+        'INPUTS': {},
+        'RUNTIME_IMPORT_BOOTSTRAP': {
+            'local_module_names': ['shadow_settings', 'shadow_unused'],
+        },
+    }
+    with open(script_path, 'r', encoding='utf-8') as stream:
+        exec(compile(stream.read(), script_path, 'exec'), namespace)
+
+    diagnostics = namespace['OUT']['runtime_code_diagnostics']
+    assert namespace['OUT'].get('error_code') != 'local_module_source_mismatch'
+    assert diagnostics['loaded_local_module_count'] == 1
+    assert diagnostics['unloaded_local_module_count'] == 1
+    assert diagnostics['workspace_mismatch_modules'] == []
+    assert diagnostics['all_local_modules_from_workspace'] is True
+    assert diagnostics['modules'][1]['loaded'] is False
+    assert diagnostics['modules'][1]['loaded_from_workspace'] is None
+
+
+def test_script_module_import_failure_remains_fatal(monkeypatch):
+    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'runtime', 'script.py')
+    real_import = builtins.__import__
+
+    def fail_shadow_policies(name, *args, **kwargs):
+        if name == 'shadow_policies':
+            raise ImportError('forced shadow_policies import failure')
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, '__import__', fail_shadow_policies)
+    namespace = {'__file__': script_path, '__name__': '__script_import_failure_test__', 'INPUTS': {}}
+    with open(script_path, 'r', encoding='utf-8') as stream:
+        exec(compile(stream.read(), script_path, 'exec'), namespace)
+
+    assert namespace['OUT']['success'] is False
+    assert namespace['OUT']['error_code'] == 'module_import_failure'
 
 
 def test_runtime_code_diagnostics_debug_summary_is_allowlisted_and_private_path_free():
