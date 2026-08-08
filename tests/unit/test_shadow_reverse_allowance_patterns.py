@@ -33,6 +33,7 @@ def _generate(preset_id, zone):
 def test_all_candidates_are_safe_unique_complete_and_json_safe(preset_id, zone):
     result = _generate(preset_id, zone)
     assert result["available"] and result["complete"]
+    assert result["candidate_count"] < MAX_REVERSE_ALLOWANCE_PATTERN_CANDIDATES
     assert result["automatic_accuracy_fallback_used"] is False
     assert result["legal_judgement_generated"] is False
     assert result["ordinance_selection_certified"] is False
@@ -45,6 +46,11 @@ def test_all_candidates_are_safe_unique_complete_and_json_safe(preset_id, zone):
         assert duration <= candidate["selected_limit_minutes"] + 1e-9
         assert candidate["sunlight_required_states"] == [
             not state for state in candidate["shadow_allowed_states"]]
+        assert candidate["geometry_constraint_ready"] is False
+        assert candidate["geometric_constraint_intervals"] is None
+        for block in candidate["sunlight_required_sample_blocks"]:
+            assert block["semantics"] == "contiguous_required_sample_run"
+            assert "start_minutes" not in block and "end_minutes" not in block
         keys.append(tuple(candidate["shadow_allowed_states"]))
     assert len(keys) == len(set(keys))
     json.dumps(result)
@@ -59,9 +65,9 @@ def test_v2_baseline_and_both_candidate_families_are_present():
     assert result["one_block_candidate_count"] > 0
     assert result["two_block_candidate_count"] > 0
     for candidate in result["candidates"]:
-        blocks = candidate["sunlight_required_blocks"]
+        blocks = candidate["sunlight_required_sample_blocks"]
         if len(blocks) == 2:
-            assert blocks[0]["end_index"] + 1 < blocks[1]["start_index"]
+            assert blocks[0]["end_sample_index"] + 1 < blocks[1]["start_sample_index"]
 
 
 def test_generation_is_fully_deterministic():
@@ -107,6 +113,16 @@ def test_representative_v2_interval_has_matching_required_sunlight_semantics():
         pattern["sample_minutes"], pattern["sunlight_required_states"]) if required]
     assert required_samples[0] == interval["sunlight_start_minutes"]
     assert required_samples[-1] == interval["sunlight_end_minutes"] - 15
+    assert pattern["sunlight_required_sample_blocks"] == [{
+        "start_sample_index": 8,
+        "end_sample_index": 23,
+        "start_sample_minutes": 600.0,
+        "end_sample_minutes": 825.0,
+        "semantics": "contiguous_required_sample_run",
+    }]
+    assert pattern["source_continuous_sunlight_interval"] == {
+        "start_minutes": 600.0, "end_minutes": 840.0}
+    assert pattern["geometry_constraint_ready"] is False
     assert integrate_shadow_states_trapezoidal(
         pattern["sunlight_required_states"], pattern["sample_minutes"]) == 240
     assert pattern["allowed_shadow_duration_minutes"] == 240

@@ -30,13 +30,16 @@ def _states_for_intervals(sample_minutes, intervals):
 
 
 def _pattern(sample_minutes, sunlight_states, blocks, selected_limit_minutes,
-             generation_family, pattern_id=None, v2_baseline=False):
+             generation_family, pattern_id=None, v2_baseline=False,
+             source_continuous_sunlight_interval=None):
     shadow_states = [not value for value in sunlight_states]
     allowed = integrate_shadow_states_trapezoidal(shadow_states, sample_minutes)
     if allowed > selected_limit_minutes + _DURATION_TOLERANCE_MINUTES:
         return None
-    block_data = [{"start_index": first, "end_index": last,
-                   "start_minutes": sample_minutes[first], "end_minutes": sample_minutes[last]}
+    block_data = [{"start_sample_index": first, "end_sample_index": last,
+                   "start_sample_minutes": sample_minutes[first],
+                   "end_sample_minutes": sample_minutes[last],
+                   "semantics": "contiguous_required_sample_run"}
                   for first, last in blocks]
     return {
         "pattern_id": pattern_id,
@@ -46,8 +49,11 @@ def _pattern(sample_minutes, sunlight_states, blocks, selected_limit_minutes,
         "allowed_shadow_duration_minutes": allowed,
         "selected_limit_minutes": selected_limit_minutes,
         "within_selected_limit": True,
-        "sunlight_required_blocks": block_data,
+        "sunlight_required_sample_blocks": block_data,
         "sunlight_required_block_count": len(blocks),
+        "source_continuous_sunlight_interval": source_continuous_sunlight_interval,
+        "geometric_constraint_intervals": None,
+        "geometry_constraint_ready": False,
         "generation_family": generation_family,
         "v2_baseline": bool(v2_baseline),
         "permit_ready_certified": False,
@@ -72,13 +78,15 @@ def build_pattern_from_continuous_sunlight_interval(
     else:
         sunlight = [sunlight_start <= minute < sunlight_end for minute in samples]
     indices = [index for index, required in enumerate(sunlight) if required]
+    source_interval = {"start_minutes": sunlight_start, "end_minutes": sunlight_end}
     return _pattern(samples, sunlight, [(indices[0], indices[-1])], limit,
-                    generation_family, pattern_id, v2_baseline)
+                    generation_family, pattern_id, v2_baseline, source_interval)
 
 
 def _sort_key(pattern):
-    blocks = pattern["sunlight_required_blocks"]
-    padded = [(item["start_index"], item["end_index"]) for item in blocks] + [(-1, -1)] * (2-len(blocks))
+    blocks = pattern["sunlight_required_sample_blocks"]
+    padded = [(item["start_sample_index"], item["end_sample_index"])
+              for item in blocks] + [(-1, -1)] * (2-len(blocks))
     required_duration = integrate_shadow_states_trapezoidal(
         pattern["sunlight_required_states"], pattern["sample_minutes"])
     return (pattern["sunlight_required_block_count"], required_duration,
