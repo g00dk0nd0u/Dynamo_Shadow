@@ -1,5 +1,6 @@
 import math
 from shadow_reverse_low_rise import (_boundary_loops, _cell_crossed_by_boundary,
+                                     _candidate_height, _compile_sun_fan, _constraint,
                                      build_midday_sunlight_interval,
                                      build_sunlight_interval_candidates,
                                      evaluate_adjacent_ray_facet,
@@ -52,3 +53,28 @@ def test_conservative_half_meter_height_quantization_handles_float_boundary():
     assert _quantize_height(12.50, 0.5) == 12.5
     assert _quantize_height(12.500000000000002, 0.5) == 12.5
     assert _quantize_height(-0.1, 0.5) == 0.0
+
+
+def test_compiled_fan_matches_on_demand_compilation_and_exact_pruning():
+    fan = {"samples": [
+        {"sun_azimuth_model_unwrapped_deg": 100.0, "true_solar_minutes": 600,
+         "ray_vector_model": {"x": .984807753, "y": -.173648178, "z": 1.0}},
+        {"sun_azimuth_model_unwrapped_deg": 110.0, "true_solar_minutes": 615,
+         "ray_vector_model": {"x": .939692621, "y": -.342020143, "z": 1.0}}]}
+    measurement = {"x_m": 0.0, "y_m": 0.0, "measurement_point_index": 0}
+    point = (9.659258263, -2.588190451)
+    compiled = _compile_sun_fan(fan)
+    assert _constraint(point, measurement, fan, 4.0) == _constraint(
+        point, measurement, fan, 4.0, compiled)
+
+    outside = {"x_m": 0.0, "y_m": -10.0, "measurement_point_index": 1}
+    candidate = {"sun_ray_fan": fan, "compiled_sun_fan": compiled}
+    counts = {"actually_evaluated_constraint_count": 0,
+              "azimuth_pruned_constraint_count": 0, "maximum": 10, "limit_exceeded": False}
+    pruned = _candidate_height(point, [measurement, outside], candidate, 4.0, .5,
+                               evaluation_counts=counts, pruning=True)
+    unpruned = _candidate_height(point, [measurement, outside], candidate, 4.0, .5,
+                                 pruning=False)
+    assert pruned == unpruned
+    assert counts["azimuth_pruned_constraint_count"] == 1
+    assert counts["actually_evaluated_constraint_count"] == 1

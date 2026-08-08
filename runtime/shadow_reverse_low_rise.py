@@ -16,6 +16,7 @@ MAX_REVERSE_MEASUREMENT_POINTS = 5000
 MAX_REVERSE_CONSTRAINT_CHECKS = 25000000
 MAX_REVERSE_TOP_SURFACE_TRIANGLES = 200000
 REVERSE_CANDIDATE_CHUNK_SIZE = 8192
+REVERSE_AZIMUTH_PRUNING_ENABLED = True
 _HEIGHT_QUANTIZATION_TOLERANCE = 1e-9
 
 
@@ -161,17 +162,40 @@ def _boundary_loops(directed_edges, grid):
     return loops
 
 
-def _constraint(point, measurement, fan, measurement_height):
-    dx, dy = point[0]-measurement["x_m"], point[1]-measurement["y_m"]
-    az = math.degrees(math.atan2(dx, dy)) % 360.0
+def _compile_sun_fan(fan):
+    """Compile candidate-invariant azimuth data used by every constraint check."""
     samples = fan["samples"]
-    angles = [s["sun_azimuth_model_unwrapped_deg"] for s in samples]
+    angles = [sample["sun_azimuth_model_unwrapped_deg"] for sample in samples]
     ascending = angles[-1] >= angles[0]
-    if not ascending: angles = [-a for a in angles]; az = -az
-    while az < angles[0]: az += 360.0
-    while az > angles[-1]: az -= 360.0
-    if az < angles[0]-1e-9 or az > angles[-1]+1e-9: return None
-    facet = max(0, min(len(samples)-2, bisect.bisect_right(angles, az)-1))
+    search_angles = angles if ascending else [-angle for angle in angles]
+    return {"samples": samples, "search_angles": search_angles, "ascending": ascending,
+            "minimum_search_azimuth_deg": search_angles[0],
+            "maximum_search_azimuth_deg": search_angles[-1]}
+
+
+def _fan_facet_for_direction(dx, dy, compiled_fan):
+    """Return the exact legacy facet index, or None when azimuth is outside the fan."""
+    azimuth = math.degrees(math.atan2(dx, dy)) % 360.0
+    if not compiled_fan["ascending"]:
+        azimuth = -azimuth
+    lower = compiled_fan["minimum_search_azimuth_deg"]
+    upper = compiled_fan["maximum_search_azimuth_deg"]
+    while azimuth < lower:
+        azimuth += 360.0
+    while azimuth > upper:
+        azimuth -= 360.0
+    if azimuth < lower-1e-9 or azimuth > upper+1e-9:
+        return None
+    angles = compiled_fan["search_angles"]
+    return max(0, min(len(angles)-2, bisect.bisect_right(angles, azimuth)-1))
+
+
+def _constraint(point, measurement, fan, measurement_height, compiled_fan=None, facet_index=None):
+    dx, dy = point[0]-measurement["x_m"], point[1]-measurement["y_m"]
+    compiled = compiled_fan or _compile_sun_fan(fan)
+    facet = facet_index if facet_index is not None else _fan_facet_for_direction(dx, dy, compiled)
+    if facet is None: return None
+    samples = compiled["samples"]
     r0, r1 = samples[facet]["ray_vector_model"], samples[facet+1]["ray_vector_model"]
     value = evaluate_adjacent_ray_facet((measurement["x_m"], measurement["y_m"]), point, r0, r1)
     if value is None: return None
@@ -188,11 +212,27 @@ def _quantize_height(raw_height_m, vertical_step_m, tolerance=_HEIGHT_QUANTIZATI
     return max(0.0, math.floor((raw + tolerance) / step) * step)
 
 
-def _candidate_height(point, measurement_points, candidate, measurement_height, vertical_step, metadata=False):
+def _candidate_height(point, measurement_points, candidate, measurement_height, vertical_step,
+                      metadata=False, evaluation_counts=None, pruning=True):
     """Shared Pass 1/Pass 2 constraint evaluation with identical quantization."""
     best = None
+    compiled = candidate["compiled_sun_fan"]
     for measurement in measurement_points:
-        value = _constraint(point, measurement, candidate["sun_ray_fan"], measurement_height)
+        dx, dy = point[0]-measurement["x_m"], point[1]-measurement["y_m"]
+        facet = None
+        if pruning:
+            facet = _fan_facet_for_direction(dx, dy, compiled)
+            if facet is None:
+                if evaluation_counts is not None:
+                    evaluation_counts["azimuth_pruned_constraint_count"] += 1
+                continue
+        if evaluation_counts is not None:
+            if evaluation_counts["actually_evaluated_constraint_count"] >= evaluation_counts["maximum"]:
+                evaluation_counts["limit_exceeded"] = True
+                return None
+            evaluation_counts["actually_evaluated_constraint_count"] += 1
+        value = _constraint(point, measurement, candidate["sun_ray_fan"], measurement_height,
+                            compiled, facet)
         if value is None:
             continue
         quantized = _quantize_height(value["height"], vertical_step)
@@ -245,7 +285,8 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
             fan = build_true_solar_sun_ray_fan(settings_normalized, interval["sunlight_start_minutes"],
                 interval["sunlight_end_minutes"], accuracy["sun_time_step_minutes"])
             if not fan["complete"]: result["blockers"] += fan["blockers"]; return result
-            candidates.append(dict(interval, sun_ray_fan=fan, sun_ray_sample_count=fan["sample_count"],
+            candidates.append(dict(interval, sun_ray_fan=fan, compiled_sun_fan=_compile_sun_fan(fan),
+                                   sun_ray_sample_count=fan["sample_count"],
                                    sun_facet_count=fan["facet_count"]))
         zone_candidates[name] = candidates
         centered = min(candidates, key=lambda item: abs(item["sunlight_start_minutes"]-generated["sunlight_start_minutes"]))
@@ -265,12 +306,9 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
     points = [(ox+(i%nx)*resolution, oy+(i//nx)*resolution) for i in range(count)]
     classifications = [_inside(point, polygon, 1e-8) for point in points]
     inside_count = sum(value is not False for value in classifications)
-    candidate_evaluations = inside_count * sum(len(zone_candidates[z])*len(measurements[z]["points"]) for z in ("near", "far"))
+    theoretical_constraint_pairs = inside_count * sum(
+        len(zone_candidates[z])*len(measurements[z]["points"]) for z in ("near", "far"))
     estimated_triangles = 2*(nx-1)*(ny-1)
-    if candidate_evaluations > MAX_REVERSE_CONSTRAINT_CHECKS:
-        result["blockers"].append({"failure_code": "reverse_shadow_complexity_limit_exceeded", "limit_type": "constraint_checks",
-            "requested_preset": requested, "recommended_preset": _recommend(requested),
-            "estimated_constraint_checks": candidate_evaluations, "maximum_constraint_checks": MAX_REVERSE_CONSTRAINT_CHECKS})
     if estimated_triangles > MAX_REVERSE_TOP_SURFACE_TRIANGLES:
         result["blockers"].append({"failure_code": "reverse_shadow_complexity_limit_exceeded", "limit_type": "top_surface_triangles",
             "requested_preset": requested, "recommended_preset": _recommend(requested),
@@ -298,6 +336,10 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
     chunk_size = max(2, int(REVERSE_CANDIDATE_CHUNK_SIZE))
     cell_rows_per_chunk = max(1, chunk_size // nx - 1)
     vertical_step = accuracy["vertical_height_step_m"]
+    evaluation_counts = {"actually_evaluated_constraint_count": 0,
+                         "azimuth_pruned_constraint_count": 0,
+                         "maximum": MAX_REVERSE_CONSTRAINT_CHECKS, "limit_exceeded": False}
+    carry_fields = None
 
     for first_row in range(0, ny - 1, cell_rows_per_chunk):
         last_cell_row = min(ny - 2, first_row + cell_rows_per_chunk - 1)
@@ -306,13 +348,20 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
         local_count = stop_index - first_index
         fields = {"near": [], "far": []}
         for zone_name in ("near", "far"):
-            for candidate in zone_candidates[zone_name]:
+            for candidate_index, candidate in enumerate(zone_candidates[zone_name]):
                 heights = array("d", [nan]) * local_count
-                for local_index, global_index in enumerate(range(first_index, stop_index)):
+                evaluation_start = first_index
+                if carry_fields is not None:
+                    heights[:nx] = carry_fields[zone_name][candidate_index]
+                    evaluation_start += nx
+                for global_index in range(evaluation_start, stop_index):
+                    local_index = global_index - first_index
                     if classifications[global_index] is False:
                         continue
                     value = _candidate_height(points[global_index], measurements[zone_name]["points"],
-                                              candidate, measurement_height, vertical_step)
+                                              candidate, measurement_height, vertical_step,
+                                              evaluation_counts=evaluation_counts,
+                                              pruning=REVERSE_AZIMUTH_PRUNING_ENABLED)
                     if value is not None:
                         heights[local_index] = value
                 fields[zone_name].append(heights)
@@ -333,6 +382,18 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
                     metrics["bounded_candidate_plan_area_m2"] += resolution * resolution
                     metrics["bounded_candidate_volume_m3"] += (resolution * resolution *
                         (2.0*values[0] + values[1] + 2.0*values[2] + values[3]) / 6.0)
+
+        if evaluation_counts["limit_exceeded"]:
+            result["blockers"].append({"failure_code": "reverse_shadow_complexity_limit_exceeded",
+                "limit_type": "constraint_checks", "requested_preset": requested,
+                "recommended_preset": _recommend(requested),
+                "theoretical_constraint_pair_count": theoretical_constraint_pairs,
+                "actually_evaluated_constraint_count": evaluation_counts["actually_evaluated_constraint_count"],
+                "azimuth_pruned_constraint_count": evaluation_counts["azimuth_pruned_constraint_count"],
+                "maximum_constraint_checks": MAX_REVERSE_CONSTRAINT_CHECKS})
+            return result
+        carry_fields = {zone_name: [array("d", heights[-nx:]) for heights in fields[zone_name]]
+                        for zone_name in ("near", "far")}
 
     centered_indices = {}
     for zone_name in ("near", "far"):
@@ -405,7 +466,12 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
     bounded=[p["height_limit_m"] for p in grid if p["bounded"]]
     result["complexity"]={"site_distance_grid_point_count":contours["grid_spec"]["point_count"],"height_field_grid_point_count":count,
         "inside_site_height_grid_point_count":inside_count,"measurement_point_count":measurements["total_point_count"],
-        "estimated_constraint_check_count":candidate_evaluations,"selected_metadata_constraint_check_count":inside_count*measurements["total_point_count"],
+        "estimated_constraint_check_count":theoretical_constraint_pairs,
+        "theoretical_constraint_pair_count":theoretical_constraint_pairs,
+        "actually_evaluated_constraint_count":evaluation_counts["actually_evaluated_constraint_count"],
+        "azimuth_pruned_constraint_count":evaluation_counts["azimuth_pruned_constraint_count"],
+        "constraint_count_scope":"pass_1_candidate_selection",
+        "selected_metadata_constraint_check_count":inside_count*measurements["total_point_count"],
         "top_surface_triangle_count":len(triangles),"automatic_accuracy_fallback_used":False,
         "chunk_size":chunk_size,"pass_count":2,"compact_buffer_type":"array('d')",
         "candidate_field_full_materialization":False,"single_process":True}

@@ -105,10 +105,13 @@ def test_empty_mesh_is_not_complete(monkeypatch):
 
 
 def test_complexity_reports_each_exceeded_limit(monkeypatch):
-    monkeypatch.setattr(core, "MAX_REVERSE_CONSTRAINT_CHECKS", -1)
+    monkeypatch.setattr(core, "MAX_REVERSE_CONSTRAINT_CHECKS", 0)
+    constraint_result = _build()
+    monkeypatch.setattr(core, "MAX_REVERSE_CONSTRAINT_CHECKS", 25000000)
     monkeypatch.setattr(core, "MAX_REVERSE_TOP_SURFACE_TRIANGLES", -1)
-    result = _build()
-    blockers = [b for b in result["blockers"] if b["failure_code"] == "reverse_shadow_complexity_limit_exceeded"]
+    mesh_result = _build()
+    blockers = [b for result in (constraint_result, mesh_result) for b in result["blockers"]
+                if b["failure_code"] == "reverse_shadow_complexity_limit_exceeded"]
     assert {b["limit_type"] for b in blockers} == {"constraint_checks", "top_surface_triangles"}
     assert all(b["recommended_preset"] == "rough" for b in blockers)
 
@@ -154,3 +157,19 @@ def test_chunk_size_does_not_change_selection_volume_or_quantized_mesh(monkeypat
         assert governed["raw_height_limit_m"] >= governed["height_limit_m"]
         assert result["approximation"]["vertical_height_step_m"] == .5
         assert result["approximation"]["vertical_height_quantization"] == "floor_conservative"
+
+
+def test_exact_azimuth_pruning_preserves_selected_pair_and_heights(monkeypatch):
+    monkeypatch.setattr(core, "REVERSE_AZIMUTH_PRUNING_ENABLED", True)
+    pruned = _build()
+    monkeypatch.setattr(core, "REVERSE_AZIMUTH_PRUNING_ENABLED", False)
+    unpruned = _build()
+    assert pruned["reverse_shadow_interval_optimization"]["selected"] == unpruned["reverse_shadow_interval_optimization"]["selected"]
+    assert [point["height_limit_m"] for point in pruned["height_field"]["grid_points"]] == [
+        point["height_limit_m"] for point in unpruned["height_field"]["grid_points"]]
+    complexity = pruned["complexity"]
+    assert complexity["actually_evaluated_constraint_count"] <= complexity["theoretical_constraint_pair_count"]
+    assert complexity["azimuth_pruned_constraint_count"] > 0
+    assert (complexity["actually_evaluated_constraint_count"] +
+            complexity["azimuth_pruned_constraint_count"] ==
+            complexity["theoretical_constraint_pair_count"])
