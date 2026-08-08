@@ -38,7 +38,7 @@ def test_reverse_vertical_slice_uses_real_core_without_building_or_level(monkeyp
     assert not result["forward_pipeline_executed"]
     assert result["input_usage"]["building_elements"] == "ignored"
     assert result["input_usage"]["level"] == "ignored"
-    assert result["calculation_accuracy"]["height_field_grid_resolution_m"] == 2.0
+    assert result["calculation_accuracy"]["height_field_grid_resolution_m"] == 1.0
     assert result["calculation_accuracy"]["sun_time_step_minutes"] == 15
     assert preview_calls and preview_calls[0][1]["reverse_shadow_preview_mode"] == "replace"
 

@@ -30,7 +30,7 @@ Future work should keep the repository aligned with three layers:
 - Must not import `Autodesk.Revit.DB`.
 - Must not operate on Revit internal units; use meters, degrees, and minutes after adapter conversion.
 - The low-rise reverse-shadow core belongs here and must not import `Autodesk.Revit.DB`; the Dynamo Host exposes it through Analysis Mode.
-- Reverse-shadow spatial resolution must never be below 1 m. Its coarse envelope must not claim a legal maximum, and the final forward equal-time validation requirement must remain explicit.
+- Reverse-shadow resolution is managed independently by purpose: the site-distance grid defaults to 1 m, while measurement-point spacing, height-field XY spacing, sun step, and vertical height step are preset-dependent. A 1 m height-field grid is formally supported and future 0.5 m XY presets are not prohibited. Automatic accuracy fallback is not allowed. The coarse envelope must not claim a legal maximum, and the final forward equal-time validation requirement must remain explicit.
 
 ### Dynamo Host
 

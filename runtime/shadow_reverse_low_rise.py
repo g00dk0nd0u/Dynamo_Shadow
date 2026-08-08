@@ -1,6 +1,7 @@
 """Lightweight low-rise reverse-shadow calculation core (pure Python)."""
 import bisect
 import math
+from array import array
 
 from shadow_reverse_accuracy import resolve_reverse_shadow_accuracy
 from shadow_reverse_measurement import build_reverse_shadow_measurement_points
@@ -14,6 +15,8 @@ MAX_REVERSE_HEIGHT_GRID_POINTS = 100000
 MAX_REVERSE_MEASUREMENT_POINTS = 5000
 MAX_REVERSE_CONSTRAINT_CHECKS = 25000000
 MAX_REVERSE_TOP_SURFACE_TRIANGLES = 200000
+REVERSE_CANDIDATE_CHUNK_SIZE = 8192
+_HEIGHT_QUANTIZATION_TOLERANCE = 1e-9
 
 
 def build_midday_sunlight_interval(start_minutes, end_minutes, allowed_shadow_minutes):
@@ -178,6 +181,35 @@ def _constraint(point, measurement, fan, measurement_height):
     return value
 
 
+def _quantize_height(raw_height_m, vertical_step_m, tolerance=_HEIGHT_QUANTIZATION_TOLERANCE):
+    """Floor a non-negative analytical height to the conservative vertical step."""
+    raw = max(0.0, float(raw_height_m))
+    step = float(vertical_step_m)
+    return max(0.0, math.floor((raw + tolerance) / step) * step)
+
+
+def _candidate_height(point, measurement_points, candidate, measurement_height, vertical_step, metadata=False):
+    """Shared Pass 1/Pass 2 constraint evaluation with identical quantization."""
+    best = None
+    for measurement in measurement_points:
+        value = _constraint(point, measurement, candidate["sun_ray_fan"], measurement_height)
+        if value is None:
+            continue
+        quantized = _quantize_height(value["height"], vertical_step)
+        key = (quantized, value["height"], measurement["measurement_point_index"])
+        if best is None or key < best[0]:
+            best = (key, value, measurement)
+    if best is None:
+        return None
+    if not metadata:
+        return best[0][0]
+    _, value, measurement = best
+    value = dict(value)
+    value["raw_height"] = value["height"]
+    value["height"] = best[0][0]
+    return value, measurement
+
+
 def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulatory_preset,
                                        measurement_plane, settings_normalized, calculation_accuracy_preset):
     result = _empty()
@@ -245,52 +277,73 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
             "estimated_top_surface_triangle_count": estimated_triangles, "maximum_top_surface_triangles": MAX_REVERSE_TOP_SURFACE_TRIANGLES})
     if result["blockers"]: return result
 
-    # Constraint evaluation is performed once per zone candidate. Pair scoring only combines compact height arrays.
-    fields = {"near": [], "far": []}
-    for zone_name in ("near", "far"):
-        for candidate in zone_candidates[zone_name]:
-            heights = [None]*count
-            for index, inside in enumerate(classifications):
-                if inside is False: continue
-                best = None
-                for mp in measurements[zone_name]["points"]:
-                    value = _constraint(points[index], mp, candidate["sun_ray_fan"], measurement_height)
-                    if value is not None and (best is None or value["height"] < best): best = value["height"]
-                heights[index] = best
-            fields[zone_name].append(heights)
-
     eligible_cells = []; omitted_boundary = 0
     for iy in range(ny-1):
         for ix in range(nx-1):
             ids = (iy*nx+ix, iy*nx+ix+1, (iy+1)*nx+ix+1, (iy+1)*nx+ix)
             center_inside = _inside((ox+(ix+.5)*resolution, oy+(iy+.5)*resolution), polygon, 1e-8) is not False
             if (not all(classifications[i] is not False for i in ids) or not center_inside or
-                    _cell_crossed_by_boundary(points[ids[0]][0], points[ids[0]][1], points[ids[2]][0], points[ids[2]][1], polygon)):
+                    _cell_crossed_by_boundary(points[ids[0]][0], points[ids[0]][1],
+                                              points[ids[2]][0], points[ids[2]][1], polygon)):
                 omitted_boundary += 1
-            else: eligible_cells.append((ix, iy, ids))
+            else:
+                eligible_cells.append((ix, iy, ids))
 
-    def combine(a, b): return b if a is None else a if b is None else min(a, b)
-    def score(near_index, far_index):
-        near, far = fields["near"][near_index], fields["far"][far_index]
-        area = volume = 0.0; omitted = 0
-        for _, _, ids in eligible_cells:
-            values = [combine(near[i], far[i]) for i in ids]
-            if any(value is None or not math.isfinite(value) for value in values): omitted += 1; continue
-            area += resolution*resolution
-            # Match the fixed diagonal and triangle integration used by the final mesh.
-            volume += resolution*resolution*(2.0*values[0]+values[1]+2.0*values[2]+values[3])/6.0
-        return {"bounded_candidate_plan_area_m2": area, "bounded_candidate_volume_m3": volume,
-                "omitted_unbounded_cell_count": omitted}
+    # Pass 1 holds only chunk-local compact candidate buffers. Rows overlap by one
+    # so each eligible cell is scored exactly once without retaining full fields.
+    nan = float("nan")
+    pair_metrics = [[{"bounded_candidate_plan_area_m2": 0.0, "bounded_candidate_volume_m3": 0.0,
+                      "omitted_unbounded_cell_count": 0}
+                     for _ in zone_candidates["far"]] for _ in zone_candidates["near"]]
+    chunk_size = max(2, int(REVERSE_CANDIDATE_CHUNK_SIZE))
+    cell_rows_per_chunk = max(1, chunk_size // nx - 1)
+    vertical_step = accuracy["vertical_height_step_m"]
+
+    for first_row in range(0, ny - 1, cell_rows_per_chunk):
+        last_cell_row = min(ny - 2, first_row + cell_rows_per_chunk - 1)
+        first_index = first_row * nx
+        stop_index = (last_cell_row + 2) * nx
+        local_count = stop_index - first_index
+        fields = {"near": [], "far": []}
+        for zone_name in ("near", "far"):
+            for candidate in zone_candidates[zone_name]:
+                heights = array("d", [nan]) * local_count
+                for local_index, global_index in enumerate(range(first_index, stop_index)):
+                    if classifications[global_index] is False:
+                        continue
+                    value = _candidate_height(points[global_index], measurements[zone_name]["points"],
+                                              candidate, measurement_height, vertical_step)
+                    if value is not None:
+                        heights[local_index] = value
+                fields[zone_name].append(heights)
+        for ix, iy, ids in eligible_cells:
+            if iy < first_row or iy > last_cell_row:
+                continue
+            local_ids = tuple(index - first_index for index in ids)
+            for ni, near in enumerate(fields["near"]):
+                for fi, far in enumerate(fields["far"]):
+                    values = []
+                    for index in local_ids:
+                        a, b = near[index], far[index]
+                        values.append(b if math.isnan(a) else a if math.isnan(b) else min(a, b))
+                    metrics = pair_metrics[ni][fi]
+                    if any(math.isnan(value) or not math.isfinite(value) for value in values):
+                        metrics["omitted_unbounded_cell_count"] += 1
+                        continue
+                    metrics["bounded_candidate_plan_area_m2"] += resolution * resolution
+                    metrics["bounded_candidate_volume_m3"] += (resolution * resolution *
+                        (2.0*values[0] + values[1] + 2.0*values[2] + values[3]) / 6.0)
+
     centered_indices = {}
     for zone_name in ("near", "far"):
         centered_start = zones[zone_name]["sunlight_start_minutes"]
         centered_indices[zone_name] = min(range(len(zone_candidates[zone_name])),
             key=lambda i: abs(zone_candidates[zone_name][i]["sunlight_start_minutes"]-centered_start))
-    baseline_score = score(centered_indices["near"], centered_indices["far"])
+    baseline_score = pair_metrics[centered_indices["near"]][centered_indices["far"]]
     best = None
     for ni, near in enumerate(zone_candidates["near"]):
         for fi, far in enumerate(zone_candidates["far"]):
-            metrics = score(ni, fi)
+            metrics = pair_metrics[ni][fi]
             shift = abs(near["sunlight_start_minutes"]-zones["near"]["sunlight_start_minutes"]) + abs(far["sunlight_start_minutes"]-zones["far"]["sunlight_start_minutes"])
             key = (metrics["bounded_candidate_volume_m3"], metrics["bounded_candidate_plan_area_m2"],
                    -metrics["omitted_unbounded_cell_count"], -shift, -near["sunlight_start_minutes"], -far["sunlight_start_minutes"])
@@ -306,7 +359,6 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
             "sun_ray_sample_count": selected["sun_ray_sample_count"],
             "sun_facet_count": selected["sun_facet_count"],
         })
-    selected_heights = [combine(fields["near"][selected_near][i], fields["far"][selected_far][i]) for i in range(count)]
 
     # Build rich metadata only for the selected pair and retain the production endpoint clamp.
     grid = []; clamp_count = governing_count = 0; maximum_reduction = 0.0
@@ -314,21 +366,24 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
         x, y = points[index]
         item = {"grid_index": index, "ix": index%nx, "iy": index//nx, "x_m": x, "y_m": y,
                 "inside_site": inside is not False, "on_site_boundary": inside is None, "bounded": False,
-                "height_limit_m": None, "governing_zone": None, "governing_measurement_point_index": None,
+                "raw_height_limit_m": None, "height_limit_m": None, "governing_zone": None, "governing_measurement_point_index": None,
                 "governing_facet_index": None, "governing_true_solar_start_minutes": None,
                 "governing_true_solar_end_minutes": None, "governing_distance_m": None,
                 "governing_horizontal_distance_m": None, "governing_measurement_line_distance_m": None}
         best_value = None
         if inside is not False:
             for zone_name in ("near", "far"):
-                for mp in measurements[zone_name]["points"]:
-                    value = _constraint((x, y), mp, selected_candidates[zone_name]["sun_ray_fan"], measurement_height)
-                    if value is not None and (best_value is None or value["height"] < best_value[0]["height"]): best_value=(value, zone_name, mp)
+                evaluated = _candidate_height((x, y), measurements[zone_name]["points"],
+                    selected_candidates[zone_name], measurement_height, vertical_step, metadata=True)
+                if evaluated is not None:
+                    value, mp = evaluated
+                    key = (value["height"], value["raw_height"], 0 if zone_name == "near" else 1, mp["measurement_point_index"])
+                    if best_value is None or key < best_value[0]: best_value=(key, value, zone_name, mp)
         if best_value:
-            value, zone_name, mp = best_value; governing_count += 1
+            _, value, zone_name, mp = best_value; governing_count += 1
             reduction = max(0.0, value["planar_delta_z_m"]-value["endpoint_conservative_delta_z_m"])
             if reduction > 1e-12: clamp_count += 1; maximum_reduction=max(maximum_reduction, reduction)
-            item.update({"bounded": True, "height_limit_m": value["height"], "governing_zone": zone_name,
+            item.update({"bounded": True, "raw_height_limit_m": value["raw_height"], "height_limit_m": value["height"], "governing_zone": zone_name,
                 "governing_measurement_point_index": mp["measurement_point_index"], "governing_facet_index": value["facet"],
                 "governing_true_solar_start_minutes": value["start"], "governing_true_solar_end_minutes": value["end"],
                 "governing_horizontal_distance_m": value["horizontal_distance_m"], "governing_distance_m": value["horizontal_distance_m"],
@@ -351,7 +406,9 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
     result["complexity"]={"site_distance_grid_point_count":contours["grid_spec"]["point_count"],"height_field_grid_point_count":count,
         "inside_site_height_grid_point_count":inside_count,"measurement_point_count":measurements["total_point_count"],
         "estimated_constraint_check_count":candidate_evaluations,"selected_metadata_constraint_check_count":inside_count*measurements["total_point_count"],
-        "top_surface_triangle_count":len(triangles),"automatic_accuracy_fallback_used":False}
+        "top_surface_triangle_count":len(triangles),"automatic_accuracy_fallback_used":False,
+        "chunk_size":chunk_size,"pass_count":2,"compact_buffer_type":"array('d')",
+        "candidate_field_full_materialization":False,"single_process":True}
     result["height_field"]={"grid_spec":{"x_count":nx,"y_count":ny,"origin_x_m":ox,"origin_y_m":oy,"resolution_m":resolution,"ordering":"row_major_y_then_x"},
         "grid_points":grid,"bounded_grid_point_count":len(bounded),"unbounded_grid_point_count":inside_count-len(bounded),
         "minimum_bounded_height_m":min(bounded) if bounded else None,"maximum_bounded_height_m":max(bounded) if bounded else None}
@@ -378,7 +435,8 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
             "maximum_governing_clamp_reduction_m":maximum_reduction}}
     result["approximation"]={"measurement_lines_grid_based":True,"site_distance_resolution_m":accuracy["site_distance_resolution_m"],
         "measurement_point_spacing_m":accuracy["measurement_point_spacing_m"],"height_field_grid_resolution_m":resolution,
-        "sun_time_step_minutes":accuracy["sun_time_step_minutes"],"sun_cone_facets":"adjacent_ray_planar_facets",
+        "sun_time_step_minutes":accuracy["sun_time_step_minutes"],"vertical_height_step_m":vertical_step,
+        "vertical_height_quantization":"floor_conservative","sun_cone_facets":"adjacent_ray_planar_facets",
         "conservative_endpoint_altitude_clamp":True,"partial_boundary_cells_omitted":True,"unbounded_cells_omitted":True,"exact_statutory_offset_used":False}
     if not bounded: result["blockers"].append({"failure_code":"reverse_shadow_no_bounded_height_points"})
     if not triangles or area<=0: result["blockers"].append({"failure_code":"reverse_shadow_top_surface_mesh_empty"})

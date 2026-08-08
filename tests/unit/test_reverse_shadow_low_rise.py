@@ -2,7 +2,8 @@ import math
 from shadow_reverse_low_rise import (_boundary_loops, _cell_crossed_by_boundary,
                                      build_midday_sunlight_interval,
                                      build_sunlight_interval_candidates,
-                                     evaluate_adjacent_ray_facet)
+                                     evaluate_adjacent_ray_facet,
+                                     _quantize_height)
 
 
 def test_midday_interval_example():
@@ -44,3 +45,10 @@ def test_oriented_boundary_loop_is_closed_and_deterministic():
     assert loops[0]["vertex_grid_indices"] == [0, 1, 2, 3, 0]
     assert loops[0]["closed"] and loops[0]["orientation"] == "counter_clockwise"
     assert loops[0]["signed_plan_area_m2"] == 1
+
+
+def test_conservative_half_meter_height_quantization_handles_float_boundary():
+    assert _quantize_height(12.93, 0.5) == 12.5
+    assert _quantize_height(12.50, 0.5) == 12.5
+    assert _quantize_height(12.500000000000002, 0.5) == 12.5
+    assert _quantize_height(-0.1, 0.5) == 0.0
