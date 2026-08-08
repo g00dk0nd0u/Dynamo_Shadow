@@ -1,0 +1,46 @@
+{
+  "fixture_id": "centered_mismatch",
+  "site_boundary": [
+    [
+      0,
+      0
+    ],
+    [
+      20,
+      0
+    ],
+    [
+      20,
+      20
+    ],
+    [
+      0,
+      20
+    ]
+  ],
+  "building_footprint": [
+    [
+      7,
+      7
+    ],
+    [
+      13,
+      7
+    ],
+    [
+      13,
+      13
+    ],
+    [
+      7,
+      13
+    ]
+  ],
+  "building_height_m": 10,
+  "average_ground_level_elevation_m": 0.0,
+  "measurement_height_m": 4.0,
+  "site_latitude_deg": 35.6812,
+  "site_longitude_deg": 139.7671,
+  "true_north_deg": 0.0,
+  "preset_id": "standard_3_2"
+}

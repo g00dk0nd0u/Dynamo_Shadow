@@ -1,0 +1,46 @@
+{
+  "fixture_id": "long_east_west",
+  "site_boundary": [
+    [
+      0,
+      0
+    ],
+    [
+      30,
+      0
+    ],
+    [
+      30,
+      18
+    ],
+    [
+      0,
+      18
+    ]
+  ],
+  "building_footprint": [
+    [
+      4,
+      7
+    ],
+    [
+      26,
+      7
+    ],
+    [
+      26,
+      11
+    ],
+    [
+      4,
+      11
+    ]
+  ],
+  "building_height_m": 8,
+  "average_ground_level_elevation_m": 0.0,
+  "measurement_height_m": 4.0,
+  "site_latitude_deg": 35.6812,
+  "site_longitude_deg": 139.7671,
+  "true_north_deg": 0.0,
+  "preset_id": "standard_5_3"
+}

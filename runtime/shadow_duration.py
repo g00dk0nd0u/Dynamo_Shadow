@@ -9,6 +9,18 @@ import math
 METHOD = "grid_trapezoidal_time_integration_v1"
 
 
+def integrate_shadow_states_trapezoidal(states, sample_minutes):
+    """Integrate boolean shadow samples using the production duration semantics."""
+    if len(states) != len(sample_minutes) or len(states) < 2:
+        raise ValueError("states and sample_minutes must have matching lengths of at least two")
+    intervals = [float(sample_minutes[i + 1]) - float(sample_minutes[i])
+                 for i in range(len(sample_minutes) - 1)]
+    if any(value <= 0.0 for value in intervals):
+        raise ValueError("sample_minutes must be strictly increasing")
+    return sum(intervals[i] * (float(states[i]) + float(states[i + 1])) / 2.0
+               for i in range(len(intervals)))
+
+
 def _empty():
     return {"available": False, "complete": False, "method": METHOD,
         "temporal_step_minutes": None, "spatial_resolution_m": None,
@@ -173,7 +185,7 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
         for ix in range(nx):
             x = min_x + ix * resolution
             states = [_compiled_slice_contains(compiled, x, y) for compiled in compiled_slices]
-            duration = sum(intervals[i] * (float(states[i])+float(states[i+1])) / 2.0 for i in range(len(intervals)))
+            duration = integrate_shadow_states_trapezoidal(states, times)
             if duration > 0: shadowed += 1
             max_duration = max(max_duration, duration)
             grid.append({"x_m": x, "y_m": y, "shadow_duration_minutes": duration})
