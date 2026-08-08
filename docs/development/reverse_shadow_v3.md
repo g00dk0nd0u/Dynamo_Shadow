@@ -33,3 +33,22 @@ An exhaustive per-zone diagnostic finds zero feasible near patterns and zero fea
 among all canonical one/two-block masks. This is a pattern-family limitation rather than a
 shortlist-cap problem; increasing the cap cannot resolve it. A later stage needs a different safe
 pattern-family design.
+
+## Issue #101 research diagnostics
+
+The shadow-state replay is a causality diagnostic: it preserves every measurement-point/time
+state from the same pure-Python Forward-equivalent prism helper, rather than replacing those
+states with a zone-common one/two-block pattern. Its finite-prism geometry is not identical to
+the sampled point-height reconstruction geometry, so that mismatch is reported as a blocker and
+the diagnostic does not claim that a temporal-pattern limitation is the sole cause.
+
+The exact oracle is restricted to explicitly supplied micro grids, finite height choices, few
+measurement points, and few time samples. It maximizes bounded geometric volume exactly only
+within that finite discrete model, using building-wide OR shadow states and the existing
+trapezoidal duration integration. It is not a global optimum for continuous or legal reality;
+an explicit state-space guard blocks large searches without heuristic fallback. The
+`maximum_height_m` pure-Python contract defaults to 31.0 m, accepts any positive finite value,
+and never silently replaces an invalid value.
+
+Production Reverse remains v2. Final Forward equal-time validation remains required. Neither
+diagnostic generates legal judgement, ordinance certification, or permit certification.

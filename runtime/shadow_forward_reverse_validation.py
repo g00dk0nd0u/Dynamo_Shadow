@@ -9,6 +9,7 @@ from shadow_reverse_low_rise import (METHOD_V2, METHOD_V3,
     diagnose_general_pattern_fixture_feasibility)
 from shadow_settings import _normalize_settings
 from shadow_site_masks import build_measurement_masks
+from shadow_reverse_state_replay import build_shadow_state_replay
 
 
 def interpolate_reverse_height(reverse_result, x, y, tolerance=1e-9):
@@ -102,6 +103,12 @@ def build_forward_reverse_validation(fixture):
              "measurement_height_m": fixture["measurement_height_m"]}
     reverse = build_low_rise_reverse_shadow_core_v2(site, preset, plane, settings, "standard")
     reverse_v3 = build_low_rise_reverse_shadow_core_v3(site, preset, plane, settings, "standard")
+    replay_points = []
+    for zone in (reverse.get("measurement_points") or {}).values():
+        if isinstance(zone, dict):
+            replay_points.extend(zone.get("points") or [])
+    replay = build_shadow_state_replay(fixture, preset, replay_points,
+                                       fixture.get("maximum_height_m", 31.0))
     fit = evaluate_prism_against_reverse_envelope(fixture["building_footprint"], fixture["building_height_m"], reverse)
     fit_v3 = evaluate_prism_against_reverse_envelope(fixture["building_footprint"], fixture["building_height_m"], reverse_v3)
     feasibility = None
@@ -141,6 +148,7 @@ def build_forward_reverse_validation(fixture):
                 "v2_bounded_volume_m3": reverse.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3"),
                 "v3_bounded_volume_m3": reverse_v3.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3")},
             "general_pattern_fixture_feasibility": feasibility,
+            "replay": replay,
             "delta_summary": {"forward_within_selected_limits": forward_within,
                 "candidate_fully_inside_reverse_envelope": reverse_inside, "mismatch_classification": classification,
                 "maximum_height_excess_m": fit["maximum_height_excess_m"]},

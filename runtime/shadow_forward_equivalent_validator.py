@@ -69,18 +69,35 @@ def _times(start, end, step):
     return values
 
 
+def build_prismatic_shadow_states(fixture, resolved_preset, points,
+                                  temporal_step_minutes=15, building_height_m=None,
+                                  footprint=None):
+    """Return the q-by-k states used by the Forward-equivalent validator.
+
+    This deliberately exposes states without changing their duration semantics; callers
+    must continue to use :func:`integrate_shadow_states_trapezoidal`.
+    """
+    polygon = [(float(p[0]), float(p[1])) for p in (footprint or fixture["building_footprint"])]
+    height = float(fixture["building_height_m"] if building_height_m is None else building_height_m)
+    measurement = float(fixture["measurement_height_m"])
+    parse = lambda value: int(value[:2]) * 60 + int(value[3:5])
+    samples = _times(parse(resolved_preset["true_solar_start_time"]),
+                     parse(resolved_preset["true_solar_end_time"]), temporal_step_minutes)
+    solar = [_sun_position_for_true_solar_minutes(value, float(fixture["site_latitude_deg"]),
+             REGULATORY_DECLINATION_DEG, float(fixture["true_north_deg"])) for value in samples]
+    states = [[is_prism_shadowed((float(point[0]), float(point[1])), polygon, height,
+                                 measurement, item) for item in solar] for point in points]
+    return {"sample_minutes": samples, "solar_samples": solar, "shadow_states": states}
+
+
 def build_prismatic_forward_equivalent_duration(fixture, resolved_preset,
                                                  spatial_resolution_m=0.5, temporal_step_minutes=15):
     footprint = [(float(p[0]), float(p[1])) for p in fixture["building_footprint"]]
     site = [(float(p[0]), float(p[1])) for p in fixture["site_boundary"]]
     height = float(fixture["building_height_m"])
     measurement = float(fixture["measurement_height_m"])
-    start_text, end_text = resolved_preset["true_solar_start_time"], resolved_preset["true_solar_end_time"]
-    parse = lambda value: int(value[:2]) * 60 + int(value[3:5])
-    sample_minutes = _times(parse(start_text), parse(end_text), temporal_step_minutes)
-    solar = [_sun_position_for_true_solar_minutes(value, float(fixture["site_latitude_deg"]),
-                                                   REGULATORY_DECLINATION_DEG, float(fixture["true_north_deg"]))
-             for value in sample_minutes]
+    state_data = build_prismatic_shadow_states(fixture, resolved_preset, [], temporal_step_minutes)
+    sample_minutes, solar = state_data["sample_minutes"], state_data["solar_samples"]
     reach = max([max(0.0, height - measurement) * float(item.get("shadow_length_factor") or 0.0)
                  for item in solar] or [0.0])
     xs = [p[0] for p in footprint + site]; ys = [p[1] for p in footprint + site]
