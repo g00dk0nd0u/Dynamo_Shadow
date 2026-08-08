@@ -737,13 +737,11 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
 
 
 def _get_debug_base_dir():
-    try:
-        module_file = globals().get("__file__")
-        if module_file:
-            return os.path.dirname(os.path.abspath(module_file)), None
-    except Exception as exc:
-        return os.getcwd(), "debug log base directory fallback used; module path unavailable: {0}".format(_sanitize_text_for_debug(exc))
-    return os.getcwd(), "debug log base directory fallback used; module path unavailable."
+    """Return the distributable runtime folder, independent of process cwd."""
+    module_file = globals().get("__file__")
+    if not module_file:
+        raise RuntimeError("debug log base directory unavailable; shadow_debug module path is missing")
+    return os.path.dirname(os.path.abspath(module_file)), None
 
 
 def _safe_debug_log_dir(settings_normalized=None):

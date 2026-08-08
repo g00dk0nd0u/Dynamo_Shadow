@@ -39,4 +39,4 @@ Fast / Standardはモード別の解像度を使う。順日影は0.5 m / 30分�
 - 自治体条例を自動確定しない
 - `permit_ready_certified=false`
 - 出力は有資格者・担当者が確認する
-- 実行時に `debug_logs` フォルダが生成される場合がある
+- debug logを有効にすると、この配布フォルダ内の `debug_logs/latest_debug.json` に出力される（current working directoryには依存しない）

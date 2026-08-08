@@ -21,14 +21,16 @@ Enable it with:
 When enabled, the default output is:
 
 ```text
-debug_logs/latest_debug.json
+<runtime bundle>/debug_logs/latest_debug.json
 ```
 
+The base directory is the folder containing `Shadow.dyn`, `script.py`, and
+`shadow_debug.py`; it never depends on the process current working directory.
 The file is overwritten on each enabled run. Timestamped run logs are not generated.
 
 ## Optional path settings
 
-- `debug_log_dir`: relative directory only; default `debug_logs`.
+- `debug_log_dir`: relative to the runtime bundle directory only; default `debug_logs`.
 - `debug_log_filename`: fixed JSON filename only; default `latest_debug.json`.
 
 Absolute paths, `..`, path separators in filenames, and growth patterns such as `run_*.json`, `raw_*.json`, or `private_*.json` are rejected with warnings and fall back to safe defaults.
