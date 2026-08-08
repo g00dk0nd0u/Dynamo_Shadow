@@ -2,7 +2,7 @@
 try:
     import clr
     clr.AddReference("RevitAPI")
-    from Autodesk.Revit.DB import BuiltInCategory, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, GeometryObject, Mesh, UnitUtils, Element, ElementId
+    from Autodesk.Revit.DB import BuiltInCategory, BuiltInParameter, Options, Solid, GeometryInstance, Face, PlanarFace, Edge, Curve, GeometryObject, Mesh, UnitUtils, Element, ElementId
     try:
         from Autodesk.Revit.DB import UnitTypeId
     except Exception:
@@ -12,7 +12,7 @@ try:
     except Exception:
         DisplayUnitType = None
 except Exception:
-    BuiltInCategory = Options = Solid = GeometryInstance = Face = PlanarFace = Edge = Curve = GeometryObject = Mesh = UnitUtils = Element = ElementId = UnitTypeId = DisplayUnitType = None
+    BuiltInCategory = BuiltInParameter = Options = Solid = GeometryInstance = Face = PlanarFace = Edge = Curve = GeometryObject = Mesh = UnitUtils = Element = ElementId = UnitTypeId = DisplayUnitType = None
 
 # APIs used by planned native-first paths are deliberately isolated. A class
 # missing from a particular Revit release must not disable the core imports.
@@ -74,6 +74,16 @@ try:
 except Exception:
     DirectShape = FilteredElementCollector = None
     FillPatternElement = OverrideGraphicSettings = Color = SubTransaction = None
+
+# Shadow Check presentation/view APIs (Revit 2024.3).  Import each family as
+# one optional island so a missing presentation API cannot disable geometry.
+try:
+    from Autodesk.Revit.DB import (ViewPlan, View3D, ViewFamilyType, ViewFamily,
+        View, Level, PlanViewPlane, BoundingBoxXYZ, ViewDetailLevel,
+        DisplayStyle, ViewDiscipline)
+except Exception:
+    ViewPlan = View3D = ViewFamilyType = ViewFamily = View = Level = None
+    PlanViewPlane = BoundingBoxXYZ = ViewDetailLevel = DisplayStyle = ViewDiscipline = None
 
 # Revit 2024 exposes the plan-specific DirectShape representation, but keep it
 # optional so an older runtime cannot disable the ordinary Curve path.
