@@ -40,3 +40,18 @@ def test_default_debug_write_is_runtime_relative_from_unrelated_cwd(monkeypatch,
     assert output.is_file()
     assert json.loads(output.read_text())["success"] is True
     assert not (unrelated_dir / "debug_logs").exists()
+
+
+def test_missing_module_path_is_non_fatal_and_never_falls_back_to_cwd(monkeypatch, tmp_path):
+    monkeypatch.delattr(shadow_debug, "__file__")
+    monkeypatch.chdir(tmp_path)
+
+    status = shadow_debug._write_debug_log_if_enabled(
+        {"success": True}, _enabled_default_settings()
+    )
+
+    assert status["attempted"] is True
+    assert status["written"] is False
+    assert "debug log base directory unavailable" in status["error"]
+    assert any("debug log base directory unavailable" in item for item in status["warnings"])
+    assert not (tmp_path / "debug_logs").exists()

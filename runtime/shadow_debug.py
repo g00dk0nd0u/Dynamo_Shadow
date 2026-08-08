@@ -769,11 +769,12 @@ def _write_debug_log_if_enabled(out_payload, settings_normalized=None):
     if not enabled:
         return _build_debug_log_status(False, False)
 
-    path_info = _safe_debug_log_path(settings_normalized)
+    path_info = None
     warnings = []
-    if path_info.get("warning"):
-        warnings.append(path_info.get("warning"))
     try:
+        path_info = _safe_debug_log_path(settings_normalized)
+        if path_info.get("warning"):
+            warnings.append(path_info.get("warning"))
         directory = os.path.dirname(path_info["absolute_path"])
         if directory and not os.path.isdir(directory):
             os.makedirs(directory)
@@ -785,4 +786,5 @@ def _write_debug_log_if_enabled(out_payload, settings_normalized=None):
     except Exception as exc:
         warning = "debug log write failed; diagnostics continue: {0}".format(_sanitize_text_for_debug(exc))
         warnings.append(warning)
-        return _build_debug_log_status(True, True, path=path_info["relative_path"], written=False, error=warning, warnings=warnings)
+        relative_path = path_info.get("relative_path") if path_info else None
+        return _build_debug_log_status(True, True, path=relative_path, written=False, error=warning, warnings=warnings)
