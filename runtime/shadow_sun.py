@@ -270,6 +270,53 @@ def build_true_solar_sun_ray_fan(settings_normalized, start_minutes, end_minutes
     return result
 
 
+def build_true_solar_sun_ray_fan_for_minutes(settings_normalized, sample_minutes):
+    """Build the established NOAA/true-solar fan for explicit (including half-step) times."""
+    try:
+        times = [float(value) for value in sample_minutes]
+        if len(times) < 2 or any(not math.isfinite(value) for value in times) or any(
+                times[index + 1] <= times[index] for index in range(len(times) - 1)):
+            raise ValueError()
+    except (TypeError, ValueError, OverflowError):
+        return {"available": False, "complete": False, "method": "true_solar_explicit_ray_fan_v1",
+                "sample_count": 0, "facet_count": 0, "samples": [],
+                "blockers": [{"failure_code": "reverse_shadow_sun_ray_invalid"}], "warnings": [],
+                "permit_ready_certified": False}
+    # Reuse the canonical builder for solar resolution, then replace only its timeline.
+    result = build_true_solar_sun_ray_fan(settings_normalized, times[0], times[-1],
+                                          max(1, int(math.ceil(times[-1] - times[0]))))
+    if not result.get("complete"):
+        return result
+    resolved = _build_solar_calculation_v1(settings_normalized)
+    samples, previous = [], None
+    for index, minute in enumerate(times):
+        solar = _sun_position_for_true_solar_minutes(minute, resolved["site_latitude_deg"],
+                                                     resolved["solar_declination_deg"], resolved["true_north_deg"])
+        altitude, shadow = solar.get("solar_altitude_deg"), solar.get("shadow_direction_model")
+        if altitude is None or altitude <= 0.0 or shadow is None:
+            result.update(available=False, complete=False, samples=[], sample_count=0, facet_count=0,
+                          blockers=[{"failure_code": "reverse_shadow_sun_below_horizon", "sample_index": index}])
+            return result
+        sx, sy = -float(shadow["x"]), -float(shadow["y"])
+        azimuth = math.degrees(math.atan2(sx, sy)) % 360.0
+        if previous is not None:
+            while azimuth < previous - 180.0: azimuth += 360.0
+            while azimuth > previous + 180.0: azimuth -= 360.0
+        rad = math.radians(altitude); horizontal = math.cos(rad)
+        samples.append({"sample_index": index, "true_solar_minutes": minute,
+                        "solar_altitude_deg": altitude,
+                        "solar_azimuth_true_north_deg": solar.get("solar_azimuth_deg"),
+                        "sun_azimuth_model_deg": azimuth, "sun_azimuth_model_unwrapped_deg": azimuth,
+                        "sun_horizontal_model": {"x": sx, "y": sy},
+                        "ray_vector_model": {"x": horizontal*sx, "y": horizontal*sy, "z": math.sin(rad)}})
+        previous = azimuth
+    result.update({"available": True, "complete": True, "method": "true_solar_explicit_ray_fan_v1",
+                   "start_minutes": times[0], "end_minutes": times[-1], "step_minutes": None,
+                   "sample_count": len(samples), "facet_count": len(samples)-1, "samples": samples,
+                   "blockers": []})
+    return result
+
+
 def _build_solar_calculation_v1(settings_normalized):
     """Build the reproducible v1 solar contract and its formal direction slices."""
     normalized = settings_normalized.get("normalized", {}) if isinstance(settings_normalized, dict) else {}

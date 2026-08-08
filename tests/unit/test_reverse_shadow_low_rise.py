@@ -1,6 +1,6 @@
 import math
 from shadow_reverse_low_rise import (_boundary_loops, _cell_crossed_by_boundary,
-                                     _candidate_height, _compile_sun_fan, _constraint,
+                                     _atomic_cell_height_limits, _candidate_height, _compile_sun_fan, _constraint,
                                      build_midday_sunlight_interval,
                                      build_sunlight_interval_candidates,
                                      evaluate_adjacent_ray_facet,
@@ -78,3 +78,23 @@ def test_compiled_fan_matches_on_demand_compilation_and_exact_pruning():
     assert pruned == unpruned
     assert counts["azimuth_pruned_constraint_count"] == 1
     assert counts["actually_evaluated_constraint_count"] == 1
+
+
+def test_atomic_constraint_evaluation_honors_shared_budget_without_fallback():
+    fan = {"samples": [
+        {"sun_azimuth_model_unwrapped_deg": 0.0, "true_solar_minutes": 480,
+         "ray_vector_model": {"x": 0.0, "y": 0.7, "z": 0.7}},
+        {"sun_azimuth_model_unwrapped_deg": 90.0, "true_solar_minutes": 495,
+         "ray_vector_model": {"x": 0.7, "y": 0.0, "z": 0.7}}]}
+    candidate = {"compiled_sun_fan": _compile_sun_fan(fan), "sun_ray_fan": fan,
+                 "sun_facet_count": 1}
+    counts = {"actually_evaluated_constraint_count": 0,
+              "atomic_constraint_evaluation_count": 0,
+              "v2_exact_constraint_evaluation_count": 0,
+              "maximum": 0, "limit_exceeded": False}
+    limits = _atomic_cell_height_limits((1.0, 0.0), [
+        {"x_m": 0.0, "y_m": 0.0, "measurement_point_index": 0}],
+        candidate, 4.0, 0.5, counts)
+    assert limits == [None]
+    assert counts["limit_exceeded"] is True
+    assert counts["actually_evaluated_constraint_count"] == 0
