@@ -63,6 +63,16 @@ def test_asymmetric_site_selects_better_than_centered_and_is_deterministic():
     assert optimization["selected"] != optimization["centered_baseline"]
     assert optimization["selected"] == second["reverse_shadow_interval_optimization"]["selected"]
     assert optimization["selected"]["bounded_candidate_volume_m3"] >= optimization["centered_baseline"]["bounded_candidate_volume_m3"]-1e-9
+    assert optimization["centered_baseline"]
+    for zone_name in ("near", "far"):
+        zone = first["zones"][zone_name]
+        selected = optimization["selected"]
+        assert zone["sunlight_start_minutes"] == selected[zone_name + "_start_minutes"]
+        assert zone["sunlight_end_minutes"] == selected[zone_name + "_end_minutes"]
+        assert zone["sun_ray_fan"]["start_minutes"] == zone["sunlight_start_minutes"]
+        assert zone["sun_ray_fan"]["end_minutes"] == zone["sunlight_end_minutes"]
+        assert zone["sun_ray_sample_count"] == zone["sun_ray_fan"]["sample_count"]
+        assert zone["sun_facet_count"] == zone["sun_ray_fan"]["facet_count"]
     assert first["approximation"]["conservative_endpoint_altitude_clamp"] is True
 
 

@@ -297,6 +297,15 @@ def build_low_rise_reverse_shadow_core(site_boundary_geometry, resolved_regulato
             if best is None or key > best[0]: best = (key, ni, fi, metrics)
     _, selected_near, selected_far, selected_score = best
     selected_candidates = {"near": zone_candidates["near"][selected_near], "far": zone_candidates["far"][selected_far]}
+    for zone_name in ("near", "far"):
+        selected = selected_candidates[zone_name]
+        zones[zone_name].update({
+            "sunlight_start_minutes": selected["sunlight_start_minutes"],
+            "sunlight_end_minutes": selected["sunlight_end_minutes"],
+            "sun_ray_fan": selected["sun_ray_fan"],
+            "sun_ray_sample_count": selected["sun_ray_sample_count"],
+            "sun_facet_count": selected["sun_facet_count"],
+        })
     selected_heights = [combine(fields["near"][selected_near][i], fields["far"][selected_far][i]) for i in range(count)]
 
     # Build rich metadata only for the selected pair and retain the production endpoint clamp.
