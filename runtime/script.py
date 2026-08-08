@@ -114,7 +114,8 @@ try:
     from shadow_preview import _build_shadow_preview
     from shadow_contour_preview import _build_equal_time_contour_preview
     from shadow_site_result_preview import build_site_result_preview
-    from shadow_check_presentation import build_shadow_check_presentation
+    from shadow_check_presentation import (build_shadow_check_presentation,
+        build_preview_compatibility_summaries)
     from shadow_union import _build_unified_shadow_slices
     from shadow_duration import _build_shadow_duration
     from shadow_contours import _build_equal_time_contours
@@ -372,12 +373,8 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         shadow_check_presentation, shadow_check_views = build_shadow_check_presentation(
             site_boundary_geometry, site_distance_contours, equal_time_contours,
             measurement_masks, resolved_preset, measurement_plane, settings_normalized)
-        # Preserve established OUT keys while one owned presentation transaction
-        # replaces the former overlapping preview writers.
-        equal_time_contour_preview = dict(shadow_check_presentation)
-        equal_time_contour_preview["presentation_component"] = "equal_time_contours"
-        site_result_preview = dict(shadow_check_presentation)
-        site_result_preview["presentation_component"] = "site_boundary_distance_and_markers"
+        equal_time_contour_preview, site_result_preview = build_preview_compatibility_summaries(
+            shadow_check_presentation, equal_time_contours)
     except BaseException:
         shadow_check_presentation = {"enabled": False, "mode": "off", "attempted": True,
             "available": False, "complete": False, "created_element_count": 0,
@@ -389,8 +386,8 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
             "permit_ready_certified": False}
         shadow_check_views = {"plan": {"available": False, "blockers": []},
                               "three_d": {"available": False, "blockers": []}}
-        equal_time_contour_preview = dict(shadow_check_presentation)
-        site_result_preview = dict(shadow_check_presentation)
+        equal_time_contour_preview, site_result_preview = build_preview_compatibility_summaries(
+            shadow_check_presentation, equal_time_contours)
     pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks, resolved_regulatory_preset=resolved_preset, selected_limit_comparison=selected_limit_comparison, legal_judgement=legal_judgement, site_distance_contours=site_distance_contours, site_result_preview=site_result_preview)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))

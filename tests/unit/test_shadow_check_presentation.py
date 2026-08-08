@@ -1,5 +1,6 @@
 import shadow_check_presentation as presentation
 from shadow_regulatory_presets import resolve_regulatory_shadow_preset
+from shadow_readiness import _build_pipeline_readiness
 
 
 def _contour(level):
@@ -37,3 +38,106 @@ def test_optional_revit_api_absence_is_nonfatal():
         {"equal_time_contour_preview_mode": "replace"})
     assert result["attempted"] is True and result["available"] is False
     assert views["plan"]["available"] is False
+
+
+def test_compatibility_site_groups_feed_existing_readiness_contract():
+    canonical = {"enabled": True, "mode": "replace", "attempted": True,
+        "available": True, "complete": True, "created_element_count": 4,
+        "deleted_element_count": 0, "blockers": [], "warnings": [],
+        "permit_ready_certified": False, "groups": [
+            {"kind": "site_distance_5m", "created": True, "element_id": 1, "curve_count": 4},
+            {"kind": "site_distance_10m", "created": True, "element_id": 2, "curve_count": 4},
+            {"kind": "near_maximum_marker", "created": True, "element_id": 3, "curve_count": 2},
+            {"kind": "far_maximum_marker", "created": True, "element_id": 4, "curve_count": 2},
+        ]}
+    _, site = presentation.build_preview_compatibility_summaries(canonical, {})
+    readiness = _build_pipeline_readiness({}, {}, {}, site_result_preview=site)
+    assert readiness["site_distance_revit_preview_created"] is True
+    assert readiness["maximum_duration_point_preview_created"] is True
+
+
+def test_equal_time_compatibility_preserves_level_counts():
+    canonical = {"enabled": True, "mode": "replace", "attempted": True,
+        "available": True, "complete": True, "created_element_count": 2,
+        "deleted_element_count": 0, "blockers": [], "warnings": [],
+        "groups": [{"kind": "equal_time_contour", "level_minutes": level,
+                    "created": True, "element_id": index, "curve_count": 3}
+                   for index, level in enumerate((180, 300), 1)]}
+    equal, _ = presentation.build_preview_compatibility_summaries(
+        canonical, {"available": True, "contours": [_contour(180), _contour(300)]})
+    assert equal["requested_level_count"] == equal["created_level_count"] == 2
+    assert equal["created_element_count"] == 2 and equal["partial_success"] is False
+
+
+def test_cleanup_sets_include_only_exact_current_and_legacy_application_ids(monkeypatch):
+    calls = []
+    def collect(document, application_id):
+        calls.append(application_id)
+        return {"succeeded": True, "element_ids": [application_id]}
+    monkeypatch.setattr(presentation, "_collect_owned_preview_ids", collect)
+    current, legacy = presentation._collect_cleanup_sets(object())
+    assert calls == [presentation.APPLICATION_ID] + list(presentation.LEGACY_APPLICATION_IDS)
+    assert current["element_ids"] == [presentation.APPLICATION_ID]
+    assert [item["element_ids"][0] for item in legacy] == list(presentation.LEGACY_APPLICATION_IDS)
+    assert "Other" not in calls
+
+
+def test_replace_and_clear_delete_current_and_legacy_owned_elements(monkeypatch):
+    class Sub:
+        def __init__(self, document): pass
+        def Start(self): pass
+        def Commit(self): pass
+        def RollBack(self): pass
+    class Transactions:
+        def EnsureInTransaction(self, document): pass
+        def TransactionTaskDone(self): pass
+    class Document:
+        Application = type("Application", (), {"ShortCurveTolerance": 0.0})()
+        def __init__(self): self.deleted = []
+        def Delete(self, ident): self.deleted.append(ident)
+    for mode in ("replace", "clear"):
+        document = Document()
+        monkeypatch.setattr(presentation, "DocumentManager", type("DM", (), {
+            "Instance": type("Instance", (), {"CurrentDBDocument": document})()})())
+        monkeypatch.setattr(presentation, "TransactionManager", type("TM", (), {
+            "Instance": Transactions()})())
+        for name in ("DirectShape", "FilteredElementCollector", "XYZ", "Line", "ViewPlan",
+                     "View3D", "ViewFamilyType", "ViewFamily", "View", "Level",
+                     "PlanViewPlane", "BoundingBoxXYZ"):
+            monkeypatch.setattr(presentation, name, object())
+        monkeypatch.setattr(presentation, "SubTransaction", Sub)
+        monkeypatch.setattr(presentation, "_collect_cleanup_sets", lambda doc: (
+            {"succeeded": True, "element_ids": [1]},
+            [{"succeeded": True, "element_ids": [2]}, {"succeeded": True, "element_ids": [3]}]))
+        monkeypatch.setattr(presentation, "_prepare_views", lambda *args: {
+            "plan": {"view_id": None}, "three_d": {"view_id": None}})
+        monkeypatch.setattr(presentation, "_collect", lambda *args: [])
+        result, _ = presentation.build_shadow_check_presentation(
+            {}, {}, {}, {}, {}, {"elevation_m": 4, "measurement_height_m": 4},
+            {"equal_time_contour_preview_mode": mode})
+        assert result["complete"] is True
+        assert result["current_deleted_element_count"] == 1
+        assert result["legacy_deleted_element_count"] == 2
+        assert document.deleted == [1, 2, 3]
+
+
+def test_ownership_mark_failure_removes_view_and_is_not_success(monkeypatch):
+    class Document:
+        def __init__(self): self.deleted = []
+        def Delete(self, ident): self.deleted.append(ident)
+    document = Document(); view = type("View", (), {"Id": 42})()
+    diagnostic = presentation._view_result("FloorPlan", 4.0, 4.0)
+    monkeypatch.setattr(presentation, "_mark_view", lambda value: False)
+    assert presentation._accept_new_managed_view(document, view, diagnostic,
+        "ownership_failed", "Plan view") is None
+    assert diagnostic["created"] is False and diagnostic["blockers"] == [{"failure_code": "ownership_failed"}]
+    assert document.deleted == [42]
+
+
+def test_managed_view_is_reused_without_name_growth(monkeypatch):
+    managed = type("View", (), {"Name": "Dynamo_Shadow_ShadowCheck_4.0m"})()
+    user = type("View", (), {"Name": "Unrelated"})()
+    monkeypatch.setattr(presentation, "_collect", lambda document, cls: [managed, user])
+    monkeypatch.setattr(presentation, "_owned_view", lambda view: view is managed)
+    name, reused = presentation._unique_managed_name(object(), managed.Name)
+    assert name == managed.Name and reused is managed

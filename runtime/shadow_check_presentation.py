@@ -26,6 +26,10 @@ except Exception:
     TransactionManager = None
 
 APPLICATION_ID = "Dynamo_Shadow.ShadowCheckPresentation"
+LEGACY_APPLICATION_IDS = (
+    "Dynamo_Shadow.EqualTimeContourPreview",
+    "Dynamo_Shadow.SiteResultPreview",
+)
 VIEW_OWNER_MARKER = "Dynamo_Shadow Shadow Check managed view"
 STYLE_SEMANTICS = {
     "site_boundary": {"name": "Dynamo_Shadow_SiteBoundary", "rgb": (0, 0, 0), "weight": 7},
@@ -80,6 +84,71 @@ def build_shadow_check_groups(site_geometry, distance_contours, equal_contours,
     return groups
 
 
+def build_preview_compatibility_summaries(presentation, equal_contours):
+    """Project the canonical result into the two established OUT schemas."""
+    source = presentation if isinstance(presentation, dict) else {}
+    canonical_groups = source.get("groups") or []
+    common = {key: source.get(key) for key in (
+        "enabled", "mode", "attempted", "available", "complete",
+        "deleted_element_count", "blockers", "warnings",
+        "permit_ready_certified")}
+    common["partial_success"] = bool(source.get("available") and not source.get("complete")
+                                     and source.get("created_element_count", 0) > 0)
+
+    requested_levels = sorted({float(item.get("level_minutes")) for item in
+        (equal_contours or {}).get("contours") or []})
+    equal_groups = []
+    for level in requested_levels:
+        matches = [g for g in canonical_groups if g.get("kind") == "equal_time_contour"
+                   and abs(float(g.get("level_minutes")) - level) <= 1e-9]
+        equal_groups.append({"level_minutes": level, "contour_count": len(matches),
+            "curve_count": sum(int(g.get("curve_count", 0)) for g in matches),
+            "created": bool(matches) and all(g.get("created") is True for g in matches),
+            "element_id": matches[0].get("element_id") if len(matches) == 1 else None})
+    equal_created = [g for g in canonical_groups
+                     if g.get("kind") == "equal_time_contour" and g.get("created") is True]
+    equal_summary = dict(common)
+    equal_summary.update({"source_available": bool((equal_contours or {}).get("available")),
+        "requested_level_count": len(requested_levels),
+        "created_level_count": sum(g["created"] for g in equal_groups),
+        "created_element_count": len(equal_created),
+        "created_element_ids": [g.get("element_id") for g in equal_created],
+        "groups": equal_groups, "presentation_component": "equal_time_contours"})
+    equal_summary["complete"] = bool(equal_summary.get("available") and
+        (equal_summary.get("mode") == "clear" or
+         equal_summary["created_level_count"] == equal_summary["requested_level_count"]))
+    equal_summary["partial_success"] = bool(equal_summary.get("available") and
+        not equal_summary["complete"] and equal_summary["created_element_count"] > 0)
+
+    site_groups = []
+    for distance, kind in ((5.0, "site_distance_5m"), (10.0, "site_distance_10m")):
+        matches = [g for g in canonical_groups if g.get("kind") == kind]
+        site_groups.append({"output_kind": "site_distance_contour", "distance_m": distance,
+            "contour_count": len(matches), "curve_count": sum(int(g.get("curve_count", 0)) for g in matches),
+            "created": bool(matches) and all(g.get("created") is True for g in matches),
+            "element_id": matches[0].get("element_id") if len(matches) == 1 else None})
+    for key, zone in (("near", "near_5_to_10m"), ("far", "far_over_10m")):
+        matches = [g for g in canonical_groups if g.get("kind") == "%s_maximum_marker" % key]
+        if matches:
+            group = matches[0]
+            site_groups.append({"output_kind": "maximum_shadow_duration_marker", "zone": zone,
+                "curve_count": int(group.get("curve_count", 0)),
+                "created": group.get("created") is True, "element_id": group.get("element_id")})
+    site_created = [g for g in site_groups if g.get("created") is True]
+    site_summary = dict(common)
+    site_summary.update({"requested_group_count": len(site_groups),
+        "created_group_count": len(site_created), "created_element_count": len(site_created),
+        "created_element_ids": [g.get("element_id") for g in site_created],
+        "groups": site_groups, "presentation_component": "site_boundary_distance_and_markers",
+        "legal_judgement_generated": False, "ordinance_selection_certified": False})
+    site_summary["complete"] = bool(site_summary.get("available") and
+        (site_summary.get("mode") == "clear" or
+         (site_groups and all(group.get("created") is True for group in site_groups))))
+    site_summary["partial_success"] = bool(site_summary.get("available") and
+        not site_summary["complete"] and site_summary["created_element_count"] > 0)
+    return equal_summary, site_summary
+
+
 def _view_result(kind, elevation, height):
     return {"attempted": False, "available": False, "complete": False,
         "created": False, "reused": False, "view_id": None, "view_name": None,
@@ -110,8 +179,24 @@ def _mark_view(view):
     return False
 
 
+def _accept_new_managed_view(document, view, diagnostic, failure_code, label):
+    """Keep a new view only after durable ownership has been confirmed."""
+    if _mark_view(view):
+        diagnostic["created"] = True
+        return view
+    document.Delete(view.Id)
+    diagnostic["blockers"].append({"failure_code": failure_code})
+    diagnostic["warnings"].append("%s ownership marker could not be written; unmanaged view was removed." % label)
+    return None
+
+
 def _collect(document, cls):
     return list(FilteredElementCollector(document).OfClass(cls).ToElements())
+
+
+def _collect_cleanup_sets(document):
+    return (_collect_owned_preview_ids(document, APPLICATION_ID),
+            [_collect_owned_preview_ids(document, app_id) for app_id in LEGACY_APPLICATION_IDS])
 
 
 def _family_type(document, family):
@@ -189,7 +274,8 @@ def _prepare_views(document, measurement_plane, groups):
             if typ is None: plan["blockers"].append({"failure_code": "shadow_check_floor_plan_type_unavailable"})
             else:
                 view = ViewPlan.Create(document, typ.Id, level.Id); view.Name = actual
-                plan["created"] = True; _mark_view(view)
+                view = _accept_new_managed_view(document, view, plan,
+                    "shadow_check_plan_view_ownership_mark_failed", "Plan view")
         else: plan["reused"] = True
         if view is not None:
             plan.update({"view_id": _element_id(view), "view_name": view.Name})
@@ -222,7 +308,8 @@ def _prepare_views(document, measurement_plane, groups):
         if typ is None: three["blockers"].append({"failure_code": "shadow_check_3d_type_unavailable"})
         else:
             view = View3D.CreateIsometric(document, typ.Id); view.Name = name
-            three["created"] = True; _mark_view(view)
+            view = _accept_new_managed_view(document, view, three,
+                "shadow_check_3d_view_ownership_mark_failed", "3D view")
     else: three["reused"] = True
     if view is not None:
         three.update({"view_id": _element_id(view), "view_name": view.Name})
@@ -233,7 +320,7 @@ def _prepare_views(document, measurement_plane, groups):
                 three["crop_or_section_box_applied"] = True
             except BaseException as exc: three["warnings"].append("Section box: " + _safe_message(exc))
         three["available"] = three["complete"] = not three["blockers"]
-    return {"plan": plan, "three_d": three}, {"plan": locals().get("view")}
+    return {"plan": plan, "three_d": three}
 
 
 def _override(view, element_id, style):
@@ -249,7 +336,8 @@ def build_shadow_check_presentation(site_geometry, distance_contours, equal_cont
     elevation = (measurement_plane or {}).get("elevation_m")
     result = {"enabled": config["mode"] != "off", "mode": config["mode"], "attempted": False,
         "available": False, "complete": False, "created_element_count": 0,
-        "deleted_element_count": 0, "created_element_ids": [], "groups": [],
+        "deleted_element_count": 0, "legacy_deleted_element_count": 0,
+        "current_deleted_element_count": 0, "created_element_ids": [], "groups": [],
         "style_semantics": STYLE_SEMANTICS, "measurement_plane_elevation_m": elevation,
         "blockers": [], "warnings": list(config["warnings"]), "legal_judgement_generated": False,
         "ordinance_selection_certified": False, "permit_ready_certified": False}
@@ -269,23 +357,32 @@ def build_shadow_check_presentation(site_geometry, distance_contours, equal_cont
         result["warnings"].append("Revit 2024.3 Shadow Check view API is unavailable; presentation skipped.")
         return result, views
     document = DocumentManager.Instance.CurrentDBDocument
-    cleanup = _collect_owned_preview_ids(document, APPLICATION_ID)
-    if not cleanup.get("succeeded"):
+    current_cleanup, legacy_cleanups = _collect_cleanup_sets(document)
+    if not current_cleanup.get("succeeded") or not all(item.get("succeeded") for item in legacy_cleanups):
         result["blockers"].append({"failure_code": "shadow_check_cleanup_collection_failed"}); return result, views
     started = False; sub = None
     try:
         TransactionManager.Instance.EnsureInTransaction(document); started = True
         sub = SubTransaction(document); sub.Start()
-        for ident in cleanup["element_ids"]: document.Delete(ident); result["deleted_element_count"] += 1
+        for ident in current_cleanup["element_ids"]:
+            document.Delete(ident); result["current_deleted_element_count"] += 1
+        for cleanup in legacy_cleanups:
+            for ident in cleanup["element_ids"]:
+                document.Delete(ident); result["legacy_deleted_element_count"] += 1
+        result["deleted_element_count"] = (result["current_deleted_element_count"] +
+                                           result["legacy_deleted_element_count"])
         view_objects = []
         if config["mode"] == "replace":
-            views, _ = _prepare_views(document, measurement_plane, groups)
+            views = _prepare_views(document, measurement_plane, groups)
             ids = {views[k].get("view_id") for k in views}
             view_objects = [v for v in _collect(document, View) if _element_id(v) in ids]
             tolerance = float(getattr(document.Application, "ShortCurveTolerance", 0.0))
             for index, group in enumerate(groups):
                 curves = (_marker_curves(group["point"], elevation, tolerance) if group.get("point") is not None
                           else _curves(_segments(group.get("contours") or []), elevation, tolerance))
+                diagnostic = {k: v for k, v in group.items() if k not in ("contours", "point")}
+                diagnostic.update({"curve_count": len(curves), "created": False, "element_id": None})
+                result["groups"].append(diagnostic)
                 if not curves: continue
                 shape = DirectShape.CreateElement(document, ElementId(BuiltInCategory.OST_GenericModel)); shape.SetShape(curves)
                 diag = {"warnings": []}; _set_plan_curve_representation(shape, curves, diag); result["warnings"].extend(diag["warnings"])
@@ -293,11 +390,15 @@ def build_shadow_check_presentation(site_geometry, distance_contours, equal_cont
                 shape.ApplicationDataId = "kind=%s;index=%d" % (group["kind"], index)
                 for view in view_objects: _override(view, shape.Id, group["style"])
                 ident = _element_id(shape); result["created_element_ids"].append(ident)
-                result["groups"].append({k: v for k, v in group.items() if k not in ("contours", "point")})
+                diagnostic.update({"created": True, "element_id": ident})
         sub.Commit(); sub = None
     except BaseException as exc:
         if sub is not None:
-            try: sub.RollBack(); result["deleted_element_count"] = 0
+            try:
+                sub.RollBack()
+                result["deleted_element_count"] = 0
+                result["current_deleted_element_count"] = 0
+                result["legacy_deleted_element_count"] = 0
             except BaseException: pass
         result["blockers"].append({"failure_code": "shadow_check_write_failed"}); result["warnings"].append(_safe_message(exc))
     finally:
