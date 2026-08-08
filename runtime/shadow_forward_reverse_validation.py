@@ -4,7 +4,8 @@ import math
 from shadow_forward_equivalent_validator import build_prismatic_forward_equivalent_duration, point_in_polygon
 from shadow_regulatory_comparison import build_selected_limit_comparison
 from shadow_regulatory_presets import resolve_regulatory_shadow_preset
-from shadow_reverse_low_rise import METHOD as REVERSE_METHOD, build_low_rise_reverse_shadow_core
+from shadow_reverse_low_rise import (METHOD_V2, METHOD_V3,
+    build_low_rise_reverse_shadow_core_v2, build_low_rise_reverse_shadow_core_v3)
 from shadow_settings import _normalize_settings
 from shadow_site_masks import build_measurement_masks
 
@@ -98,8 +99,10 @@ def build_forward_reverse_validation(fixture):
     plane = {"elevation_m": float(fixture["average_ground_level_elevation_m"]) + float(fixture["measurement_height_m"]),
              "average_ground_level_elevation_m": fixture["average_ground_level_elevation_m"],
              "measurement_height_m": fixture["measurement_height_m"]}
-    reverse = build_low_rise_reverse_shadow_core(site, preset, plane, settings, "standard")
+    reverse = build_low_rise_reverse_shadow_core_v2(site, preset, plane, settings, "standard")
+    reverse_v3 = build_low_rise_reverse_shadow_core_v3(site, preset, plane, settings, "standard")
     fit = evaluate_prism_against_reverse_envelope(fixture["building_footprint"], fixture["building_height_m"], reverse)
+    fit_v3 = evaluate_prism_against_reverse_envelope(fixture["building_footprint"], fixture["building_height_m"], reverse_v3)
     forward_within = comparison.get("status") == "within_selected_limits"
     reverse_inside = fit["fully_inside"]
     classification = (("forward_within" if forward_within else "forward_exceeds") +
@@ -114,11 +117,21 @@ def build_forward_reverse_validation(fixture):
                 "near_limit_minutes": preset["near_limit_minutes"], "far_limit_minutes": preset["far_limit_minutes"],
                 "near_status": comparison.get("near", {}).get("status"), "far_status": comparison.get("far", {}).get("status"),
                 "overall_status": comparison.get("status")},
-            "reverse_v2": {"method": REVERSE_METHOD,
+            "reverse_v2": {"method": METHOD_V2,
                 "selected_near_interval": [selected.get("near_start_minutes"), selected.get("near_end_minutes")],
                 "selected_far_interval": [selected.get("far_start_minutes"), selected.get("far_end_minutes")],
                 "bounded_candidate_volume_m3": reverse.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3"),
                 "vertical_height_step_m": 0.5, "envelope_fit": fit},
+            "reverse_v3": {"method": METHOD_V3,
+                "bounded_candidate_volume_m3": reverse_v3.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3"),
+                "vertical_height_step_m": 0.5, "envelope_fit": fit_v3,
+                "pattern_optimization": reverse_v3.get("reverse_shadow_pattern_optimization")},
+            "v2_to_v3_delta": {
+                "v2_maximum_height_excess_m": fit["maximum_height_excess_m"],
+                "v3_maximum_height_excess_m": fit_v3["maximum_height_excess_m"],
+                "height_excess_improvement_m": (fit["maximum_height_excess_m"]-fit_v3["maximum_height_excess_m"]),
+                "v2_bounded_volume_m3": reverse.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3"),
+                "v3_bounded_volume_m3": reverse_v3.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3")},
             "delta_summary": {"forward_within_selected_limits": forward_within,
                 "candidate_fully_inside_reverse_envelope": reverse_inside, "mismatch_classification": classification,
                 "maximum_height_excess_m": fit["maximum_height_excess_m"]},

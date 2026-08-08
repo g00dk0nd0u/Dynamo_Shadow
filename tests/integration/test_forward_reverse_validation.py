@@ -30,8 +30,17 @@ def test_fixed_fixture_completes_json_safe_comparison(fixture_path):
     assert forward["near_status"] != "undetermined"
     assert forward["far_status"] != "undetermined"
     reverse = result["reverse_v2"]
+    reverse_v3 = result["reverse_v3"]
     assert reverse["method"] == "low_rise_optimized_continuous_sunlight_envelope_v2"
     assert reverse["envelope_fit"]["validation_point_count"] > 0
+    assert reverse_v3["method"] == "low_rise_zone_common_shadow_allowance_envelope_v3"
+    assert reverse_v3["envelope_fit"]["validation_point_count"] > 0
+    assert reverse_v3["bounded_candidate_volume_m3"] >= reverse["bounded_candidate_volume_m3"] - 1e-9
+    optimization = reverse_v3["pattern_optimization"]
+    assert optimization["near_general_shortlist_count"] <= 32
+    assert optimization["far_general_shortlist_count"] <= 32
+    assert optimization["near_v2_pinned_candidate_count"] > 0
+    assert optimization["far_v2_pinned_candidate_count"] > 0
     json.dumps(result, allow_nan=False)
     assert result["legal_judgement_generated"] is False
     assert result["ordinance_selection_certified"] is False

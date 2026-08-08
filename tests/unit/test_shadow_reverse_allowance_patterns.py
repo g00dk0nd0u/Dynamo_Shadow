@@ -46,8 +46,8 @@ def test_all_candidates_are_safe_unique_complete_and_json_safe(preset_id, zone):
         assert duration <= candidate["selected_limit_minutes"] + 1e-9
         assert candidate["sunlight_required_states"] == [
             not state for state in candidate["shadow_allowed_states"]]
-        assert candidate["geometry_constraint_ready"] is False
-        assert candidate["geometric_constraint_intervals"] is None
+        assert candidate["geometry_constraint_ready"] is True
+        assert candidate["geometric_constraint_intervals"]
         for block in candidate["sunlight_required_sample_blocks"]:
             assert block["semantics"] == "contiguous_required_sample_run"
             assert "start_minutes" not in block and "end_minutes" not in block
