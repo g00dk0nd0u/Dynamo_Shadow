@@ -342,10 +342,13 @@ def _runtime_code_summary(out_payload):
         "import_caches_invalidated", "cached_module_count_removed",
         "removed_cached_modules", "script_directory_resolved",
         "script_directory_at_sys_path_zero", "all_local_modules_from_workspace",
+        "loaded_local_module_count", "unloaded_local_module_count",
+        "workspace_mismatch_modules",
     ]
     result = {key: diagnostics.get(key) for key in keys if key in diagnostics}
     allowed_module_keys = (
-        "module_name", "module_filename", "loaded_from_workspace", "module_file_available"
+        "module_name", "module_filename", "loaded", "loaded_from_workspace",
+        "module_file_available"
     )
     result["modules"] = [
         {key: item.get(key) for key in allowed_module_keys if key in item}
