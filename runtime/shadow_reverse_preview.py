@@ -19,10 +19,10 @@ except Exception:
     TransactionManager = None
 
 APPLICATION_ID = "Dynamo_Shadow.ReverseShadowPreview"
-APPLICATION_DATA_ID = ("method=low_rise_midday_continuous_sunlight_envelope_v1;"
+APPLICATION_DATA_ID = ("method=low_rise_optimized_continuous_sunlight_envelope_v2;"
                        "output_kind=reverse_shadow_volume")
 ELEMENT_NAME = "Dynamo_Shadow_ReverseShadowVolume"
-METHOD = "low_rise_midday_continuous_sunlight_envelope_v1"
+METHOD = "low_rise_optimized_continuous_sunlight_envelope_v2"
 _AREA_TOLERANCE = 1.0e-10
 _HEIGHT_TOLERANCE = 1.0e-9
 
