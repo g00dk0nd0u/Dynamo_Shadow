@@ -69,6 +69,16 @@ def _times(start, end, step):
     return values
 
 
+def build_forward_solar_samples(fixture, resolved_preset, temporal_step_minutes=15):
+    """Build the canonical sample instants shared by pure-Python validators."""
+    parse = lambda value: int(value[:2]) * 60 + int(value[3:5])
+    samples = _times(parse(resolved_preset["true_solar_start_time"]),
+                     parse(resolved_preset["true_solar_end_time"]), temporal_step_minutes)
+    solar = [_sun_position_for_true_solar_minutes(value, float(fixture["site_latitude_deg"]),
+             REGULATORY_DECLINATION_DEG, float(fixture["true_north_deg"])) for value in samples]
+    return {"sample_minutes": samples, "solar_samples": solar}
+
+
 def build_prismatic_shadow_states(fixture, resolved_preset, points,
                                   temporal_step_minutes=15, building_height_m=None,
                                   footprint=None):
@@ -80,11 +90,8 @@ def build_prismatic_shadow_states(fixture, resolved_preset, points,
     polygon = [(float(p[0]), float(p[1])) for p in (footprint or fixture["building_footprint"])]
     height = float(fixture["building_height_m"] if building_height_m is None else building_height_m)
     measurement = float(fixture["measurement_height_m"])
-    parse = lambda value: int(value[:2]) * 60 + int(value[3:5])
-    samples = _times(parse(resolved_preset["true_solar_start_time"]),
-                     parse(resolved_preset["true_solar_end_time"]), temporal_step_minutes)
-    solar = [_sun_position_for_true_solar_minutes(value, float(fixture["site_latitude_deg"]),
-             REGULATORY_DECLINATION_DEG, float(fixture["true_north_deg"])) for value in samples]
+    sample_data = build_forward_solar_samples(fixture, resolved_preset, temporal_step_minutes)
+    samples, solar = sample_data["sample_minutes"], sample_data["solar_samples"]
     states = [[is_prism_shadowed((float(point[0]), float(point[1])), polygon, height,
                                  measurement, item) for item in solar] for point in points]
     return {"sample_minutes": samples, "solar_samples": solar, "shadow_states": states}

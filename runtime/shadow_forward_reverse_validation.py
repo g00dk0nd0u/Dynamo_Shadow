@@ -10,6 +10,8 @@ from shadow_reverse_low_rise import (METHOD_V2, METHOD_V3,
 from shadow_settings import _normalize_settings
 from shadow_site_masks import build_measurement_masks
 from shadow_reverse_state_replay import build_shadow_state_replay
+from shadow_reverse_forward_expansion import (build_forward_validated_reverse_expansion,
+                                               prism_fits_cell_field)
 
 
 def _site_geometry(points):
@@ -37,6 +39,11 @@ def build_forward_reverse_validation(fixture):
              "measurement_height_m": fixture["measurement_height_m"]}
     reverse = build_low_rise_reverse_shadow_core_v2(site, preset, plane, settings, "standard")
     reverse_v3 = build_low_rise_reverse_shadow_core_v3(site, preset, plane, settings, "standard")
+    reverse_expansion_core = build_forward_validated_reverse_expansion(
+        site, preset, plane, settings, "standard",
+        maximum_height_m=float(fixture.get("maximum_height_m", fixture["building_height_m"])))
+    expansion_fit = prism_fits_cell_field(fixture["building_footprint"], fixture["building_height_m"],
+        reverse_expansion_core.get("cell_field", {}).get("cells") or [])
     replay_points = []
     for zone in (reverse.get("measurement_points") or {}).values():
         if isinstance(zone, dict):
@@ -78,6 +85,13 @@ def build_forward_reverse_validation(fixture):
                 "bounded_candidate_volume_m3": reverse_v3.get("top_surface_mesh", {}).get("bounded_candidate_volume_m3"),
                 "vertical_height_step_m": 0.5, "envelope_fit": fit_v3,
                 "pattern_optimization": reverse_v3.get("reverse_shadow_pattern_optimization")},
+            "reverse_expansion": {"method": reverse_expansion_core.get("method"),
+                "complete": reverse_expansion_core.get("complete"), "selected_source": reverse_expansion_core.get("selected_source"),
+                "cell_volume_m3": reverse_expansion_core.get("cell_field", {}).get("volume_m3"),
+                "envelope_fit": expansion_fit, "full_forward_validation": reverse_expansion_core.get("full_forward_validation"),
+                "comparison": reverse_expansion_core.get("comparison"), "expansion": reverse_expansion_core.get("expansion"),
+                "constraint_generation": reverse_expansion_core.get("constraint_generation"),
+                "blockers": reverse_expansion_core.get("blockers") or []},
             "v2_to_v3_delta": {
                 "v2_maximum_height_excess_m": fit["maximum_height_excess_m"],
                 "v3_maximum_height_excess_m": fit_v3["maximum_height_excess_m"],
