@@ -38,6 +38,14 @@ def build_micro_grid_exact_oracle(model, maximum_height_m=DEFAULT_MAXIMUM_HEIGHT
         points = model["measurement_points"]
         if len(contribution) != len(cells) or any(len(row) != len(points) for row in contribution): raise ValueError()
         if any(len(times) != len(samples) for row in contribution for times in row): raise ValueError()
+        if any(not math.isfinite(float(cell.get("area_m2", 1.0))) or float(cell.get("area_m2", 1.0)) <= 0
+               for cell in cells): raise ValueError()
+        if len(samples) < 2 or any(not math.isfinite(value) for value in samples) or any(
+                samples[index+1] <= samples[index] for index in range(len(samples)-1)): raise ValueError()
+        if any(not math.isfinite(float(point["limit_minutes"])) or float(point["limit_minutes"]) < 0
+               for point in points): raise ValueError()
+        if any(not math.isfinite(float(value)) for row in contribution for times in row for value in times):
+            raise ValueError()
     except (KeyError, TypeError, ValueError, OverflowError):
         result = _empty(maximum_height_m, step, cells, None)
         result["blockers"].append({"failure_code": "invalid_micro_grid_oracle_input"})

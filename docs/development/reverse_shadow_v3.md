@@ -38,9 +38,14 @@ pattern-family design.
 
 The shadow-state replay is a causality diagnostic: it preserves every measurement-point/time
 state from the same pure-Python Forward-equivalent prism helper, rather than replacing those
-states with a zone-common one/two-block pattern. Its finite-prism geometry is not identical to
-the sampled point-height reconstruction geometry, so that mismatch is reported as a blocker and
-the diagnostic does not claim that a temporal-pattern limitation is the sole cause.
+states with a zone-common one/two-block pattern. It constructs an actual site-side point-height
+field using the v3 ownership-cell/atomic-facet geometry: a no-shadow sample constrains only its
+own measurement point, while a shadow sample permits shadow for that point. A Forward sample
+instant and the full ownership cell are not identical temporal semantics, so this limitation is
+reported rather than hidden. On `centered_mismatch`, the reconstructed measurement-specific
+field has a 4.0 m excess versus 0.5 m for v2/v3. Thus removing the zone-common pattern does not
+explain that mismatch under the current ownership-cell geometry; `temporal_pattern_limitation_only`
+is false for this diagnostic.
 
 The exact oracle is restricted to explicitly supplied micro grids, finite height choices, few
 measurement points, and few time samples. It maximizes bounded geometric volume exactly only

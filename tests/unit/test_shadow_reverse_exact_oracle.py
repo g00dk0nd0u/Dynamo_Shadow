@@ -64,3 +64,18 @@ def test_invalid_maximum_height_is_not_silently_defaulted(value):
     result = build_micro_grid_exact_oracle(_model(), maximum_height_m=value)
     assert result["exact_within_discrete_model"] is False
     assert result["blockers"][0]["failure_code"] == "invalid_micro_grid_oracle_input"
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda model: model["height_cells"][0].update(area_m2=0),
+    lambda model: model["measurement_points"][0].update(limit_minutes=-1),
+    lambda model: model.update(sample_minutes=[0, 20, 10]),
+    lambda model: model["shadow_contributions"][0][0].__setitem__(0, float("nan")),
+])
+def test_invalid_discrete_model_values_are_blocked(mutation):
+    model = _model()
+    mutation(model)
+    result = build_micro_grid_exact_oracle(model)
+    assert result["exact_within_discrete_model"] is False
+    assert result["objective_volume_m3"] is None
+    assert result["blockers"][0]["failure_code"] == "invalid_micro_grid_oracle_input"
