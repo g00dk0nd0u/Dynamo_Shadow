@@ -33,7 +33,8 @@ def test_centered_mismatch_reconstructs_measurement_specific_inverse_envelope():
     # Fixed after evaluating the original 10 m prism against the reconstructed mesh.
     assert first["measurement_specific_excess_m"] == 4.0
     assert first["original_building_fits_reconstructed_envelope"] is False
-    assert first["temporal_pattern_limitation_only"] is False
+    assert first["zone_common_pattern_sufficient_explanation"] is False
+    assert first["temporal_pattern_limitation_only"] is None
 
 
 def test_existing_no_mismatch_fixture_reconstructs_deterministically():

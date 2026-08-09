@@ -44,8 +44,10 @@ own measurement point, while a shadow sample permits shadow for that point. A Fo
 instant and the full ownership cell are not identical temporal semantics, so this limitation is
 reported rather than hidden. On `centered_mismatch`, the reconstructed measurement-specific
 field has a 4.0 m excess versus 0.5 m for v2/v3. Thus removing the zone-common pattern does not
-explain that mismatch under the current ownership-cell geometry; `temporal_pattern_limitation_only`
-is false for this diagnostic.
+resolve that mismatch under the current ownership-cell geometry, so
+`zone_common_pattern_sufficient_explanation` is false. However, because sample-instant and
+ownership-cell semantics differ, separation of temporal-only from spatial/ray-facet causes is not
+complete and `temporal_pattern_limitation_only` remains null.
 
 The exact oracle is restricted to explicitly supplied micro grids, finite height choices, few
 measurement points, and few time samples. It maximizes bounded geometric volume exactly only

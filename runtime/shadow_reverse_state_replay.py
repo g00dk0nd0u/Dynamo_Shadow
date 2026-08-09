@@ -25,6 +25,7 @@ def build_shadow_state_replay(fixture, resolved_preset, measurement_points,
         "maximum_height_excess_m": None,
         "zone_common_v2_or_v3_excess_m": zone_common_v2_or_v3_excess_m,
         "measurement_specific_excess_m": None,
+        "zone_common_pattern_sufficient_explanation": None,
         "temporal_pattern_limitation_only": None, "blockers": [], "warnings": []}
     try:
         cap, resolution, vertical_step, temporal_step = map(
@@ -94,7 +95,8 @@ def build_shadow_state_replay(fixture, resolved_preset, measurement_points,
     if result["inverse_reconstruction_complete"]:
         baseline=zone_common_v2_or_v3_excess_m
         if baseline is not None:
-            result["temporal_pattern_limitation_only"] = bool(excess <= 1e-9 and float(baseline) > 1e-9)
+            result["zone_common_pattern_sufficient_explanation"] = bool(
+                excess <= 1e-9 and float(baseline) > 1e-9)
     else:
         result["blockers"].append({"failure_code":"measurement_specific_inverse_reconstruction_incomplete"})
     result["warnings"].append(
