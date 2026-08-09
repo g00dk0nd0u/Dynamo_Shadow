@@ -59,3 +59,29 @@ and never silently replaces an invalid value.
 
 Production Reverse remains v2. Final Forward equal-time validation remains required. Neither
 diagnostic generates legal judgement, ordinance certification, or permit certification.
+
+## Issue #108 reconstruction diagnosis
+
+PR #107 established that removing only the zone-common pattern does not explain
+`centered_mismatch`: v2/v3 has 0.5 m excess while its measurement-specific ownership-cell replay
+has 4.0 m excess. Issue #108 is a pure-Python cause-decomposition diagnostic, not a production
+algorithm. It separately reports the Forward sample-instant finite-cell reconstruction, the
+ownership-cell/adjacent-facet reconstruction, the discrete cell/grid result, and triangulated-mesh
+evaluation. The corrected sample-instant path uses independent 1 m cells whose centers are offset
+from mesh vertices, and enumerates 0.5 m height choices against the Forward-equivalent prism
+predicate with an explicit evaluation guard and no coarse fallback. On the grid-aligned
+`centered_mismatch` footprint, the exact 36-cell model has 0.0 m excess and fits the original 10 m
+building; conversion to the strictest-adjacent-cell vertex mesh introduces 4.5 m excess. Thus the
+measured spatial mesh delta is 4.5 m, while the combined difference to the ownership-cell/facet
+replay is also 4.0 m and is not attributed to a single temporal or facet cause.
+
+The diagnostic does not assert a cause where the representations cannot be compared
+apple-to-apple. In particular, the ownership-cell-only and single-ray-versus-facet deltas remain
+null until a common finite-cell facet representation exists; the currently reportable combined
+delta is explicitly not a temporal-only attribution. Boundary-cell footprint, triangle
+interpolation, and validation-sampling effects remain visible through separate cell/grid and mesh
+excess fields. All site, measurement-point, and building-footprint coordinates must be finite.
+The height-level count is bounded before its list is materialized, with an explicit blocker and no
+automatic coarse fallback. A combined temporal/facet delta is reported only when the ownership
+reconstruction is complete and the cell model is exact. Production Reverse remains v2, and final
+Forward equal-time validation is required.
