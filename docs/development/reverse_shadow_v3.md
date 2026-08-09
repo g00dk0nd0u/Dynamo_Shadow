@@ -33,3 +33,29 @@ An exhaustive per-zone diagnostic finds zero feasible near patterns and zero fea
 among all canonical one/two-block masks. This is a pattern-family limitation rather than a
 shortlist-cap problem; increasing the cap cannot resolve it. A later stage needs a different safe
 pattern-family design.
+
+## Issue #101 research diagnostics
+
+The shadow-state replay is a causality diagnostic: it preserves every measurement-point/time
+state from the same pure-Python Forward-equivalent prism helper, rather than replacing those
+states with a zone-common one/two-block pattern. It constructs an actual site-side point-height
+field using the v3 ownership-cell/atomic-facet geometry: a no-shadow sample constrains only its
+own measurement point, while a shadow sample permits shadow for that point. A Forward sample
+instant and the full ownership cell are not identical temporal semantics, so this limitation is
+reported rather than hidden. On `centered_mismatch`, the reconstructed measurement-specific
+field has a 4.0 m excess versus 0.5 m for v2/v3. Thus removing the zone-common pattern does not
+resolve that mismatch under the current ownership-cell geometry, so
+`zone_common_pattern_sufficient_explanation` is false. However, because sample-instant and
+ownership-cell semantics differ, separation of temporal-only from spatial/ray-facet causes is not
+complete and `temporal_pattern_limitation_only` remains null.
+
+The exact oracle is restricted to explicitly supplied micro grids, finite height choices, few
+measurement points, and few time samples. It maximizes bounded geometric volume exactly only
+within that finite discrete model, using building-wide OR shadow states and the existing
+trapezoidal duration integration. It is not a global optimum for continuous or legal reality;
+an explicit state-space guard blocks large searches without heuristic fallback. The
+`maximum_height_m` pure-Python contract defaults to 31.0 m, accepts any positive finite value,
+and never silently replaces an invalid value.
+
+Production Reverse remains v2. Final Forward equal-time validation remains required. Neither
+diagnostic generates legal judgement, ordinance certification, or permit certification.
