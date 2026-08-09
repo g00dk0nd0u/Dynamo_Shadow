@@ -67,8 +67,13 @@ PR #107 established that removing only the zone-common pattern does not explain
 has 4.0 m excess. Issue #108 is a pure-Python cause-decomposition diagnostic, not a production
 algorithm. It separately reports the Forward sample-instant finite-cell reconstruction, the
 ownership-cell/adjacent-facet reconstruction, the discrete cell/grid result, and triangulated-mesh
-evaluation. The sample-instant path enumerates 0.5 m height choices against the existing
-Forward-equivalent prism predicate and has an explicit evaluation guard with no coarse fallback.
+evaluation. The corrected sample-instant path uses independent 1 m cells whose centers are offset
+from mesh vertices, and enumerates 0.5 m height choices against the Forward-equivalent prism
+predicate with an explicit evaluation guard and no coarse fallback. On the grid-aligned
+`centered_mismatch` footprint, the exact 36-cell model has 0.0 m excess and fits the original 10 m
+building; conversion to the strictest-adjacent-cell vertex mesh introduces 4.5 m excess. Thus the
+measured spatial mesh delta is 4.5 m, while the combined difference to the ownership-cell/facet
+replay is also 4.0 m and is not attributed to a single temporal or facet cause.
 
 The diagnostic does not assert a cause where the representations cannot be compared
 apple-to-apple. In particular, the ownership-cell-only and single-ray-versus-facet deltas remain
