@@ -80,4 +80,8 @@ apple-to-apple. In particular, the ownership-cell-only and single-ray-versus-fac
 null until a common finite-cell facet representation exists; the currently reportable combined
 delta is explicitly not a temporal-only attribution. Boundary-cell footprint, triangle
 interpolation, and validation-sampling effects remain visible through separate cell/grid and mesh
-excess fields. Production Reverse remains v2, and final Forward equal-time validation is required.
+excess fields. All site, measurement-point, and building-footprint coordinates must be finite.
+The height-level count is bounded before its list is materialized, with an explicit blocker and no
+automatic coarse fallback. A combined temporal/facet delta is reported only when the ownership
+reconstruction is complete and the cell model is exact. Production Reverse remains v2, and final
+Forward equal-time validation is required.

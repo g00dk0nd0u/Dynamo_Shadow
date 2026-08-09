@@ -9,6 +9,7 @@ from shadow_reverse_low_rise import _inside
 
 
 METHOD = "sample_instant_reconstruction_cause_decomposition_v2"
+MAXIMUM_DIAGNOSTIC_LEVEL_COUNT = 1000000
 
 
 def _empty(fixture, maximum_height_m):
@@ -27,6 +28,7 @@ def _empty(fixture, maximum_height_m):
         "sample_instant_reconstruction_complete": False,
         "ownership_cell_reconstruction_complete": False,
         "cause_decomposition_complete": False, "diagnostic_evaluation_count": 0,
+        "diagnostic_level_count": None,
         "blockers": [], "warnings": []}
 
 
@@ -82,10 +84,21 @@ def build_reverse_reconstruction_diagnostic(
                 for p in site_boundary_geometry["outer_loop"]]
         points = [(float(p["x_m"]), float(p["y_m"])) for p in measurement_points]
         building = [(float(p[0]), float(p[1])) for p in fixture["building_footprint"]]
-        if len(site) < 3 or len(building) < 3 or not points:
+        coordinates = site + points + building
+        if (len(site) < 3 or len(building) < 3 or not points or
+                not all(math.isfinite(value) for point in coordinates for value in point)):
             raise ValueError()
     except (KeyError, TypeError, ValueError, OverflowError):
         result["blockers"].append({"failure_code": "invalid_reconstruction_diagnostic_input"})
+        return result
+
+    level_count = int(math.ceil(cap/step))+1
+    result["diagnostic_level_count"] = level_count
+    if level_count > MAXIMUM_DIAGNOSTIC_LEVEL_COUNT:
+        result["blockers"].append({"failure_code":
+            "maximum_diagnostic_level_count_exceeded",
+            "maximum_diagnostic_level_count": MAXIMUM_DIAGNOSTIC_LEVEL_COUNT,
+            "diagnostic_level_count": level_count})
         return result
 
     forward = build_prismatic_shadow_states(fixture, resolved_preset, points, temporal)
@@ -94,8 +107,7 @@ def build_reverse_reconstruction_diagnostic(
     oy = math.floor(min(p[1] for p in site) / resolution) * resolution
     nx = int(round((math.ceil(max(p[0] for p in site)/resolution)*resolution-ox)/resolution))
     ny = int(round((math.ceil(max(p[1] for p in site)/resolution)*resolution-oy)/resolution))
-    levels = sorted(set(min(cap, index*step)
-                        for index in range(int(math.ceil(cap/step))+1)))
+    levels = sorted(set(min(cap, index*step) for index in range(level_count)))
     candidates = [value for value in levels if value > float(fixture["measurement_height_m"])]
     evaluations = 0
     cells = []
@@ -190,7 +202,8 @@ def build_reverse_reconstruction_diagnostic(
     ownership_excess = ownership_cell_replay.get("measurement_specific_excess_m")
     ownership_complete = bool(ownership_cell_replay.get("inverse_reconstruction_complete"))
     combined = (float(ownership_excess)-cell_excess
-                if ownership_excess is not None and exact_cell_model else None)
+                if (ownership_complete and exact_cell_model and
+                    ownership_excess is not None) else None)
     result.update({"maximum_height_m": cap,
         "forward_v2_v3_excess_m": ownership_cell_replay.get("zone_common_v2_or_v3_excess_m"),
         "measurement_specific_sample_instant_excess_m": cell_excess,

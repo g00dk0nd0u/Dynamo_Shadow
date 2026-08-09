@@ -1,5 +1,8 @@
 import json
+import math
 from pathlib import Path
+
+import pytest
 
 from shadow_forward_reverse_validation import build_forward_reverse_validation, _site_geometry
 from shadow_regulatory_presets import resolve_regulatory_shadow_preset
@@ -102,3 +105,58 @@ def test_non_aligned_boundary_cells_are_explicitly_approximate():
     assert result["original_building_fits_sample_instant_cell_model"] is None
     assert result["spatial_mesh_delta_m"] is None
     assert any("approximate, not exact" in warning for warning in result["warnings"])
+
+
+@pytest.mark.parametrize("target", ["site", "measurement", "building"])
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), -float("inf")])
+def test_non_finite_coordinates_are_blocked_before_sampling(monkeypatch, target, invalid):
+    fixture = {"fixture_id": "invalid_coordinate", "site_latitude_deg": 35.0,
+        "true_north_deg": 0.0, "measurement_height_m": 4.0,
+        "building_height_m": 8.0,
+        "building_footprint": [[0, 0], [1, 0], [1, 1], [0, 1]]}
+    site = _site_geometry([[0, 0], [2, 0], [2, 2], [0, 2]])
+    points = [{"x_m": 3.0, "y_m": 3.0}]
+    if target == "site":
+        site["outer_loop"][0]["x_m"] = invalid
+    elif target == "measurement":
+        points[0]["y_m"] = invalid
+    else:
+        fixture["building_footprint"][0][0] = invalid
+    monkeypatch.setattr("shadow_reverse_reconstruction_diagnostic.build_prismatic_shadow_states",
+                        lambda *args, **kwargs: pytest.fail("sampling must not run"))
+    result = build_reverse_reconstruction_diagnostic(
+        fixture, {"true_solar_start_time": "09:00", "true_solar_end_time": "09:15"},
+        points, site, {})
+    assert result["blockers"] == [
+        {"failure_code": "invalid_reconstruction_diagnostic_input"}]
+
+
+def test_huge_level_count_is_blocked_before_materialization_or_sampling(monkeypatch):
+    monkeypatch.setattr("shadow_reverse_reconstruction_diagnostic.build_prismatic_shadow_states",
+                        lambda *args, **kwargs: pytest.fail("sampling must not run"))
+    fixture = {"fixture_id": "huge_level_count", "site_latitude_deg": 35.0,
+        "true_north_deg": 0.0, "measurement_height_m": 4.0,
+        "building_height_m": 8.0,
+        "building_footprint": [[0, 0], [1, 0], [1, 1], [0, 1]]}
+    result = build_reverse_reconstruction_diagnostic(
+        fixture, {}, [{"x_m": 3.0, "y_m": 3.0}],
+        _site_geometry([[0, 0], [2, 0], [2, 2], [0, 2]]), {},
+        maximum_height_m=31.0, vertical_height_step_m=1e-9)
+    assert result["diagnostic_level_count"] == math.ceil(31.0/1e-9)+1
+    assert result["blockers"][0]["failure_code"] == \
+        "maximum_diagnostic_level_count_exceeded"
+
+
+def test_combined_delta_requires_complete_ownership_reconstruction():
+    fixture = {"fixture_id": "incomplete_ownership", "site_latitude_deg": 35.0,
+        "true_north_deg": 0.0, "measurement_height_m": 4.0,
+        "building_height_m": 4.0,
+        "building_footprint": [[0, 0], [1, 0], [1, 1], [0, 1]]}
+    incomplete = build_reverse_reconstruction_diagnostic(
+        fixture, {"true_solar_start_time": "09:00", "true_solar_end_time": "09:15"},
+        [{"x_m": 3.0, "y_m": 3.0}],
+        _site_geometry([[0, 0], [2, 0], [2, 2], [0, 2]]),
+        {"measurement_specific_excess_m": 4.0,
+         "inverse_reconstruction_complete": False})
+    assert incomplete["original_building_fits_sample_instant_cell_model"] is True
+    assert incomplete["combined_temporal_facet_delta_m"] is None
