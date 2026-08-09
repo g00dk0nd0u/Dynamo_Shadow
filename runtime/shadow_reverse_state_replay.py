@@ -27,9 +27,11 @@ def build_shadow_state_replay(fixture, resolved_preset, measurement_points,
         "measurement_specific_excess_m": None,
         "temporal_pattern_limitation_only": None, "blockers": [], "warnings": []}
     try:
-        cap, resolution, vertical_step = map(float, (maximum_height_m, grid_resolution_m,
-                                                      vertical_height_step_m))
-        if not all(math.isfinite(v) and v > 0 for v in (cap, resolution, vertical_step)):
+        cap, resolution, vertical_step, temporal_step = map(
+            float, (maximum_height_m, grid_resolution_m, vertical_height_step_m,
+                    temporal_step_minutes))
+        if not all(math.isfinite(v) and v > 0
+                   for v in (cap, resolution, vertical_step, temporal_step)):
             raise ValueError()
         polygon = [(float(p["x_m"]), float(p["y_m"]))
                    for p in site_boundary_geometry["outer_loop"]]
@@ -41,7 +43,7 @@ def build_shadow_state_replay(fixture, resolved_preset, measurement_points,
 
     coordinates = [(float(p["x_m"]), float(p["y_m"])) for p in points]
     forward = build_prismatic_shadow_states(fixture, resolved_preset, coordinates,
-                                             temporal_step_minutes)
+                                             temporal_step)
     states = forward["shadow_states"]
     cells = build_trapezoidal_sample_ownership_cells(forward["sample_minutes"])
     boundaries = [cells[0]["start_minutes"]] + [cell["end_minutes"] for cell in cells]
