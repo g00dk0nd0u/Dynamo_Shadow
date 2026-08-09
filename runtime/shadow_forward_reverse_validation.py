@@ -87,6 +87,7 @@ def build_forward_reverse_validation(fixture):
                 "pattern_optimization": reverse_v3.get("reverse_shadow_pattern_optimization")},
             "reverse_expansion": {"method": reverse_expansion_core.get("method"),
                 "complete": reverse_expansion_core.get("complete"), "selected_source": reverse_expansion_core.get("selected_source"),
+                "maximum_height_m": reverse_expansion_core.get("maximum_height_m"),
                 "cell_volume_m3": reverse_expansion_core.get("cell_field", {}).get("volume_m3"),
                 "envelope_fit": expansion_fit, "full_forward_validation": reverse_expansion_core.get("full_forward_validation"),
                 "comparison": reverse_expansion_core.get("comparison"), "expansion": reverse_expansion_core.get("expansion"),

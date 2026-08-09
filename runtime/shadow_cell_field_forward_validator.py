@@ -7,6 +7,16 @@ from shadow_regulatory_comparison import build_selected_limit_comparison
 from shadow_site_masks import _classify
 
 METHOD = "finite_cell_field_forward_equivalent_validator_v1"
+DEFAULT_MAXIMUM_SHADOW_CHECKS = 2000000000
+
+
+def _blocked(code, limit_type=None, **details):
+    blocker = {"failure_code": code}
+    if limit_type is not None:
+        blocker["limit_type"] = limit_type
+    blocker.update(details)
+    return {"method": METHOD, "available": False, "complete": False,
+            "automatic_coarse_fallback_used": False, "blockers": [blocker]}
 
 
 def cell_footprint(cell):
@@ -42,7 +52,8 @@ def build_cell_field_shadow_states(points, cells, measurement_height_m, solar_sa
                  for index in range(len(cells))) for solar in solar_samples] for point in points]
 
 
-def _validation_grid(cells, site, measurement_height, samples, solar, resolution, maximum_grid_points):
+def _validation_grid(cells, site, measurement_height, samples, solar, resolution,
+                     maximum_grid_points, maximum_shadow_checks):
     polygon = [(float(p["x_m"]), float(p["y_m"])) for p in site["outer_loop"]]
     xs = [p[0] for p in polygon]; ys = [p[1] for p in polygon]
     shadow_x = [value for cell in cells for s in solar for value in (
@@ -63,6 +74,10 @@ def _validation_grid(cells, site, measurement_height, samples, solar, resolution
     count = nx*ny
     if count > maximum_grid_points:
         return None, {"x_count": nx, "y_count": ny, "origin_x_m": min_x, "origin_y_m": min_y,
+            "resolution_m": resolution, "ordering": "row_major_y_then_x"}, count
+    theoretical_checks = count*len(samples)*len(cells)
+    if theoretical_checks > maximum_shadow_checks:
+        return False, {"x_count": nx, "y_count": ny, "origin_x_m": min_x, "origin_y_m": min_y,
             "resolution_m": resolution, "ordering": "row_major_y_then_x"}, count
     swept = []
     for s in solar:
@@ -100,17 +115,37 @@ def _validation_grid(cells, site, measurement_height, samples, solar, resolution
 def build_cell_field_forward_validation(cells, site_boundary_geometry, resolved_preset,
                                         settings_normalized, measurement_height_m,
                                         spatial_resolution_m=0.5, temporal_step_minutes=15,
-                                        maximum_grid_points=1000000):
-    fixture = {"site_latitude_deg": settings_normalized["normalized"]["site_latitude_deg"],
-               "true_north_deg": settings_normalized["normalized"]["true_north_deg"]}
+                                        maximum_grid_points=1000000,
+                                        maximum_shadow_checks=DEFAULT_MAXIMUM_SHADOW_CHECKS):
+    try:
+        resolution = float(spatial_resolution_m); temporal_step = float(temporal_step_minutes)
+        grid_limit = int(maximum_grid_points); shadow_limit = int(maximum_shadow_checks)
+        measurement_height = float(measurement_height_m)
+        normalized = settings_normalized["normalized"]
+        latitude = float(normalized["site_latitude_deg"]); true_north = float(normalized["true_north_deg"])
+        if (not all(math.isfinite(value) for value in (resolution, temporal_step, measurement_height,
+                                                       latitude, true_north)) or
+                resolution <= 0.0 or temporal_step <= 0.0 or grid_limit <= 0 or shadow_limit <= 0 or not cells):
+            raise ValueError()
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return _blocked("invalid_cell_field_forward_validation_input")
+    fixture = {"site_latitude_deg": latitude, "true_north_deg": true_north}
     sample_data = build_forward_solar_samples(fixture, resolved_preset, temporal_step_minutes)
     samples, solar = sample_data["sample_minutes"], sample_data["solar_samples"]
-    masks, spec, grid_count = _validation_grid(cells, site_boundary_geometry, float(measurement_height_m), samples, solar,
-                                               float(spatial_resolution_m), maximum_grid_points)
+    masks, spec, grid_count = _validation_grid(cells, site_boundary_geometry, measurement_height, samples, solar,
+                                               resolution, grid_limit, shadow_limit)
     if masks is None:
-        return {"method": METHOD, "available": False, "complete": False,
-                "grid_point_count": grid_count, "blockers": [{"failure_code": "reverse_expansion_complexity_limit_exceeded",
-                "limit_type": "full_validation_grid_points"}]}
+        result = _blocked("reverse_expansion_complexity_limit_exceeded", "full_validation_grid_points",
+                          maximum_grid_points=grid_limit, requested_grid_points=grid_count)
+        result["grid_point_count"] = grid_count
+        return result
+    theoretical_checks = grid_count*len(samples)*len(cells)
+    if masks is False:
+        result = _blocked("reverse_expansion_complexity_limit_exceeded", "full_validation_shadow_checks",
+            maximum_shadow_checks=shadow_limit, theoretical_shadow_check_count=theoretical_checks,
+            automatic_coarse_fallback_used=False)
+        result.update({"grid_point_count": grid_count, "theoretical_shadow_check_count": theoretical_checks})
+        return result
     masks.update({"complete": True, "boundary_dependent_ready": True})
     duration = {"method": METHOD, "complete": True,
                 "boundary_evaluation_coverage_complete": True, "spatial_resolution_m": spatial_resolution_m,
@@ -120,6 +155,7 @@ def build_cell_field_forward_validation(cells, site_boundary_geometry, resolved_
     return {"method": METHOD, "available": True, "complete": comparison.get("complete", False),
             "sample_minutes": samples, "solar_samples": solar,
             "grid_spec": spec, "grid_point_count": grid_count, "measurement_masks": masks,
+            "theoretical_shadow_check_count": theoretical_checks,
             "near_max_minutes": near.get("maximum_shadow_duration_minutes"),
             "far_max_minutes": far.get("maximum_shadow_duration_minutes"),
             "near_limit_minutes": resolved_preset.get("near_limit_minutes"),

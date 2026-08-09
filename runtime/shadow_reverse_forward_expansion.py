@@ -5,7 +5,8 @@ from shadow_cell_field_forward_validator import (build_cell_field_forward_valida
                                                   is_cell_shadowed)
 from shadow_duration import integrate_shadow_states_trapezoidal
 from shadow_forward_equivalent_validator import build_forward_solar_samples
-from shadow_reverse_low_rise import METHOD_V2, build_low_rise_reverse_shadow_core_v2
+from shadow_reverse_low_rise import (METHOD_V2, _cell_crossed_by_boundary, _inside,
+                                     build_low_rise_reverse_shadow_core_v2)
 
 METHOD = "forward_validated_finite_cell_reverse_expansion_v1"
 DEFAULT_MAXIMUM_HEIGHT_M = 31.0
@@ -34,19 +35,25 @@ def _base(maximum_height_m):
         "blockers": [], "warnings": ["Cell volume is a geometric optimizer objective, not GFA, FAR, or legal buildable floor area."]}
 
 
-def _cells_from_v2(reverse, cap):
+def _cells_from_v2(reverse, cap, site_boundary_geometry):
     field = reverse["height_field"]; spec = field["grid_spec"]
     nx, ny, resolution = spec["x_count"], spec["y_count"], float(spec["resolution_m"])
     points = field["grid_points"]; cells = []
+    polygon = [(float(point["x_m"]), float(point["y_m"]))
+               for point in site_boundary_geometry["outer_loop"]]
     for iy in range(ny-1):
         for ix in range(nx-1):
             ids = (iy*nx+ix, iy*nx+ix+1, (iy+1)*nx+ix+1, (iy+1)*nx+ix)
             corners = [points[index] for index in ids]
             if not all(point.get("bounded") and point.get("inside_site") for point in corners):
                 continue
+            min_x = float(corners[0]["x_m"]); min_y = float(corners[0]["y_m"])
+            center = (min_x+resolution/2.0, min_y+resolution/2.0)
+            if (_inside(center, polygon, 1e-8) is False or
+                    _cell_crossed_by_boundary(min_x, min_y, min_x+resolution, min_y+resolution, polygon)):
+                continue
             height = min(float(point["height_limit_m"]) for point in corners)
             height = min(cap, math.floor((height+1e-9)/VERTICAL_HEIGHT_STEP_M)*VERTICAL_HEIGHT_STEP_M)
-            min_x = float(corners[0]["x_m"]); min_y = float(corners[0]["y_m"])
             cells.append({"cell_index": len(cells), "ix": ix, "iy": iy,
                 "min_x_m": min_x, "max_x_m": min_x+resolution,
                 "min_y_m": min_y, "max_y_m": min_y+resolution,
@@ -127,6 +134,51 @@ def _expand_round(baseline_cells, active, samples, solar, measurement_height, li
                    "evaluations": evaluations, "cache": len(cache)}
 
 
+def build_greedy_discrete_model(model, maximum_height_m):
+    """Exercise the production greedy ordering on an oracle-compatible micro model."""
+    cells = list((model or {}).get("height_cells") or [])
+    points = list((model or {}).get("measurement_points") or [])
+    contributions = (model or {}).get("shadow_contributions") or []
+    try:
+        step = float(model["height_step_m"]); cap = float(maximum_height_m)
+        samples = [float(value) for value in model["sample_minutes"]]
+        if (not cells or not points or len(contributions) != len(cells) or step <= 0.0 or cap <= 0.0 or
+                not all(math.isfinite(value) for value in [step, cap]+samples)):
+            raise ValueError()
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return {"complete": False, "blockers": [{"failure_code": "invalid_greedy_discrete_model_input"}]}
+    heights = [0.0]*len(cells)
+    def states(candidate_heights):
+        return [[any(candidate_heights[cell_index] > 0.0 and
+                     candidate_heights[cell_index]+1e-9 >= float(contributions[cell_index][point_index][time_index])
+                     for cell_index in range(len(cells))) for time_index in range(len(samples))]
+                for point_index in range(len(points))]
+    current_states = states(heights)
+    while True:
+        durations = [integrate_shadow_states_trapezoidal(row, samples) for row in current_states]
+        ranked = []
+        for cell_index in range(len(cells)):
+            candidate_height = heights[cell_index]+step
+            if candidate_height > cap+1e-9: continue
+            candidate_heights = list(heights); candidate_heights[cell_index] = candidate_height
+            candidate_states = states(candidate_heights)
+            candidate_durations = [integrate_shadow_states_trapezoidal(row, samples) for row in candidate_states]
+            if any(candidate_durations[index] > float(points[index]["limit_minutes"])+1e-9
+                   for index in range(len(points))): continue
+            consumption = sum(candidate_durations[index]-durations[index] for index in range(len(points)))
+            utilization = max([candidate_durations[index]/float(points[index]["limit_minutes"])
+                               if float(points[index]["limit_minutes"]) > 0 else 0.0
+                               for index in range(len(points))] or [0.0])
+            ranked.append(((0 if consumption <= 1e-9 else 1, consumption, utilization, cell_index),
+                           cell_index, candidate_height))
+        if not ranked: break
+        _, cell_index, candidate_height = min(ranked)
+        heights[cell_index] = candidate_height; current_states = states(heights)
+    volume = sum(float(cells[index].get("area_m2", 1.0))*height for index, height in enumerate(heights))
+    return {"complete": True, "heuristic_volume_m3": volume, "heights_m": heights,
+            "global_optimum_proven": False, "blockers": []}
+
+
 def build_forward_validated_reverse_expansion(site_boundary_geometry, resolved_regulatory_preset,
         measurement_plane, settings_normalized, calculation_accuracy_preset,
         maximum_height_m=DEFAULT_MAXIMUM_HEIGHT_M, maximum_effect_evaluations=MAX_EXPANSION_EFFECT_EVALUATIONS,
@@ -142,7 +194,7 @@ def build_forward_validated_reverse_expansion(site_boundary_geometry, resolved_r
                                                      calculation_accuracy_preset)
     if not reverse.get("complete"):
         result["blockers"] += reverse.get("blockers") or []; return result
-    cells, resolution = _cells_from_v2(reverse, cap); result["cell_resolution_m"] = resolution
+    cells, resolution = _cells_from_v2(reverse, cap, site_boundary_geometry); result["cell_resolution_m"] = resolution
     if not cells:
         result["blockers"].append({"failure_code": "reverse_expansion_no_fully_contained_cells"}); return result
     baseline_volume = _volume(cells); v2_volume = reverse["top_surface_mesh"]["bounded_candidate_volume_m3"]
@@ -151,6 +203,8 @@ def build_forward_validated_reverse_expansion(site_boundary_geometry, resolved_r
         resolved_regulatory_preset, settings_normalized, measurement_height)
     result["baseline"].update({"cell_volume_m3": baseline_volume,
         "v2_bounded_volume_m3": v2_volume, "forward_validation": baseline_validation})
+    if not baseline_validation.get("complete"):
+        result["blockers"] += baseline_validation.get("blockers") or []; return result
     if baseline_validation.get("overall_status") != "within_selected_limits":
         result["blockers"].append({"failure_code": "reverse_expansion_v2_baseline_forward_validation_failed"}); return result
     active = _active_points(reverse, baseline_validation); initial_count = len(active)
@@ -171,6 +225,8 @@ def build_forward_validated_reverse_expansion(site_boundary_geometry, resolved_r
                 "limit_type": "candidate_effect_evaluations", "automatic_coarse_fallback_used": False}); return result
         validation = build_cell_field_forward_validation(final_cells, site_boundary_geometry,
             resolved_regulatory_preset, settings_normalized, measurement_height)
+        if not validation.get("complete"):
+            result["blockers"] += validation.get("blockers") or []; return result
         if validation.get("overall_status") == "within_selected_limits": break
         added = []
         for zone in ("near", "far"):
@@ -188,7 +244,8 @@ def build_forward_validated_reverse_expansion(site_boundary_geometry, resolved_r
     expanded_volume = _volume(final_cells); gain = expanded_volume-v2_volume
     selected = "forward_validated_expanded_cell_candidate" if gain > 1e-9 else "v2_parity"
     result.update({"available": True, "complete": True, "selected_source": selected})
-    result["cell_field"].update({"cells": final_cells, "cell_count": len(final_cells), "volume_m3": expanded_volume})
+    result["cell_field"].update({"cells": final_cells, "cell_count": len(final_cells), "volume_m3": expanded_volume,
+        "candidate_source": "forward_validated_expanded_cell_candidate", "selected_for_output": selected != "v2_parity"})
     result["expansion"].update({"accepted_height_increment_count": totals["accepted"],
         "rejected_height_increment_count": totals["rejected"],
         "candidate_effect_evaluation_count": totals["evaluations"], "effect_cache_entry_count": totals["cache"]})

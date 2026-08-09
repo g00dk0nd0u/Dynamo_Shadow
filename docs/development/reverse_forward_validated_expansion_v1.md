@@ -39,3 +39,13 @@ required. Production Reverse remains v2; this QA candidate does not change
   Revit 2024.3/Dynamo 3.3 host bundle remain import-compatible.
 - **Known limitations:** fully contained cells only, greedy optimum not proven, and
   final Forward validation remains mandatory.
+
+The authoritative field admits a cell only when all four v2 corners are bounded and
+inside, its center is inside the site, and no site-boundary segment crosses the open
+cell interior. Full validation guards both grid-point count and the theoretical
+`validation points × samples × cells` shadow-check count before evaluation.
+
+The `centered_mismatch` recovery fixture intentionally uses an explicit 10.0 m
+maximum-height cap to test recovery of its original 10.0 m prism. This is not a
+default-cap measurement; the public core default remains 31.0 m and accepts any
+positive finite caller-supplied cap.
