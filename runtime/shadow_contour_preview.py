@@ -23,6 +23,9 @@ except Exception:
 
 
 APPLICATION_ID = "Dynamo_Shadow.EqualTimeContourPreview"
+HIGH_DURATION_CONTOUR_COLOR = (220, 30, 30)
+LOW_DURATION_CONTOUR_COLOR = (30, 90, 220)
+CONTOUR_LINE_WEIGHT = 8
 
 
 def normalize_equal_time_contour_preview_settings(settings):
@@ -110,12 +113,15 @@ def _collect_owned_preview_ids(document):
     return _collect_preview_ids(document, APPLICATION_ID)
 
 
-def _apply_override(view, element_id):
+def _apply_override(view, element_id, level, low_level, high_level):
     if view is None or OverrideGraphicSettings is None or Color is None:
         return False
     override = OverrideGraphicSettings()
-    override.SetProjectionLineColor(Color(35, 105, 230))
-    override.SetProjectionLineWeight(6)
+    rgb = (HIGH_DURATION_CONTOUR_COLOR if level == high_level
+           else LOW_DURATION_CONTOUR_COLOR if level == low_level
+           else (130, 130, 130))
+    override.SetProjectionLineColor(Color(*rgb))
+    override.SetProjectionLineWeight(CONTOUR_LINE_WEIGHT)
     view.SetElementOverrides(element_id, override)
     return True
 
@@ -170,6 +176,8 @@ def build_equal_time_contour_preview(equal_time_contours, measurement_plane, set
             document.Delete(ident); result["deleted_element_count"] += 1
         if config["mode"] == "replace":
             tolerance = float(getattr(document.Application, "ShortCurveTolerance", 0.0))
+            levels = [item[0] for item in prepared]
+            low_level, high_level = (min(levels), max(levels)) if levels else (None, None)
             for level, contours, segments in prepared:
                 group = {"level_minutes": level, "contour_count": len(contours),
                          "curve_count": 0, "created": False, "element_id": None}
@@ -189,7 +197,7 @@ def build_equal_time_contour_preview(equal_time_contours, measurement_plane, set
                     group.update({"created": True, "element_id": _element_id(shape)})
                     result["created_element_ids"].append(group["element_id"])
                     try:
-                        if not _apply_override(view, shape.Id):
+                        if not _apply_override(view, shape.Id, level, low_level, high_level):
                             result["warnings"].append("Contour projection-line override API is unavailable.")
                     except BaseException:
                         result["warnings"].append("Contour graphical override failed; curves were retained.")
