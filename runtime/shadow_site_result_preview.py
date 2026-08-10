@@ -8,10 +8,12 @@ import math
 
 from shadow_contour_preview import normalize_equal_time_contour_preview_settings, _segments, _curves
 from shadow_preview import (_collect_owned_preview_ids as _collect_preview_ids, _element_id,
-                            _safe_message, _set_plan_curve_representation)
+                            _safe_message, _set_plan_curve_representation, _view_diagnostics)
 from shadow_units import _meters_to_internal_length
 from shadow_revit_api import (BuiltInCategory, ElementId, XYZ, Line, DirectShape,
     FilteredElementCollector, OverrideGraphicSettings, Color, SubTransaction)
+from shadow_graphical_override import (apply_and_readback, empty_readback_summary,
+    add_to_readback_summary)
 
 try:
     from RevitServices.Persistence import DocumentManager
@@ -50,7 +52,8 @@ def _empty(config, site_distance_contours, measurement_masks, selected_limit_com
         "created_element_ids": [], "deleted_element_count": 0, "groups": [],
         "style_semantics": STYLE_SEMANTICS, "legal_judgement_generated": False,
         "ordinance_selection_certified": False, "permit_ready_certified": False,
-        "blockers": [], "warnings": list(config["warnings"])}
+        "blockers": [], "warnings": list(config["warnings"]),
+        "graphical_override_readback": empty_readback_summary()}
 
 
 def _block(result, code, warning=None):
@@ -136,8 +139,8 @@ def _apply_override(view, element_id, group):
         rgb, weight = _DISTANCE_STYLES.get(float(group.get("distance_m")), ((0, 0, 0), 5))
     else:
         rgb, weight = _MARKER_STYLES.get(group.get("zone"), ((0, 0, 0), 8))
-    override = OverrideGraphicSettings(); override.SetProjectionLineColor(Color(*rgb)); override.SetProjectionLineWeight(weight)
-    view.SetElementOverrides(element_id, override); return True
+    return apply_and_readback(view, element_id, rgb, weight,
+        OverrideGraphicSettings, Color)
 
 
 def _sanitize_group(group):
@@ -194,6 +197,7 @@ def build_site_result_preview(site_distance_contours, measurement_masks, selecte
         result["warnings"].append("Revit site result preview API is unavailable; preview skipped."); return result
     try:
         document = DocumentManager.Instance.CurrentDBDocument; view = document.ActiveView
+        active_view_is_3d = _view_diagnostics(view, 0.0)["active_view_is_3d"]
         cleanup = _collect_owned_preview_ids(document)
     except BaseException as exc:
         return _block(result, "site_result_preview_document_access_failed", _safe_message(exc))
@@ -223,10 +227,18 @@ def build_site_result_preview(site_distance_contours, measurement_masks, selecte
                     plan_diag = {"warnings": []}; _set_plan_curve_representation(shape, curves, plan_diag)
                     result["warnings"].extend(plan_diag["warnings"])
                     shape.Name = source_group["name"]; shape.ApplicationId = APPLICATION_ID; shape.ApplicationDataId = source_group["application_data_id"]
-                    group.update({"created": True, "element_id": _element_id(shape)})
+                    group.update({"created": True, "element_id": _element_id(shape),
+                        "element_name": shape.Name, "application_id": APPLICATION_ID,
+                        "application_data_id": shape.ApplicationDataId,
+                        "plan_representation_set": plan_diag.get("plan_representation_set", False),
+                        "default_curve_representation_retained": not plan_diag.get("plan_representation_set", False)})
+                    group["active_view_is_3d"] = active_view_is_3d
                     result["created_element_ids"].append(group["element_id"])
                     try:
-                        if not _apply_override(view, shape.Id, source_group):
+                        override_diag = _apply_override(view, shape.Id, source_group)
+                        group["graphical_override"] = override_diag
+                        add_to_readback_summary(result["graphical_override_readback"], override_diag)
+                        if not override_diag.get("set_succeeded"):
                             result["warnings"].append("Site result projection-line override API is unavailable.")
                     except BaseException:
                         result["warnings"].append("Site result graphical override failed; curves were retained.")
@@ -251,6 +263,11 @@ def build_site_result_preview(site_distance_contours, measurement_masks, selecte
             except BaseException as exc: _block(result, "site_result_preview_transaction_close_failed", _safe_message(exc))
     result["created_element_count"] = len(result["created_element_ids"])
     result["created_group_count"] = sum(1 for group in result["groups"] if group.get("created") is True)
+    readback = result["graphical_override_readback"]
+    result["graphical_overrides_write_succeeded"] = any(
+        (group.get("graphical_override") or {}).get("set_succeeded") for group in result["groups"])
+    result["graphical_overrides_readback_succeeded"] = (readback["attempted_element_count"] > 0 and readback["readback_failure_count"] == 0)
+    result["graphical_overrides_verified"] = (readback["attempted_element_count"] > 0 and readback["verified_element_count"] == readback["attempted_element_count"])
     result["available"] = not result["blockers"]
     source_complete = result.pop("_source_complete_for_preview", True)
     result["complete"] = result["available"] and (config["mode"] == "clear" or (source_complete and result["created_group_count"] == result["requested_group_count"]))
