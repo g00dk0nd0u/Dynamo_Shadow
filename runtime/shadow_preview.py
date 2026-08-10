@@ -21,7 +21,8 @@ except Exception:
 
 APPLICATION_ID = "Dynamo_Shadow.FormalShadowPreview"
 GENERATION_METHOD = "revit_extrusion_analyzer_curve_loop_line_exact"
-STYLES = ((40, 120, 255), (90, 90, 90), (240, 70, 70))
+HOURLY_SHADOW_COLOR = (0, 0, 0)
+HOURLY_SHADOW_LINE_WEIGHT = 2
 
 
 def _checkpoint(stage, detail=None):
@@ -201,9 +202,8 @@ def _preview_element_name(group):
 
 def _apply_override(view, element_id, style_index):
     if view is None or OverrideGraphicSettings is None or Color is None: return False, "Projection-line graphical override API is unavailable."
-    # Anchor colours distinguish the first/noon/last line; intermediate lines cycle safely.
-    rgb = STYLES[0 if style_index == 0 else (2 if style_index == 8 else 1)]
-    override = OverrideGraphicSettings(); override.SetProjectionLineColor(Color(*rgb)); override.SetProjectionLineWeight(4)
+    # Every time slice is deliberately subordinate to the regulatory contours.
+    override = OverrideGraphicSettings(); override.SetProjectionLineColor(Color(*HOURLY_SHADOW_COLOR)); override.SetProjectionLineWeight(HOURLY_SHADOW_LINE_WEIGHT)
     view.SetElementOverrides(element_id, override); return True, None
 
 

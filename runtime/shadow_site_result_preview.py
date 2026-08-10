@@ -25,7 +25,13 @@ except Exception:
 APPLICATION_ID = "Dynamo_Shadow.SiteResultPreview"
 MARKER_HALF_SIZE_M = 0.5
 STYLE_SEMANTICS = "visual_distinction_only_no_legal_pass_fail_meaning"
-_DISTANCE_STYLES = {5.0: ((0, 140, 255), 5), 10.0: ((140, 80, 200), 7)}
+NEAR_DISTANCE_COLOR = (220, 30, 30)
+FAR_DISTANCE_COLOR = (30, 90, 220)
+DISTANCE_LINE_WEIGHT = 5
+_DISTANCE_STYLES = {
+    5.0: (NEAR_DISTANCE_COLOR, DISTANCE_LINE_WEIGHT),
+    10.0: (FAR_DISTANCE_COLOR, DISTANCE_LINE_WEIGHT),
+}
 _MARKER_STYLES = {"near_5_to_10m": ((245, 145, 30), 8), "far_over_10m": ((210, 80, 140), 8)}
 
 

@@ -31,20 +31,31 @@ LEGACY_APPLICATION_IDS = (
     "Dynamo_Shadow.SiteResultPreview",
 )
 VIEW_OWNER_MARKER = "Dynamo_Shadow Shadow Check managed view"
+HIGH_DURATION_CONTOUR_COLOR = (220, 30, 30)
+LOW_DURATION_CONTOUR_COLOR = (30, 90, 220)
+NEAR_DISTANCE_COLOR = HIGH_DURATION_CONTOUR_COLOR
+FAR_DISTANCE_COLOR = LOW_DURATION_CONTOUR_COLOR
 STYLE_SEMANTICS = {
     "site_boundary": {"name": "Dynamo_Shadow_SiteBoundary", "rgb": (0, 0, 0), "weight": 7},
-    "near_limit": {"name": "Dynamo_Shadow_NearLimit", "rgb": (220, 30, 30), "weight": 6},
-    "near_contour": {"name": "Dynamo_Shadow_NearContour", "rgb": (220, 30, 30), "weight": 5},
+    "near_limit": {"name": "Dynamo_Shadow_NearLimit", "rgb": NEAR_DISTANCE_COLOR, "weight": 5},
+    "near_contour": {"name": "Dynamo_Shadow_NearContour", "rgb": HIGH_DURATION_CONTOUR_COLOR, "weight": 8},
     "near_marker": {"name": "Dynamo_Shadow_NearMarker", "rgb": (220, 30, 30), "weight": 8},
-    "far_limit": {"name": "Dynamo_Shadow_FarLimit", "rgb": (30, 90, 220), "weight": 6},
-    "far_contour": {"name": "Dynamo_Shadow_FarContour", "rgb": (30, 90, 220), "weight": 5},
+    "far_limit": {"name": "Dynamo_Shadow_FarLimit", "rgb": FAR_DISTANCE_COLOR, "weight": 5},
+    "far_contour": {"name": "Dynamo_Shadow_FarContour", "rgb": LOW_DURATION_CONTOUR_COLOR, "weight": 8},
     "far_marker": {"name": "Dynamo_Shadow_FarMarker", "rgb": (30, 90, 220), "weight": 8},
     "neutral_contour": {"name": "Dynamo_Shadow_NeutralContour", "rgb": (130, 130, 130), "weight": 2},
+}
+STYLE_LEGEND = {
+    "hourly_shadows": "black",
+    "high_duration_contour": "red",
+    "low_duration_contour": "blue",
+    "5m_setback": "red",
+    "10m_setback": "blue",
 }
 
 
 def classify_contour_level(level_minutes, resolved_preset, tolerance=1e-6):
-    """Return style from near/far regulatory semantics, never time magnitude."""
+    """Return style from the selected near/far regulatory pair when available."""
     preset = resolved_preset if isinstance(resolved_preset, dict) else {}
     if preset.get("comparison_ready") is not True:
         return "neutral_contour"
@@ -72,10 +83,17 @@ def build_shadow_check_groups(site_geometry, distance_contours, equal_contours,
             groups.append({"kind": "site_distance_5m", "style": "near_limit", "contours": [contour]})
         elif abs(distance - 10.0) <= 1e-6:
             groups.append({"kind": "site_distance_10m", "style": "far_limit", "contours": [contour]})
-    for contour in (equal_contours or {}).get("contours") or []:
+    equal_items = (equal_contours or {}).get("contours") or []
+    levels = [float(item.get("level_minutes")) for item in equal_items]
+    low_level, high_level = (min(levels), max(levels)) if levels else (None, None)
+    for contour in equal_items:
         level = float(contour.get("level_minutes"))
+        style = classify_contour_level(level, resolved_preset)
+        if style == "neutral_contour" and high_level != low_level:
+            if abs(level - high_level) <= 1e-6: style = "near_contour"
+            elif abs(level - low_level) <= 1e-6: style = "far_contour"
         groups.append({"kind": "equal_time_contour", "level_minutes": level,
-            "style": classify_contour_level(level, resolved_preset), "contours": [contour]})
+            "style": style, "contours": [contour]})
     for key, style in (("near", "near_marker"), ("far", "far_marker")):
         item = (masks or {}).get(key) or {}
         if item.get("point") is not None and item.get("available") is not False:
@@ -338,7 +356,8 @@ def build_shadow_check_presentation(site_geometry, distance_contours, equal_cont
         "available": False, "complete": False, "created_element_count": 0,
         "deleted_element_count": 0, "legacy_deleted_element_count": 0,
         "current_deleted_element_count": 0, "created_element_ids": [], "groups": [],
-        "style_semantics": STYLE_SEMANTICS, "measurement_plane_elevation_m": elevation,
+        "style_semantics": STYLE_SEMANTICS, "style_legend": STYLE_LEGEND,
+        "measurement_plane_elevation_m": elevation,
         "blockers": [], "warnings": list(config["warnings"]), "legal_judgement_generated": False,
         "ordinance_selection_certified": False, "permit_ready_certified": False}
     views = {"plan": _view_result("FloorPlan", elevation, (measurement_plane or {}).get("measurement_height_m")),

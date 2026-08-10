@@ -1,4 +1,7 @@
 import shadow_check_presentation as presentation
+import shadow_contour_preview
+import shadow_preview
+import shadow_site_result_preview
 from shadow_regulatory_presets import resolve_regulatory_shadow_preset
 from shadow_readiness import _build_pipeline_readiness
 
@@ -18,7 +21,18 @@ def test_regulatory_color_semantics_for_selected_pairs():
         assert presentation.STYLE_SEMANTICS["far_contour"]["rgb"] == (30, 90, 220)
 
 
-def test_all_preset_contours_are_neutral_and_fixed_geometry_semantics():
+def test_preview_adapters_share_review_color_and_weight_rules():
+    assert shadow_preview.HOURLY_SHADOW_COLOR == (0, 0, 0)
+    assert shadow_preview.HOURLY_SHADOW_LINE_WEIGHT < shadow_site_result_preview.DISTANCE_LINE_WEIGHT
+    assert shadow_site_result_preview._DISTANCE_STYLES == {
+        5.0: ((220, 30, 30), 5), 10.0: ((30, 90, 220), 5)}
+    assert shadow_contour_preview.HIGH_DURATION_CONTOUR_COLOR == (220, 30, 30)
+    assert shadow_contour_preview.LOW_DURATION_CONTOUR_COLOR == (30, 90, 220)
+    assert (shadow_site_result_preview.DISTANCE_LINE_WEIGHT <
+            shadow_contour_preview.CONTOUR_LINE_WEIGHT)
+
+
+def test_all_preset_contours_use_duration_extremes_and_fixed_geometry_semantics():
     preset = resolve_regulatory_shadow_preset("standard_all")
     groups = presentation.build_shadow_check_groups(
         {"outer_loop": [{"x_m": 0, "y_m": 0}, {"x_m": 1, "y_m": 0}, {"x_m": 1, "y_m": 1}]},
@@ -28,8 +42,13 @@ def test_all_preset_contours_are_neutral_and_fixed_geometry_semantics():
     assert styles["site_boundary"] == "site_boundary"
     assert styles["site_distance_5m"] == "near_limit"
     assert styles["site_distance_10m"] == "far_limit"
-    assert [g["style"] for g in groups if g["kind"] == "equal_time_contour"] == ["neutral_contour"] * 2
+    assert [g["style"] for g in groups if g["kind"] == "equal_time_contour"] == ["near_contour", "far_contour"]
     assert presentation.STYLE_SEMANTICS["site_boundary"]["rgb"] == (0, 0, 0)
+    assert presentation.STYLE_SEMANTICS["near_limit"]["weight"] < presentation.STYLE_SEMANTICS["near_contour"]["weight"]
+    assert presentation.STYLE_SEMANTICS["far_limit"]["weight"] < presentation.STYLE_SEMANTICS["far_contour"]["weight"]
+    assert presentation.STYLE_LEGEND == {
+        "hourly_shadows": "black", "high_duration_contour": "red",
+        "low_duration_contour": "blue", "5m_setback": "red", "10m_setback": "blue"}
 
 
 def test_optional_revit_api_absence_is_nonfatal():
