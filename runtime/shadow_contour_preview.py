@@ -7,10 +7,12 @@ import math
 
 from shadow_policies import SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_preview import (_collect_owned_preview_ids as _collect_preview_ids, _element_id,
-                            _safe_message, _set_plan_curve_representation)
+                            _safe_message, _set_plan_curve_representation, _view_diagnostics)
 from shadow_units import _meters_to_internal_length
 from shadow_revit_api import (BuiltInCategory, ElementId, XYZ, Line, DirectShape,
     FilteredElementCollector, OverrideGraphicSettings, Color, SubTransaction)
+from shadow_graphical_override import (apply_and_readback, empty_readback_summary,
+    add_to_readback_summary, aggregate_status)
 
 try:
     from RevitServices.Persistence import DocumentManager
@@ -50,7 +52,8 @@ def _empty(config, source, elevation):
         "deleted_element_count": 0,
         "measurement_plane_elevation_m": elevation, "geometry_kind": "Curve",
         "all_curves_on_measurement_plane": True, "groups": [], "blockers": [],
-        "warnings": list(config["warnings"]), "permit_ready_certified": False}
+        "warnings": list(config["warnings"]), "permit_ready_certified": False,
+        "graphical_override_readback": empty_readback_summary()}
 
 
 def _block(result, code, warning=None):
@@ -116,14 +119,11 @@ def _collect_owned_preview_ids(document):
 def _apply_override(view, element_id, level, low_level, high_level):
     if view is None or OverrideGraphicSettings is None or Color is None:
         return False
-    override = OverrideGraphicSettings()
     rgb = (HIGH_DURATION_CONTOUR_COLOR if level == high_level
            else LOW_DURATION_CONTOUR_COLOR if level == low_level
            else (130, 130, 130))
-    override.SetProjectionLineColor(Color(*rgb))
-    override.SetProjectionLineWeight(CONTOUR_LINE_WEIGHT)
-    view.SetElementOverrides(element_id, override)
-    return True
+    return apply_and_readback(view, element_id, rgb, CONTOUR_LINE_WEIGHT,
+        OverrideGraphicSettings, Color)
 
 
 def build_equal_time_contour_preview(equal_time_contours, measurement_plane, settings):
@@ -162,6 +162,7 @@ def build_equal_time_contour_preview(equal_time_contours, measurement_plane, set
     try:
         document = DocumentManager.Instance.CurrentDBDocument
         view = document.ActiveView
+        active_view_is_3d = _view_diagnostics(view, 0.0)["active_view_is_3d"]
         cleanup = _collect_owned_preview_ids(document)
     except BaseException as exc:
         return _block(result, "contour_preview_document_access_failed", _safe_message(exc))
@@ -194,10 +195,19 @@ def build_equal_time_contour_preview(equal_time_contours, measurement_plane, set
                     shape.Name = _preview_element_name(level)
                     shape.ApplicationId = APPLICATION_ID
                     shape.ApplicationDataId = "level_minutes=%s;output_kind=equal_time_contour" % level
-                    group.update({"created": True, "element_id": _element_id(shape)})
+                    group.update({"created": True, "element_id": _element_id(shape),
+                        "element_name": shape.Name, "application_id": APPLICATION_ID,
+                        "application_data_id": shape.ApplicationDataId,
+                        "output_kind": "equal_time_contour",
+                        "plan_representation_set": plan_diag.get("plan_representation_set", False),
+                        "default_curve_representation_retained": not plan_diag.get("plan_representation_set", False)})
+                    group["active_view_is_3d"] = active_view_is_3d
                     result["created_element_ids"].append(group["element_id"])
                     try:
-                        if not _apply_override(view, shape.Id, level, low_level, high_level):
+                        override_diag = _apply_override(view, shape.Id, level, low_level, high_level)
+                        group["graphical_override"] = override_diag
+                        add_to_readback_summary(result["graphical_override_readback"], override_diag)
+                        if not override_diag.get("set_succeeded"):
                             result["warnings"].append("Contour projection-line override API is unavailable.")
                     except BaseException:
                         result["warnings"].append("Contour graphical override failed; curves were retained.")
@@ -225,6 +235,8 @@ def build_equal_time_contour_preview(equal_time_contours, measurement_plane, set
 
     result["created_element_count"] = len(result["created_element_ids"])
     result["created_level_count"] = sum(group["created"] for group in result["groups"])
+    readback = result["graphical_override_readback"]
+    result.update(aggregate_status(readback))
     result["available"] = not result["blockers"]
     result["complete"] = result["available"] and (config["mode"] == "clear" or
         result["created_level_count"] == result["requested_level_count"])

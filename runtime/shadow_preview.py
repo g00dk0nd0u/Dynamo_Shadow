@@ -6,6 +6,8 @@ import shadow_utils
 from shadow_profiles import get_solar_profile
 from shadow_policies import SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_units import _meters_to_internal_length
+from shadow_graphical_override import (apply_and_readback, empty_readback_summary,
+    add_to_readback_summary, aggregate_status)
 from shadow_revit_api import (BuiltInCategory, ElementId, XYZ, Line, GeometryObject, DirectShape,
     DirectShapeTargetViewType, FilteredElementCollector, OverrideGraphicSettings,
     Color, SubTransaction, ViewShapeBuilder, REVIT_API_CAPABILITIES)
@@ -88,6 +90,10 @@ def _empty(config, unified, elevation):
         "view_shape_builder_available": REVIT_API_CAPABILITIES["view_shape_builder_available"],
         "plan_representation_available": REVIT_API_CAPABILITIES["direct_shape_plan_representation_available"],
         "graphical_overrides_attempted": False, "graphical_overrides_succeeded": False,
+        "graphical_overrides_write_succeeded": False,
+        "graphical_overrides_readback_succeeded": False,
+        "graphical_overrides_verified": False,
+        "graphical_override_readback": empty_readback_summary(),
         "groups": [], "failure_reason_counts": {}, "warnings": list(config["warnings"]),
         "failure_stage": None, "failure_code": None, "failure_type": None, "sanitized_failure_message": None,
         "transaction_begin_attempted": False, "transaction_begin_succeeded": False,
@@ -201,10 +207,9 @@ def _preview_element_name(group):
 
 
 def _apply_override(view, element_id, style_index):
-    if view is None or OverrideGraphicSettings is None or Color is None: return False, "Projection-line graphical override API is unavailable."
     # Every time slice is deliberately subordinate to the regulatory contours.
-    override = OverrideGraphicSettings(); override.SetProjectionLineColor(Color(*HOURLY_SHADOW_COLOR)); override.SetProjectionLineWeight(HOURLY_SHADOW_LINE_WEIGHT)
-    view.SetElementOverrides(element_id, override); return True, None
+    return apply_and_readback(view, element_id, HOURLY_SHADOW_COLOR,
+        HOURLY_SHADOW_LINE_WEIGHT, OverrideGraphicSettings, Color)
 
 
 def _view_diagnostics(view, true_north_deg):
@@ -331,11 +336,23 @@ def build_shadow_preview(unified_shadow_slices, measurement_plane, settings):
                     _set_plan_curve_representation(shape, curves, diag)
                     shape.Name = _preview_element_name(group); shape.ApplicationId = APPLICATION_ID
                     shape.ApplicationDataId = "true_solar_time=%s;slice_index=%s;output_kind=time_shadow_line" % (group["true_solar_time"], group["slice_index"])
-                    diag["element_id"] = _element_id(shape); diag["direct_shape_created"] = True; result["created_element_ids"].append(diag["element_id"])
+                    diag.update({"element_id": _element_id(shape), "element_name": shape.Name,
+                        "application_id": APPLICATION_ID, "application_data_id": shape.ApplicationDataId,
+                        "output_kind": "time_shadow_line",
+                        "default_curve_representation_retained": not diag.get("plan_representation_set", False),
+                        "active_view_is_3d": result["active_view_is_3d"]})
+                    diag["direct_shape_created"] = True; result["created_element_ids"].append(diag["element_id"])
                     result["graphical_overrides_attempted"] = True
                     try:
-                        ok, warning = _apply_override(view, shape.Id, group["style_index"]); result["graphical_overrides_succeeded"] |= ok
-                        if warning: diag["warnings"].append(warning); result["warnings"].append(warning)
+                        override_diag = _apply_override(view, shape.Id, group["style_index"])
+                        diag["graphical_override"] = override_diag
+                        add_to_readback_summary(result["graphical_override_readback"], override_diag)
+                        ok = override_diag["set_succeeded"]
+                        result["graphical_overrides_succeeded"] |= ok
+                        result["graphical_overrides_write_succeeded"] |= ok
+                        if not ok:
+                            warning = "Projection-line graphical override API is unavailable."
+                            diag["warnings"].append(warning); result["warnings"].append(warning)
                     except BaseException:
                         warning = "graphical_override failed; time-shadow curves were retained."
                         diag["warnings"].append(warning); result["warnings"].append(warning)
@@ -365,6 +382,8 @@ def build_shadow_preview(unified_shadow_slices, measurement_plane, settings):
             try: TransactionManager.Instance.TransactionTaskDone(); result["transaction_close_succeeded"] = True
             except BaseException as exc: result.update({"failure_stage":"transaction_close", "failure_code":"preview_transaction_close_failed", "failure_type":type(exc).__name__, "sanitized_failure_message":_safe_message(exc)})
     result["created_element_count"] = len(result["created_element_ids"]); result["failed_group_count"] = sum(result["failure_reason_counts"].values())
+    readback = result["graphical_override_readback"]
+    result.update(aggregate_status(readback))
     result["available"] = result["transaction_close_succeeded"] and result["cleanup_delete_succeeded"] and (config["mode"] == "clear" or result["created_element_count"] > 0)
     result["complete"] = result["available"] and result["failed_group_count"] == 0
     result["partial_success"] = result["available"] and not result["complete"]

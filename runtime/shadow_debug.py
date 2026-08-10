@@ -495,9 +495,22 @@ def _contour_preview_summary(value):
         "mode": value.get("mode"), "complete": value.get("complete"),
         "created_element_count": value.get("created_element_count"),
         "deleted_element_count": value.get("deleted_element_count"),
+        "graphical_overrides_write_succeeded": value.get("graphical_overrides_write_succeeded"),
+        "graphical_overrides_readback_succeeded": value.get("graphical_overrides_readback_succeeded"),
+        "graphical_overrides_verified": value.get("graphical_overrides_verified"),
+        "graphical_override_readback": value.get("graphical_override_readback"),
         "groups": [{"level_minutes": group.get("level_minutes"),
                     "contour_count": group.get("contour_count"),
-                    "curve_count": group.get("curve_count")}
+                    "curve_count": group.get("curve_count"),
+                    "element_id": group.get("element_id"),
+                    "element_name": group.get("element_name"),
+                    "application_id": group.get("application_id"),
+                    "application_data_id": group.get("application_data_id"),
+                    "output_kind": group.get("output_kind"),
+                    "plan_representation_set": group.get("plan_representation_set"),
+                    "default_curve_representation_retained": group.get("default_curve_representation_retained"),
+                    "active_view_is_3d": group.get("active_view_is_3d"),
+                    "graphical_override": group.get("graphical_override")}
                    for group in (value.get("groups") or [])],
         "warnings": value.get("warnings"), "blockers": value.get("blockers")})
 
@@ -586,9 +599,19 @@ def _site_result_preview_debug_summary(v):
         "created_group_count": v.get("created_group_count"),
         "created_element_count": v.get("created_element_count"),
         "deleted_element_count": v.get("deleted_element_count"),
+        "graphical_overrides_write_succeeded": v.get("graphical_overrides_write_succeeded"),
+        "graphical_overrides_readback_succeeded": v.get("graphical_overrides_readback_succeeded"),
+        "graphical_overrides_verified": v.get("graphical_overrides_verified"),
+        "graphical_override_readback": v.get("graphical_override_readback"),
         "output_kinds": output_kinds,
         "generated_distances_m": distances,
         "generated_zones": zones,
+        "groups": [{key: group.get(key) for key in (
+            "output_kind", "distance_m", "zone", "element_id", "element_name",
+            "application_id", "application_data_id", "plan_representation_set",
+            "default_curve_representation_retained", "active_view_is_3d",
+            "graphical_override")}
+            for group in groups if isinstance(group, dict)],
         "blocker_count": len(v.get("blockers") or []),
         "warning_count": len(v.get("warnings") or []),
     })
