@@ -1,6 +1,7 @@
 import types
 
-from shadow_graphical_override import apply_and_readback, _safe_message
+from shadow_graphical_override import (apply_and_readback, _safe_message,
+    empty_readback_summary, add_to_readback_summary, aggregate_status)
 import shadow_contour_preview
 import shadow_preview
 import shadow_site_result_preview
@@ -87,3 +88,20 @@ def test_existing_preview_color_and_weight_mapping_is_unchanged():
     assert shadow_contour_preview.CONTOUR_LINE_WEIGHT == 8
     assert shadow_site_result_preview._DISTANCE_STYLES == {
         5.0: ((220, 30, 30), 5), 10.0: ((30, 90, 220), 5)}
+
+
+def test_write_failure_remains_in_aggregate_verification_denominator():
+    summary = empty_readback_summary()
+    write_failure = apply_and_readback(
+        None, 1, (220, 30, 30), 5, FakeOverride, FakeColor)
+    verified = apply_and_readback(
+        FakeView(), 2, (220, 30, 30), 5, FakeOverride, FakeColor)
+    add_to_readback_summary(summary, write_failure)
+    add_to_readback_summary(summary, verified)
+
+    assert summary["attempted_element_count"] == 2
+    assert summary["write_failure_count"] == 1
+    assert summary["verified_element_count"] == 1
+    status = aggregate_status(summary)
+    assert status["graphical_overrides_write_succeeded"] is False
+    assert status["graphical_overrides_verified"] is False

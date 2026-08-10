@@ -12,7 +12,7 @@ from shadow_units import _meters_to_internal_length
 from shadow_revit_api import (BuiltInCategory, ElementId, XYZ, Line, DirectShape,
     FilteredElementCollector, OverrideGraphicSettings, Color, SubTransaction)
 from shadow_graphical_override import (apply_and_readback, empty_readback_summary,
-    add_to_readback_summary)
+    add_to_readback_summary, aggregate_status)
 
 try:
     from RevitServices.Persistence import DocumentManager
@@ -236,10 +236,7 @@ def build_equal_time_contour_preview(equal_time_contours, measurement_plane, set
     result["created_element_count"] = len(result["created_element_ids"])
     result["created_level_count"] = sum(group["created"] for group in result["groups"])
     readback = result["graphical_override_readback"]
-    result["graphical_overrides_write_succeeded"] = any(
-        (group.get("graphical_override") or {}).get("set_succeeded") for group in result["groups"])
-    result["graphical_overrides_readback_succeeded"] = (readback["attempted_element_count"] > 0 and readback["readback_failure_count"] == 0)
-    result["graphical_overrides_verified"] = (readback["attempted_element_count"] > 0 and readback["verified_element_count"] == readback["attempted_element_count"])
+    result.update(aggregate_status(readback))
     result["available"] = not result["blockers"]
     result["complete"] = result["available"] and (config["mode"] == "clear" or
         result["created_level_count"] == result["requested_level_count"])

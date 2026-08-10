@@ -13,7 +13,7 @@ from shadow_units import _meters_to_internal_length
 from shadow_revit_api import (BuiltInCategory, ElementId, XYZ, Line, DirectShape,
     FilteredElementCollector, OverrideGraphicSettings, Color, SubTransaction)
 from shadow_graphical_override import (apply_and_readback, empty_readback_summary,
-    add_to_readback_summary)
+    add_to_readback_summary, aggregate_status)
 
 try:
     from RevitServices.Persistence import DocumentManager
@@ -264,10 +264,7 @@ def build_site_result_preview(site_distance_contours, measurement_masks, selecte
     result["created_element_count"] = len(result["created_element_ids"])
     result["created_group_count"] = sum(1 for group in result["groups"] if group.get("created") is True)
     readback = result["graphical_override_readback"]
-    result["graphical_overrides_write_succeeded"] = any(
-        (group.get("graphical_override") or {}).get("set_succeeded") for group in result["groups"])
-    result["graphical_overrides_readback_succeeded"] = (readback["attempted_element_count"] > 0 and readback["readback_failure_count"] == 0)
-    result["graphical_overrides_verified"] = (readback["attempted_element_count"] > 0 and readback["verified_element_count"] == readback["attempted_element_count"])
+    result.update(aggregate_status(readback))
     result["available"] = not result["blockers"]
     source_complete = result.pop("_source_complete_for_preview", True)
     result["complete"] = result["available"] and (config["mode"] == "clear" or (source_complete and result["created_group_count"] == result["requested_group_count"]))

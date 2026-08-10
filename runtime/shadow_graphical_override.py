@@ -78,15 +78,23 @@ def apply_and_readback(view, element_id, rgb, line_weight,
 
 def empty_readback_summary():
     return {"attempted_element_count": 0, "successful_element_count": 0,
+            "write_failure_count": 0,
             "color_match_count": 0, "color_mismatch_count": 0,
             "line_weight_match_count": 0, "line_weight_mismatch_count": 0,
             "readback_failure_count": 0, "verified_element_count": 0}
 
 
 def add_to_readback_summary(summary, diagnostic):
-    if not diagnostic or not diagnostic.get("readback_attempted"):
+    if not diagnostic or not diagnostic.get("attempted"):
         return
     summary["attempted_element_count"] += 1
+    if not diagnostic.get("set_succeeded"):
+        summary["write_failure_count"] += 1
+        return
+    # Readback is only meaningful after a successful write.
+    if not diagnostic.get("readback_attempted"):
+        summary["readback_failure_count"] += 1
+        return
     if not diagnostic.get("readback_succeeded"):
         summary["readback_failure_count"] += 1
         return
@@ -97,3 +105,28 @@ def add_to_readback_summary(summary, diagnostic):
             else "line_weight_mismatch_count"] += 1
     if diagnostic.get("verified"):
         summary["verified_element_count"] += 1
+
+
+def all_writes_succeeded(summary):
+    return (summary["attempted_element_count"] > 0 and
+            summary["write_failure_count"] == 0)
+
+
+def all_readbacks_succeeded(summary):
+    return (all_writes_succeeded(summary) and
+            summary["successful_element_count"] ==
+            summary["attempted_element_count"])
+
+
+def all_overrides_verified(summary):
+    return (all_readbacks_succeeded(summary) and
+            summary["verified_element_count"] ==
+            summary["attempted_element_count"])
+
+
+def aggregate_status(summary):
+    return {
+        "graphical_overrides_write_succeeded": all_writes_succeeded(summary),
+        "graphical_overrides_readback_succeeded": all_readbacks_succeeded(summary),
+        "graphical_overrides_verified": all_overrides_verified(summary),
+    }

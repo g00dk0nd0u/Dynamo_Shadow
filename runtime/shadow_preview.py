@@ -7,7 +7,7 @@ from shadow_profiles import get_solar_profile
 from shadow_policies import SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_units import _meters_to_internal_length
 from shadow_graphical_override import (apply_and_readback, empty_readback_summary,
-    add_to_readback_summary)
+    add_to_readback_summary, aggregate_status)
 from shadow_revit_api import (BuiltInCategory, ElementId, XYZ, Line, GeometryObject, DirectShape,
     DirectShapeTargetViewType, FilteredElementCollector, OverrideGraphicSettings,
     Color, SubTransaction, ViewShapeBuilder, REVIT_API_CAPABILITIES)
@@ -383,8 +383,7 @@ def build_shadow_preview(unified_shadow_slices, measurement_plane, settings):
             except BaseException as exc: result.update({"failure_stage":"transaction_close", "failure_code":"preview_transaction_close_failed", "failure_type":type(exc).__name__, "sanitized_failure_message":_safe_message(exc)})
     result["created_element_count"] = len(result["created_element_ids"]); result["failed_group_count"] = sum(result["failure_reason_counts"].values())
     readback = result["graphical_override_readback"]
-    result["graphical_overrides_readback_succeeded"] = (readback["attempted_element_count"] > 0 and readback["readback_failure_count"] == 0)
-    result["graphical_overrides_verified"] = (readback["attempted_element_count"] > 0 and readback["verified_element_count"] == readback["attempted_element_count"])
+    result.update(aggregate_status(readback))
     result["available"] = result["transaction_close_succeeded"] and result["cleanup_delete_succeeded"] and (config["mode"] == "clear" or result["created_element_count"] > 0)
     result["complete"] = result["available"] and result["failed_group_count"] == 0
     result["partial_success"] = result["available"] and not result["complete"]
