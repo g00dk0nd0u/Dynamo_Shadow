@@ -42,6 +42,17 @@ def test_micro_oracle_bounds_heuristic_volume_contract():
     assert optimality_gap_percent >= 0.0
 
 
+def test_micro_greedy_uses_production_multiple_accept_sweep_schedule():
+    # Re-ranking after every move reaches [0, 0, 2]; the production sweep ranks
+    # once, then accepts all three still-feasible first increments.
+    model = {"height_step_m": 1, "sample_minutes": [0, 10, 20],
+        "height_cells": [{"area_m2": 1} for _ in range(3)],
+        "measurement_points": [{"zone": "near", "limit_minutes": 10}],
+        "shadow_contributions": [[[2, 1, 2]], [[2, 1, 99]], [[2, 99, 99]]]}
+    heuristic = build_greedy_discrete_model(model, maximum_height_m=2)
+    assert heuristic["heights_m"] == [1.0, 1.0, 1.0]
+
+
 def test_notched_boundary_crossing_cell_is_not_authoritative():
     grid = []
     for index, (x, y) in enumerate(((0., 0.), (1., 0.), (0., 1.), (1., 1.))):
@@ -82,6 +93,23 @@ def test_active_limit_rejection_and_explicit_complexity_guard():
     guarded, guard_metrics = _expand_round(cells, active, [0, 15, 30], solar, 4., {"near": 30.}, 0)
     assert guarded is None
     assert guard_metrics["guard"] is True
+
+
+def test_effect_batch_is_not_evaluated_when_it_exceeds_remaining_budget(monkeypatch):
+    cells = [{"cell_index": 0, "min_x_m": 0., "max_x_m": 1., "min_y_m": 0., "max_y_m": 1.,
+              "area_m2": 1., "height_m": 4., "maximum_height_m": 5.,
+              "height_increment_count": 0}]
+    active = [{"zone": "near", "x_m": 2., "y_m": .5}]
+    solar = [{}, {}, {}]
+    calls = []
+    monkeypatch.setattr(expansion_module, "is_cell_shadowed", lambda *args: calls.append(args) or False)
+    guarded, metrics = _expand_round(cells, active, [0, 15, 30], solar, 4., {"near": 30.}, 2)
+    assert guarded is None
+    assert metrics["guard"] is True
+    assert metrics["evaluations"] == 0
+    # Initial-state evaluation is outside the candidate-effect budget; no
+    # additional calls for the candidate batch are made.
+    assert len(calls) == len(solar)
 
 
 def _orchestration_fakes(monkeypatch, validations, v2_volume=1.0, expanded_height=2.0):
@@ -132,6 +160,40 @@ def test_constraint_generation_adds_point_and_restarts_from_baseline(monkeypatch
     assert starts == [1., 1.]
     assert result["constraint_generation"]["iteration_count"] == 2
     assert result["constraint_generation"]["added_points"] == [{"zone": "near", "x_m": 9., "y_m": 9.}]
+
+
+def test_remaining_global_effect_budget_is_passed_to_next_round(monkeypatch):
+    added = {"x_m": 9., "y_m": 9.}
+    _, args = _orchestration_fakes(monkeypatch,
+        [_safe_validation(), _violating_validation(added), _safe_validation()])
+    round_budgets = []
+    def expand(cells, active, samples, solar, measurement_height, limits, maximum_checks):
+        round_budgets.append(maximum_checks)
+        used = 6 if len(round_budgets) == 1 else 4
+        return [dict(cells[0], height_m=2.)], {"guard": False, "accepted": 1,
+            "rejected": 0, "evaluations": used, "cache": 1}
+    monkeypatch.setattr(expansion_module, "_expand_round", expand)
+    result = build_forward_validated_reverse_expansion(*args, maximum_effect_evaluations=10)
+    assert result["complete"] is True
+    assert round_budgets == [10, 4]
+    assert result["expansion"]["candidate_effect_evaluation_count"] <= 10
+
+
+def test_exhausted_global_effect_budget_blocks_before_next_round(monkeypatch):
+    added = {"x_m": 9., "y_m": 9.}
+    _, args = _orchestration_fakes(monkeypatch, [_safe_validation(), _violating_validation(added)])
+    round_budgets = []
+    def expand(cells, active, samples, solar, measurement_height, limits, maximum_checks):
+        round_budgets.append(maximum_checks)
+        return [dict(cells[0], height_m=2.)], {"guard": False, "accepted": 1,
+            "rejected": 0, "evaluations": maximum_checks, "cache": 1}
+    monkeypatch.setattr(expansion_module, "_expand_round", expand)
+    result = build_forward_validated_reverse_expansion(*args, maximum_effect_evaluations=10)
+    assert result["complete"] is False
+    assert round_budgets == [10]
+    assert result["expansion"]["candidate_effect_evaluation_count"] == 10
+    assert result["blockers"][-1]["failure_code"] == "reverse_expansion_complexity_limit_exceeded"
+    assert result["blockers"][-1]["limit_type"] == "candidate_effect_evaluations"
 
 
 def test_constraint_generation_stalled_is_explicit(monkeypatch):
@@ -188,3 +250,16 @@ def test_public_maximum_height_rejects_invalid_values(cap):
 
 def test_public_maximum_height_default_is_31m():
     assert inspect.signature(build_forward_validated_reverse_expansion).parameters["maximum_height_m"].default == 31.0
+
+
+@pytest.mark.parametrize("value", [0, -1, float("nan"), float("inf"), "bad", None])
+@pytest.mark.parametrize("argument,failure_code", [
+    ("maximum_effect_evaluations", "invalid_reverse_expansion_maximum_effect_evaluations"),
+    ("maximum_constraint_generation_iterations",
+     "invalid_reverse_expansion_maximum_constraint_generation_iterations"),
+])
+def test_public_complexity_arguments_return_explicit_blocker(argument, failure_code, value):
+    kwargs = {argument: value}
+    result = build_forward_validated_reverse_expansion(None, None, None, None, None, **kwargs)
+    assert result["complete"] is False
+    assert result["blockers"][0]["failure_code"] == failure_code

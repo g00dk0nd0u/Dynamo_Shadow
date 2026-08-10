@@ -71,6 +71,20 @@ def _point_key(point):
     return (point["zone"], round(float(point["x_m"]), 9), round(float(point["y_m"]), 9))
 
 
+def _greedy_move_score(consumption, utilization, deterministic_index):
+    return (0 if consumption <= 1e-9 else 1, consumption, utilization, deterministic_index)
+
+
+def _positive_integer(value):
+    try:
+        number = float(value)
+        if not math.isfinite(number) or number <= 0 or not number.is_integer():
+            raise ValueError()
+        return int(number)
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def _active_points(reverse, validation):
     points = []
     for zone in ("near", "far"):
@@ -98,12 +112,13 @@ def _expand_round(baseline_cells, active, samples, solar, measurement_height, li
             key = (ci, height, 0)
             effect = cache.get(key)
             if effect is None:
-                effect = tuple(p*len(solar)+k for p, point in enumerate(point_pairs) for k, s in enumerate(solar)
-                    if is_cell_shadowed(point, cells[ci], height, measurement_height, s))
-                cache[key] = effect; evaluations += len(active)*len(solar)
-                if evaluations > maximum_checks:
+                required_checks = len(active)*len(solar)
+                if evaluations+required_checks > maximum_checks:
                     return None, {"guard": True, "accepted": accepted, "rejected": rejected,
                                   "evaluations": evaluations, "cache": len(cache)}
+                effect = tuple(p*len(solar)+k for p, point in enumerate(point_pairs) for k, s in enumerate(solar)
+                    if is_cell_shadowed(point, cells[ci], height, measurement_height, s))
+                cache[key] = effect; evaluations += required_checks
             candidate_states = [list(row) for row in states]
             for flat in effect:
                 candidate_states[flat//len(solar)][flat%len(solar)] = True
@@ -113,7 +128,7 @@ def _expand_round(baseline_cells, active, samples, solar, measurement_height, li
                 rejected += 1; continue
             consumption = sum(durations[p]-old_durations[p] for p in range(len(active)))
             utilization = max([durations[p]/limits[active[p]["zone"]] for p in range(len(active))] or [0.0])
-            score = (0 if consumption <= 1e-9 else 1, consumption, utilization, ci)
+            score = _greedy_move_score(consumption, utilization, ci)
             ranked.append((score, ci, height, effect))
         if not ranked:
             break
@@ -169,11 +184,21 @@ def build_greedy_discrete_model(model, maximum_height_m):
             utilization = max([candidate_durations[index]/float(points[index]["limit_minutes"])
                                if float(points[index]["limit_minutes"]) > 0 else 0.0
                                for index in range(len(points))] or [0.0])
-            ranked.append(((0 if consumption <= 1e-9 else 1, consumption, utilization, cell_index),
+            ranked.append((_greedy_move_score(consumption, utilization, cell_index),
                            cell_index, candidate_height))
         if not ranked: break
-        _, cell_index, candidate_height = min(ranked)
-        heights[cell_index] = candidate_height; current_states = states(heights)
+        accepted_this_sweep = 0
+        for _, cell_index, candidate_height in sorted(ranked):
+            candidate_heights = list(heights); candidate_heights[cell_index] = candidate_height
+            candidate_states = states(candidate_heights)
+            candidate_durations = [integrate_shadow_states_trapezoidal(row, samples)
+                                   for row in candidate_states]
+            if any(candidate_durations[index] > float(points[index]["limit_minutes"])+1e-9
+                   for index in range(len(points))):
+                continue
+            heights = candidate_heights; current_states = candidate_states
+            accepted_this_sweep += 1
+        if not accepted_this_sweep: break
     volume = sum(float(cells[index].get("area_m2", 1.0))*height for index, height in enumerate(heights))
     return {"complete": True, "heuristic_volume_m3": volume, "heights_m": heights,
             "global_optimum_proven": False, "blockers": []}
@@ -189,6 +214,14 @@ def build_forward_validated_reverse_expansion(site_boundary_geometry, resolved_r
         if not math.isfinite(cap) or cap <= 0: raise ValueError()
     except (TypeError, ValueError, OverflowError):
         result["blockers"].append({"failure_code": "invalid_reverse_expansion_maximum_height_m"}); return result
+    effect_budget = _positive_integer(maximum_effect_evaluations)
+    if effect_budget is None:
+        result["blockers"].append({"failure_code": "invalid_reverse_expansion_maximum_effect_evaluations"})
+        return result
+    iteration_limit = _positive_integer(maximum_constraint_generation_iterations)
+    if iteration_limit is None:
+        result["blockers"].append({"failure_code": "invalid_reverse_expansion_maximum_constraint_generation_iterations"})
+        return result
     reverse = build_low_rise_reverse_shadow_core_v2(site_boundary_geometry, resolved_regulatory_preset,
                                                      measurement_plane, settings_normalized,
                                                      calculation_accuracy_preset)
@@ -215,12 +248,29 @@ def build_forward_validated_reverse_expansion(site_boundary_geometry, resolved_r
     limits = {"near": float(resolved_regulatory_preset["near_limit_minutes"]),
               "far": float(resolved_regulatory_preset["far_limit_minutes"])}
     totals = {"accepted": 0, "rejected": 0, "evaluations": 0, "cache": 0}; final_cells = None; validation = None
-    for iteration in range(1, int(maximum_constraint_generation_iterations)+1):
+    for iteration in range(1, iteration_limit+1):
+        remaining_effect_evaluations = effect_budget-totals["evaluations"]
+        if remaining_effect_evaluations <= 0:
+            result["expansion"].update({"accepted_height_increment_count": totals["accepted"],
+                "rejected_height_increment_count": totals["rejected"],
+                "candidate_effect_evaluation_count": totals["evaluations"],
+                "effect_cache_entry_count": totals["cache"]})
+            result["complexity"].update({"maximum_effect_evaluations": effect_budget,
+                "remaining_effect_evaluations": remaining_effect_evaluations})
+            result["blockers"].append({"failure_code": "reverse_expansion_complexity_limit_exceeded",
+                "limit_type": "candidate_effect_evaluations", "automatic_coarse_fallback_used": False})
+            return result
         final_cells, metrics = _expand_round(cells, active, sample_data["sample_minutes"],
-            sample_data["solar_samples"], measurement_height, limits, int(maximum_effect_evaluations))
+            sample_data["solar_samples"], measurement_height, limits, remaining_effect_evaluations)
         for key in totals: totals[key] += metrics[key]
         result["constraint_generation"]["iteration_count"] = iteration
         if metrics["guard"]:
+            result["expansion"].update({"accepted_height_increment_count": totals["accepted"],
+                "rejected_height_increment_count": totals["rejected"],
+                "candidate_effect_evaluation_count": totals["evaluations"],
+                "effect_cache_entry_count": totals["cache"]})
+            result["complexity"].update({"maximum_effect_evaluations": effect_budget,
+                "remaining_effect_evaluations": effect_budget-totals["evaluations"]})
             result["blockers"].append({"failure_code": "reverse_expansion_complexity_limit_exceeded",
                 "limit_type": "candidate_effect_evaluations", "automatic_coarse_fallback_used": False}); return result
         validation = build_cell_field_forward_validation(final_cells, site_boundary_geometry,
@@ -254,7 +304,9 @@ def build_forward_validated_reverse_expansion(site_boundary_geometry, resolved_r
     result["comparison"] = {"v2_bounded_volume_m3": v2_volume, "expanded_candidate_volume_m3": expanded_volume,
         "volume_gain_m3": gain, "volume_gain_percent": 100.0*gain/v2_volume if v2_volume else None}
     result["complexity"].update({"cell_count": len(final_cells), "active_measurement_point_count": len(active),
-        "sample_count": len(sample_data["sample_minutes"]), "full_validation_grid_point_count": validation["grid_point_count"]})
+        "sample_count": len(sample_data["sample_minutes"]), "full_validation_grid_point_count": validation["grid_point_count"],
+        "maximum_effect_evaluations": effect_budget,
+        "remaining_effect_evaluations": effect_budget-totals["evaluations"]})
     return result
 
 
