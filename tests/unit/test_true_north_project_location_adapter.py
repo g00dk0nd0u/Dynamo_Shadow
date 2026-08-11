@@ -28,15 +28,21 @@ class _XYZ:
     Zero = object()
 
 
-@pytest.mark.parametrize("rotation_deg", [0.0, 90.0, -90.0, 30.0])
-def test_project_position_angle_is_clockwise_project_north_to_true_north(
-        monkeypatch, rotation_deg):
-    """Revit's positive clockwise PN->TN angle is used without sign inversion."""
+@pytest.mark.parametrize(
+    ("raw_revit_angle_deg", "internal_clockwise_angle_deg"),
+    [(0.0, 0.0), (-90.0, 90.0), (90.0, -90.0), (-30.0, 30.0)],
+)
+def test_raw_revit_angle_is_converted_to_internal_clockwise_rotation(
+        monkeypatch, raw_revit_angle_deg, internal_clockwise_angle_deg):
+    """Test the API and internal directed-angle contracts as separate values."""
     monkeypatch.setattr(adapter, "XYZ", _XYZ)
     result = adapter.resolve_true_north_rotation(
-        document=_Document(math.radians(rotation_deg)), revit_runtime=True)
+        document=_Document(math.radians(raw_revit_angle_deg)), revit_runtime=True)
     assert result["true_north_available"] is True
-    assert result["true_north_rotation_deg"] == pytest.approx(rotation_deg)
+    assert result["raw_revit_project_position_angle_rad"] == pytest.approx(
+        math.radians(raw_revit_angle_deg))
+    assert result["true_north_rotation_deg"] == pytest.approx(
+        internal_clockwise_angle_deg)
     assert result["true_north_source"] == "revit_active_project_location"
 
 

@@ -30,18 +30,32 @@ def _current_document():
         return None
 
 
-def _result(available=False, radians=None, source="unavailable", warnings=None):
+def _revit_project_position_angle_to_model_true_north_rotation(raw_angle_rad):
+    """Convert Autodesk's True-North-to-Project-North angle to our inverse.
+
+    ``ProjectPosition.Angle`` is the Revit API angle from True North to Project
+    North. Dynamo_Shadow instead needs the inverse orientation: clockwise from
+    model +Y / Project North to True North. Reversing the directed angle is an
+    explicit sign inversion; neither contract is inferred from the other.
+    """
+    raw = _finite_float(raw_angle_rad)
+    return None if raw is None else -raw
+
+
+def _result(available=False, radians=None, source="unavailable", warnings=None,
+            raw_revit_angle_rad=None):
     degrees = math.degrees(radians) if available else None
     return {
         "true_north_available": bool(available),
         "true_north_source": source,
         "true_north_rotation_rad": radians if available else None,
         "true_north_rotation_deg": degrees if available else None,
+        "raw_revit_project_position_angle_rad": raw_revit_angle_rad,
         "true_north_applied_to_shadow_direction": False,
         "angle_contract": (
-            "ProjectPosition.Angle radians, positive clockwise from Project "
-            "North/model +Y to True North; used directly by the core's "
-            "clockwise model-azimuth rotation"
+            "Revit ProjectPosition.Angle is the directed angle from True North "
+            "to Project North; the adapter negates it to obtain Dynamo_Shadow's "
+            "clockwise model +Y / Project North to True North rotation"
         ),
         "warnings": list(warnings or []),
     }
@@ -51,9 +65,8 @@ def resolve_true_north_rotation(document=None, explicit_rotation_rad=None,
                                 revit_runtime=None):
     """Resolve JSON-safe orientation without exposing Project Location identity.
 
-    Autodesk's ProjectPosition.Angle contract is radians measured clockwise from
-    Project North to True North. Revit model +Y is therefore the zero Project
-    North axis used by Shadow Core, and the API value is not sign-inverted.
+    The raw Revit API angle and the normalized Dynamo_Shadow rotation are kept
+    separate. The conversion helper owns their direction/sign conversion.
     ``explicit_rotation_rad`` exists only for pure-Python callers and tests.
     """
     if explicit_rotation_rad is not None:
@@ -74,10 +87,12 @@ def resolve_true_north_rotation(document=None, explicit_rotation_rad=None,
         if location is None or XYZ is None:
             raise ValueError("active project location or XYZ unavailable")
         position = location.GetProjectPosition(XYZ.Zero)
-        angle = _finite_float(position.Angle if position is not None else None)
+        raw_angle = _finite_float(position.Angle if position is not None else None)
+        angle = _revit_project_position_angle_to_model_true_north_rotation(raw_angle)
         if angle is None:
             raise ValueError("ProjectPosition.Angle unavailable")
-        return _result(True, angle, _SOURCE_REVIT)
+        return _result(True, angle, _SOURCE_REVIT,
+                       raw_revit_angle_rad=raw_angle)
     except Exception:
         return _result(warnings=[_UNAVAILABLE_WARNING])
 
