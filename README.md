@@ -23,7 +23,7 @@ Implemented prototype capabilities include:
 - Revit DirectShape preview for fixed 5 m / 10 m contours.
 - Revit X-marker preview for near/far maximum-duration points.
 - Numeric comparison against the selected regulatory preset.
-- Fast / Standard Dynamo Player accuracy selection, plus an internal high-accuracy compatibility preset.
+- Forward Fast / Standard / High Dynamo Player accuracy selection.
 - Pure-Python regression tests.
 - Low-rise reverse-shadow core and Revit tessellated preview, accessible from the same Dynamo Player graph as forward shadow. The coarse candidate volume still requires final forward equal-time shadow validation.
 
@@ -54,7 +54,7 @@ The single `Shadow.dyn` graph exposes eight Dynamo Player inputs:
 
 The Python Node has nine ports, `IN[0]` through `IN[8]`, because it also receives an internal settings input. `IN[0]` through `IN[7]` retain their existing meanings; Analysis Mode is append-only at `IN[8]`. Missing mode values default to Forward for legacy compatibility.
 
-Forward uses the existing Building and Level inputs. Reverse ignores both Building and Level, requires a valid Site Boundary and a specific near/far Shadow Limits pair, and never treats Level as average ground or the measurement plane. Reverse Fast uses a 4 m height grid / 4 m measurement spacing / 30-minute step; Reverse Standard uses a 1 m height grid / 1 m measurement spacing / 15-minute step. Reverse height limits use a conservative 0.5 m vertical floor. Forward mappings remain 0.5 m / 30 minutes and 0.5 m / 15 minutes respectively.
+Forward uses the existing Building and Level inputs. Reverse ignores both Building and Level, requires a valid Site Boundary and a specific near/far Shadow Limits pair, and never treats Level as average ground or the measurement plane. Reverse Fast uses a 4 m height grid / 4 m measurement spacing / 30-minute step; Reverse Standard uses a 1 m height grid / 1 m measurement spacing / 15-minute step. Reverse High currently retains the same accuracy as Reverse Standard. Reverse height limits use a conservative 0.5 m vertical floor.
 
 ## Intended Revit inputs
 
@@ -68,7 +68,7 @@ Existing Walls, Floors, Roofs, equipment, CAD imports, and topography-derived ed
 
 ## Accuracy and regulatory presets
 
-In Dynamo Player, the regulatory shadow preset, calculation accuracy, site latitude, and site longitude are separate inputs; the retained settings JSON is internal and hidden. Public Player accuracy choices are Fast and Standard. The high-accuracy preset remains an internal / advanced compatibility preset and is not exposed as a public Player choice.
+In Dynamo Player, the regulatory shadow preset, calculation accuracy, site latitude, and site longitude are separate inputs; the retained settings JSON is internal and hidden. Forward Fast uses 1.0 m / 30 minutes for rapid initial iteration, Standard uses 0.5 m / 15 minutes for normal design and remains the default, and High uses 0.25 m / 5 minutes for a final high-precision check with increased runtime. Fast is coarse and is not intended for final high-precision review. High does not imply permit certification; `permit_ready_certified` remains `false`.
 
 Player values take priority over settings JSON, which takes priority over Python diagnostic defaults. Regulatory presets only expose candidate values appearing in Appended Table 4; the actually applicable classification must be confirmed against the relevant municipal ordinance. `standard_all` is the initial QA display intended for areas such as Tokyo, Osaka, Kyoto, and Kyushu. Hokkaido-area choices use 09:00–15:00 and include the 1.5-hour candidate. Six-hour contours are intentionally excluded from statutory-time presets, while the technical ability to generate explicitly requested 360–480 minute contours remains. Longitude does not directly change results in true-solar-time mode.
 

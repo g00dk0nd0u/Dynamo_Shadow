@@ -62,6 +62,23 @@ def test_large_grid_compact_field_drives_streaming_consumers():
     assert sum(masks["zone_counts"].values()) == 253009
 
 
+def test_high_precision_large_grid_keeps_requested_accuracy_on_compact_path():
+    tiny = [polygon([(0,0), (2,0), (2,2), (0,2)])]
+    high_slices = {"complete": True, "slices": [
+        {"complete": True, "true_solar_time": value, "polygons": tiny}
+        for value in ("08:00", "08:05", "08:10")]}
+    public, field = build_shadow_duration(
+        high_slices, {"grid_resolution_m": .25, "sun_time_step_minutes": 5,
+                       "analysis_margin_m": 63, "max_duration_grid_points": 1000000},
+        selected_accuracy_preset="high", return_internal=True)
+    assert public["complete"] is True
+    assert public["storage_mode"] == "compact_large_v1"
+    assert public["spatial_resolution_m"] == .25
+    assert public["temporal_step_minutes"] == 5
+    assert public["engine_diagnostics"]["automatic_accuracy_fallback_used"] is False
+    assert field.logical_point_count == public["grid_point_count"]
+
+
 def test_small_compact_consumers_match_legacy_including_zero_tie_breaks():
     shapes = [polygon([(0,0), (2,0), (2,2), (0,2)])]
     public, field = build_shadow_duration(

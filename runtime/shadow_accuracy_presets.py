@@ -4,10 +4,10 @@ from shadow_settings import _coerce_settings_to_dict
 
 
 ACCURACY_PRESETS = {
-    "rough": {"grid_resolution_m": 0.5, "sun_time_step_minutes": 30},
+    # Keep the legacy ``rough`` API id; Dynamo Player displays this as Fast.
+    "rough": {"grid_resolution_m": 1.0, "sun_time_step_minutes": 30},
     "standard": {"grid_resolution_m": 0.5, "sun_time_step_minutes": 15},
-    # Advanced/internal preset retained for legacy API compatibility; not exposed in Dynamo Player.
-    "high": {"grid_resolution_m": 0.25, "sun_time_step_minutes": 15},
+    "high": {"grid_resolution_m": 0.25, "sun_time_step_minutes": 5},
 }
 
 

@@ -55,7 +55,7 @@
       "Type": "selection",
       "Type2": "dropdownSelection",
       "Value": "Standard / 標準",
-      "Description": "Forward: Fast = 0.5m / 30min; Standard = 0.5m / 15min.\nReverse: Fast = 4m height grid / 30min; Standard = 2m height grid / 15min.",
+      "Description": "Forward: Fast = 1.0m / 30min (rapid iteration / 初期検討、coarse—not for final high-precision checks); Standard = 0.5m / 15min (normal design / 通常設計、default / 既定); High = 0.25m / 5min (final high-precision check / 最終高精度確認、longer runtime / 実行時間増大).\nReverse: Fast / Standard are supported. High currently uses the existing Reverse Standard-level accuracy. / 逆日影: Fast / Standard対応。Highは現行のReverse Standard相当精度です。",
       "SelectedIndex": 1
     },
     {
@@ -419,7 +419,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Forward: Fast = 0.5m / 30min; Standard = 0.5m / 15min.\nReverse: Fast = 4m height grid / 30min; Standard = 2m height grid / 15min.",
+      "Description": "Forward: Fast = 1.0m / 30min (rapid iteration / 初期検討、coarse—not for final high-precision checks); Standard = 0.5m / 15min (normal design / 通常設計、default / 既定); High = 0.25m / 5min (final high-precision check / 最終高精度確認、longer runtime / 実行時間増大).\nReverse: Fast / Standard are supported. High currently uses the existing Reverse Standard-level accuracy. / 逆日影: Fast / Standard対応。Highは現行のReverse Standard相当精度です。",
       "IsVisibleDropDownTextBlock": true,
       "SerializedItems": [
         {
@@ -429,6 +429,10 @@
         {
           "Name": "Standard / 標準",
           "Item": "standard"
+        },
+        {
+          "Name": "High / 高精度",
+          "Item": "high"
         }
       ],
       "SelectedString": "Standard / 標準"

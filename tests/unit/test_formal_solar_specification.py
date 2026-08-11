@@ -80,6 +80,14 @@ def test_profile_windows(profile, count, first, last):
     assert result["slices"][-1]["input_time"] == last
 
 
+def test_high_five_minute_samples_include_both_endpoints():
+    result = regulatory(sun_time_step_minutes=5)
+    assert result["slice_count"] == 97
+    assert result["slices"][0]["input_time"] == "08:00:00"
+    assert result["slices"][1]["input_time"] == "08:05:00"
+    assert result["slices"][-1]["input_time"] == "16:00:00"
+
+
 def test_stable_serialization_is_deterministic_offline():
     first = json.dumps(regulatory(), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     second = json.dumps(regulatory(), sort_keys=True, separators=(",", ":"), ensure_ascii=True)

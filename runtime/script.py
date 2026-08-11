@@ -118,7 +118,8 @@ try:
         build_preview_compatibility_summaries)
     from shadow_union import _build_unified_shadow_slices
     from shadow_duration import _build_shadow_duration
-    from shadow_performance import ForwardPerformanceRecorder
+    from shadow_performance import (ForwardPerformanceRecorder,
+        build_accuracy_performance_summary)
     from shadow_contours import _build_equal_time_contours
     from shadow_site_area_adapter import extract_site_boundary_area
     from shadow_site_geometry import build_site_boundary_geometry
@@ -486,6 +487,16 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
     if not pipeline_readiness.get("boundary_dependent_steps_ready"):
         warnings.extend(pipeline_readiness.get("blockers_for_boundary_dependent_steps", []))
 
+    performance_blockers = []
+    for component in (calculation_accuracy, formal_shadow_polygons,
+                      unified_shadow_slices, shadow_duration,
+                      equal_time_contours, measurement_masks,
+                      site_distance_contours, shadow_check_presentation):
+        performance_blockers.extend((component or {}).get("blockers") or [])
+    accuracy_performance_summary = build_accuracy_performance_summary(
+        calculation_accuracy, performance_diagnostics, measurement_masks,
+        performance_blockers, warnings)
+
     site_boundary_degraded = (site_boundary.get("diagnostic_failed") is True or
         (site_boundary_area_extraction.get("provided") and site_boundary_area_extraction.get("complete") is not True) or
         (site_boundary_area_extraction.get("complete") is True and site_boundary_geometry.get("complete") is not True) or
@@ -511,6 +522,7 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         "shadow_calculation_completed": True,
         "boundary_dependent_steps_completed": bool(pipeline_readiness.get("boundary_dependent_steps_ready")),
         "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
+        "accuracy_performance_summary": accuracy_performance_summary,
         "performance_diagnostics": performance_diagnostics,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,

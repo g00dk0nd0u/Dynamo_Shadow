@@ -5,6 +5,67 @@ import os
 import time
 
 
+_DISPLAY_MODES = {"rough": "Fast / 高速", "standard": "Standard / 標準",
+                  "high": "High / 高精度"}
+
+
+def build_accuracy_performance_summary(calculation_accuracy, performance_diagnostics,
+                                       measurement_masks=None, blockers=None, warnings=None):
+    """Build a compact view from existing telemetry without scanning calculation data."""
+    accuracy = calculation_accuracy if isinstance(calculation_accuracy, dict) else {}
+    performance = performance_diagnostics if isinstance(performance_diagnostics, dict) else {}
+    workload = performance.get("workload_summary") or {}
+    stages = performance.get("stages") or {}
+    memory = performance.get("memory") or {}
+    masks = measurement_masks if isinstance(measurement_masks, dict) else {}
+
+    def elapsed(name):
+        value = stages.get(name) or {}
+        return value.get("elapsed_ms")
+
+    def maximum(zone):
+        value = masks.get(zone) or {}
+        return value.get("maximum_shadow_duration_minutes")
+
+    preset_id = accuracy.get("preset_id")
+    total = stages.get("total") or {}
+    return {
+        "preset_id": preset_id,
+        "display_mode": _DISPLAY_MODES.get(preset_id, preset_id),
+        "grid_resolution_m": accuracy.get("grid_resolution_m"),
+        "sun_time_step_minutes": accuracy.get("sun_time_step_minutes"),
+        "time_sample_count": workload.get("time_sample_count"),
+        "logical_grid_point_count": workload.get("logical_grid_point_count"),
+        "active_evaluation_point_count": workload.get("active_evaluation_point_count"),
+        "selected_active_tile_count": workload.get("selected_active_tile_count"),
+        "active_tile_ratio": workload.get("active_tile_ratio"),
+        "selected_chunk_size": workload.get("selected_chunk_size"),
+        "storage_mode": workload.get("storage_mode"),
+        "compact_buffer_bytes": workload.get("compact_buffer_bytes"),
+        "formal_projection_ms": elapsed("formal_projection"),
+        "per_slice_union_ms": elapsed("per_slice_union"),
+        "shadow_duration_ms": elapsed("shadow_duration"),
+        "equal_time_contours_ms": elapsed("equal_time_contours"),
+        "measurement_masks_ms": elapsed("measurement_masks"),
+        "site_distance_contours_ms": elapsed("site_distance_contours"),
+        "presentation_ms": elapsed("presentation"),
+        "total_ms": total.get("elapsed_ms"),
+        "available_physical_memory_bytes_at_start": performance.get(
+            "memory_at_start", {}).get("available_physical_memory_bytes"),
+        "process_working_set_bytes_at_start": total.get(
+            "process_working_set_before_bytes"),
+        "process_working_set_bytes_at_end": total.get(
+            "process_working_set_after_bytes"),
+        "process_lifetime_peak_working_set_bytes_at_end": memory.get(
+            "process_lifetime_peak_working_set_bytes"),
+        "near_maximum_shadow_duration_minutes": maximum("near"),
+        "far_maximum_shadow_duration_minutes": maximum("far"),
+        "automatic_accuracy_fallback_used": False,
+        "blockers": list(blockers or []),
+        "warnings": list(warnings or []),
+    }
+
+
 def _empty_memory(reason="unavailable"):
     return {"telemetry_available": False, "total_physical_memory_bytes": None,
         "available_physical_memory_bytes": None, "process_working_set_bytes": None,
@@ -116,7 +177,8 @@ class ForwardPerformanceRecorder(object):
         stages["total"] = {"elapsed_ms": (ended - self._started) * 1000.0,
             "process_working_set_before_bytes": self._total_before.get("process_working_set_bytes"),
             "process_working_set_after_bytes": final.get("process_working_set_bytes")}
-        return {"available": True, "memory": final, "stages": stages,
+        return {"available": True, "memory_at_start": self._total_before,
+            "memory": final, "stages": stages,
             "workload_summary": dict(workload_summary or {}),
             "stage_elapsed_excludes_boundary_memory_snapshot_time": True,
             "total_elapsed_includes_instrumentation_between_total_boundaries": True,
