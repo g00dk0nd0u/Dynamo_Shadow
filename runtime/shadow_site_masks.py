@@ -75,7 +75,8 @@ def _valid_polygon(site_boundary_geometry):
     return polygon if len(polygon) >= 3 else None
 
 
-def build_measurement_masks(shadow_duration, site_boundary_geometry, distance_tolerance_m=1e-6):
+def build_measurement_masks(shadow_duration, site_boundary_geometry, distance_tolerance_m=1e-6,
+                            duration_field=None):
     tolerance = _finite(distance_tolerance_m)
     if tolerance is None or tolerance < 0.0:
         return _empty("invalid_measurement_mask_distance_tolerance")
@@ -91,17 +92,30 @@ def build_measurement_masks(shadow_duration, site_boundary_geometry, distance_to
             result["blockers"] = blockers
         return result
     grid = shadow_duration.get("duration_grid") or []
-    if not grid:
+    compact = getattr(duration_field, "values", None)
+    spec = shadow_duration.get("grid_spec") or {}
+    if not grid and compact is None:
         return _empty("shadow_duration_grid_missing")
 
     result = _empty()
     result.update({"available": True, "complete": True, "boundary_dependent_ready": True,
-                   "distance_tolerance_m": tolerance, "duration_grid_point_count": len(grid)})
+                   "distance_tolerance_m": tolerance,
+                   "duration_grid_point_count": len(compact) if compact is not None else len(grid),
+                   "streaming": compact is not None})
     near = None
     far = None
-    for index, grid_point in enumerate(grid):
-        x = _finite((grid_point or {}).get("x_m")); y = _finite((grid_point or {}).get("y_m"))
-        duration = _finite((grid_point or {}).get("shadow_duration_minutes"))
+    source = compact if compact is not None else grid
+    for index, grid_point in enumerate(source):
+        if compact is not None:
+            nx = int(spec.get("x_count", 0)); resolution = _finite(spec.get("resolution_m"))
+            ox = _finite(spec.get("origin_x_m")); oy = _finite(spec.get("origin_y_m"))
+            if nx <= 0 or resolution is None or ox is None or oy is None:
+                return _empty("shadow_duration_grid_missing")
+            iy, ix = divmod(index, nx)
+            x, y, duration = ox + ix * resolution, oy + iy * resolution, _finite(grid_point)
+        else:
+            x = _finite((grid_point or {}).get("x_m")); y = _finite((grid_point or {}).get("y_m"))
+            duration = _finite((grid_point or {}).get("shadow_duration_minutes"))
         if x is None or y is None or duration is None:
             invalid = _empty()
             invalid["blockers"].append({"failure_code": "invalid_shadow_duration_grid_point", "point_index": index})

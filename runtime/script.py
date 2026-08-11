@@ -332,6 +332,7 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         unified_shadow_slices = {"engine": "revit_boolean_solid_union_v1", "available": False, "complete": False, "partial_success": False, "ready_for_duration_accumulation": False, "slices": [], "blockers": [{"failure_code": "formal_shadow_union_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
     performance.end("per_slice_union")
     performance.begin("shadow_duration")
+    duration_field = None
     if resolved_accuracy is not None and not resolved_accuracy.get("valid"):
         shadow_duration = {"available": False, "complete": False,
             "method": "grid_trapezoidal_time_integration_v1",
@@ -340,9 +341,14 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
             "blockers": list(resolved_accuracy.get("blockers") or []), "warnings": []}
     else:
         try:
-            shadow_duration = _build_shadow_duration(
+            duration_built = _build_shadow_duration(
                 unified_shadow_slices, settings_normalized,
-                (resolved_accuracy or {}).get("preset_id"), site_boundary_geometry)
+                (resolved_accuracy or {}).get("preset_id"), site_boundary_geometry,
+                return_internal=True)
+            if isinstance(duration_built, tuple):
+                shadow_duration, duration_field = duration_built
+            else:
+                shadow_duration = duration_built
         except BaseException as exc:
             shadow_duration = {"available": False, "complete": False, "method": "grid_trapezoidal_time_integration_v1", "permit_ready_certified": False, "blockers": [{"failure_code": "shadow_duration_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
     performance.end("shadow_duration")
@@ -359,19 +365,22 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
     }
     performance.begin("equal_time_contours")
     try:
-        equal_time_contours = _build_equal_time_contours(shadow_duration, settings_normalized)
+        equal_time_contours = _build_equal_time_contours(
+            shadow_duration, settings_normalized, duration_field)
     except BaseException as exc:
         equal_time_contours = {"available": False, "complete": False, "method": "marching_squares_linear_interpolation_v1", "source_duration_method": "grid_trapezoidal_time_integration_v1", "requested_levels_minutes": [], "generated_levels_minutes": [], "contour_count": 0, "closed_contour_count": 0, "open_contour_count": 0, "contours": [], "permit_ready_certified": False, "blockers": [{"failure_code": "equal_time_contours_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
     performance.end("equal_time_contours")
     performance.begin("measurement_masks")
     try:
-        measurement_masks = build_measurement_masks(shadow_duration, site_boundary_geometry)
+        measurement_masks = build_measurement_masks(
+            shadow_duration, site_boundary_geometry, duration_field=duration_field)
     except BaseException as exc:
         measurement_masks = {"available": False, "complete": False, "method": "point_to_area_boundary_distance_v1", "boundary_dependent_ready": False, "blockers": [{"failure_code": "measurement_masks_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": [], "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
     performance.end("measurement_masks")
     performance.begin("site_distance_contours")
     try:
-        site_distance_contours = build_site_distance_contours(shadow_duration, site_boundary_geometry)
+        site_distance_contours = build_site_distance_contours(
+            shadow_duration, site_boundary_geometry, duration_field=duration_field)
     except BaseException as exc:
         site_distance_contours = {"available": False, "complete": False, "method": "signed_distance_grid_marching_squares_v1", "ready_for_revit_preview": False, "blockers": [{"failure_code": "site_distance_contours_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": [], "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
     performance.end("site_distance_contours")
@@ -421,6 +430,32 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         "containment_evaluation_count": duration_engine.get("containment_evaluation_count"),
         "selected_chunk_size": duration_chunk.get("selected_chunk_size"),
         "chunk_count": duration_engine.get("chunk_count"),
+        "storage_mode": duration_engine.get("storage_mode"),
+        "duration_grid_materialized": duration_engine.get("duration_grid_materialized"),
+        "logical_grid_point_count": duration_engine.get("logical_grid_point_count"),
+        "active_evaluation_point_count": duration_engine.get("active_evaluation_point_count"),
+        "implicit_zero_point_count": duration_engine.get("implicit_zero_point_count"),
+        "tile_size_cells": duration_engine.get("tile_size_cells"),
+        "total_logical_tile_count": duration_engine.get("total_logical_tile_count"),
+        "selected_active_tile_count": duration_engine.get("selected_active_tile_count"),
+        "skipped_tile_count": duration_engine.get("skipped_tile_count"),
+        "active_tile_ratio": duration_engine.get("active_tile_ratio"),
+        "compact_buffer_bytes": duration_engine.get("compact_buffer_bytes"),
+        "contour_scalar_copy_materialized": equal_time_contours.get("scalar_copy_materialized"),
+        "measurement_mask_streaming": measurement_masks.get("streaming"),
+        "site_distance_row_streaming": site_distance_contours.get("row_streaming"),
+        "large_grid_preflight_status": duration_engine.get("large_grid_preflight_status"),
+        "estimated_working_memory_bytes": duration_engine.get("estimated_working_memory_bytes"),
+        "memory_budget_bytes": duration_engine.get("memory_budget_bytes"),
+        "small_grid_materialization_limit": duration_engine.get(
+            "small_grid_materialization_limit"),
+        "large_grid_hard_point_cap": duration_engine.get("large_grid_hard_point_cap"),
+        "equal_time_contour_effective_segment_cap": equal_time_contours.get(
+            "effective_segment_cap"),
+        "site_distance_effective_segment_cap": site_distance_contours.get(
+            "effective_segment_cap"),
+        "active_evaluation_point_reduction_ratio": duration_engine.get(
+            "active_evaluation_point_reduction_ratio"),
     })
     pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks, resolved_regulatory_preset=resolved_preset, selected_limit_comparison=selected_limit_comparison, legal_judgement=legal_judgement, site_distance_contours=site_distance_contours, site_result_preview=site_result_preview)
     warnings.extend(shadow_casters.get("warnings", []))
