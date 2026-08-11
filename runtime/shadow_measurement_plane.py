@@ -60,8 +60,9 @@ def _construct_measurement_plane(settings_normalized, level=None):
     warnings = []
     if not available:
         warnings.append("Measurement plane could not be constructed; this is non-fatal for input diagnostics.")
-    if level is not None:
-        warnings.append("Level reference is present but is not used as average ground level or measurement plane.")
+    level_used_as_agl = (settings_normalized or {}).get("level_used_as_average_ground_level") is True
+    if level is not None and not level_used_as_agl:
+        warnings.append("Level reference is present but its Elevation was unavailable; the measurement plane is blocked and the settings AGL was not silently used.")
 
     return {
         "policy": MEASUREMENT_PLANE_POLICY,
@@ -76,7 +77,7 @@ def _construct_measurement_plane(settings_normalized, level=None):
         "normal_raw": {"x": 0.0, "y": 0.0, "z": 1.0, "units": "unitless", "note": "same abstract +Z direction; not derived from Revit geometry"},
         "normal_m": {"x": 0.0, "y": 0.0, "z": 1.0, "units": "unitless"},
         "origin_m": {"x": 0.0, "y": 0.0, "z": elevation, "units": "meter", "note": "abstract legal SI coordinate origin for diagnostics only; not a Revit point"} if available else None,
-        "basis": "settings.average_ground_level_elevation_m + settings.measurement_height_m",
+        "basis": "average_ground_level_elevation_m + settings.measurement_height_m",
         "unit": "meter",
         "elevation_m": elevation,
         "elevation_internal_candidate": _meters_to_internal_length(elevation)[0] if elevation is not None else None,
@@ -85,9 +86,10 @@ def _construct_measurement_plane(settings_normalized, level=None):
         "average_ground_level_elevation_m": agl,
         "measurement_height_m": mh,
         "formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
-        "source_keys": {"average_ground_level_elevation_m": "settings.average_ground_level_elevation_m", "measurement_height_m": "settings.measurement_height_m"},
+        "source_keys": {"average_ground_level_elevation_m": (settings_normalized or {}).get("average_ground_level_source"), "measurement_height_m": "settings.measurement_height_m"},
+        "average_ground_level_source": (settings_normalized or {}).get("average_ground_level_source"),
         "level_reference_present": level is not None,
-        "level_used_as_average_ground_level": False,
+        "level_used_as_average_ground_level": level_used_as_agl,
         "level_used_as_measurement_plane": False,
         "legal_meaning": ["Article 56-2 measurement horizontal plane at designated height above average ground level.", "This is not a Revit Level.", "This is not a Revit element.", "This is not a legal judgement result."],
         "readiness": {"measurement_plane_constructed": available, "ready_for_future_footprint_projection_context": available, "ready_for_future_shadow_projection_context": available and settings_ready, "ready_for_legal_judgement_masks": False, "blockers_for_measurement_plane": blockers_mp, "blockers_for_future_shadow_projection_context": blockers_projection, "blockers_for_legal_judgement_masks": blockers_legal},

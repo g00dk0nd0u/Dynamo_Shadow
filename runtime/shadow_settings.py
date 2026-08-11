@@ -4,6 +4,7 @@ import math
 from datetime import date
 from shadow_policies import SETTINGS_SCHEMA_VERSION, SETTINGS_REQUIRED_FOR_MEASUREMENT_PLANE, SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR, SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD, SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_utils import *
+from shadow_units import _internal_length_to_meters
 
 
 def _object_items_from_keys_values(value):
@@ -180,6 +181,51 @@ def _range_warning(key, value):
         return "settings.{0} is outside the accepted range.".format(key)
     return None
 
+def _resolve_average_ground_level_from_level(level):
+    """Resolve a selected Dynamo/Revit Level elevation without exposing its name."""
+    result = {
+        "level_reference_present": level is not None,
+        "level_elevation_internal": None,
+        "level_elevation_m": None,
+        "level_elevation_readable": False,
+        "warnings": [],
+    }
+    if level is None:
+        return result
+
+    candidates = [level]
+    native = _try_unwrap(level)
+    if native is not None and native is not level:
+        candidates.insert(0, native)
+    internal = _safe_attr(level, "InternalElement")
+    if internal is not None and internal not in candidates:
+        candidates.append(internal)
+
+    elevation = None
+    for candidate in candidates:
+        elevation = _safe_attr(candidate, "Elevation")
+        if elevation is not None:
+            break
+    elevation_number, parse_warning = _parse_float(elevation, "level.Elevation")
+    if elevation_number is None:
+        result["warnings"].append(
+            "Selected Revit Level Elevation could not be read; settings.average_ground_level_elevation_m was not used as a silent fallback."
+        )
+        if parse_warning:
+            result["warnings"].append(parse_warning)
+        return result
+
+    elevation_m, conversion_warnings = _internal_length_to_meters(elevation_number)
+    result.update({
+        "level_elevation_internal": elevation_number,
+        "level_elevation_m": elevation_m,
+        "level_elevation_readable": elevation_m is not None,
+    })
+    result["warnings"].extend(conversion_warnings)
+    if elevation_m is None:
+        result["warnings"].append("Selected Revit Level Elevation could not be converted to meters.")
+    return result
+
 def _normalize_settings(settings, level=None):
     settings_dict, input_format, warnings, errors = _coerce_settings_to_dict(settings)
     normalized = {}
@@ -340,6 +386,28 @@ def _normalize_settings(settings, level=None):
         warnings.append("settings.sun_time_step_minutes must be a positive integer."); invalid_keys.append("sun_time_step_minutes"); sun_step = None
     normalized["sun_time_step_minutes"] = sun_step
 
+    level_resolution = _resolve_average_ground_level_from_level(level)
+    warnings.extend(level_resolution["warnings"])
+    if level_resolution["level_elevation_readable"]:
+        normalized["average_ground_level_elevation_m"] = level_resolution["level_elevation_m"]
+        average_ground_level_source = "revit_level"
+        if "average_ground_level_elevation_m" in invalid_keys:
+            invalid_keys.remove("average_ground_level_elevation_m")
+    elif level is not None:
+        normalized["average_ground_level_elevation_m"] = None
+        average_ground_level_source = "unavailable_invalid_revit_level"
+        if "average_ground_level_elevation_m" not in invalid_keys:
+            invalid_keys.append("average_ground_level_elevation_m")
+    elif normalized.get("average_ground_level_elevation_m") is not None:
+        average_ground_level_source = "settings"
+    else:
+        average_ground_level_source = "unavailable"
+    normalized["average_ground_level_source"] = average_ground_level_source
+    normalized["level_reference_present"] = level is not None
+    normalized["level_used_as_average_ground_level"] = level_resolution["level_elevation_readable"]
+    normalized["level_elevation_internal"] = level_resolution["level_elevation_internal"]
+    normalized["level_elevation_m"] = level_resolution["level_elevation_m"]
+
     agl = normalized.get("average_ground_level_elevation_m")
     mh = normalized.get("measurement_height_m")
     if agl is not None and mh is not None:
@@ -376,7 +444,8 @@ def _normalize_settings(settings, level=None):
     invalid_for_equal = sorted(set(invalid_for_measurement_plane + invalid_for_solar_time))
     if settings is None:
         info.append("settings is optional for input diagnostics; missing settings is not fatal.")
-    info.append("Revit Level Elevation is not used as average ground level or measurement plane.")
+    if level_resolution["level_elevation_readable"]:
+        info.append("Selected Revit Level Elevation is used as average ground level after internal-unit to meter conversion; it is not used directly as the measurement plane.")
     return {
         "provided": settings is not None,
         "schema_version": SETTINGS_SCHEMA_VERSION,
@@ -403,6 +472,9 @@ def _normalize_settings(settings, level=None):
         "errors": errors,
         "info": info,
         "level_reference_present": level is not None,
-        "level_used_as_average_ground_level": False,
+        "average_ground_level_source": average_ground_level_source,
+        "level_elevation_internal": level_resolution["level_elevation_internal"],
+        "level_elevation_m": level_resolution["level_elevation_m"],
+        "level_used_as_average_ground_level": level_resolution["level_elevation_readable"],
         "level_used_as_measurement_plane": False,
     }

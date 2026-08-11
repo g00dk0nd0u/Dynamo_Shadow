@@ -8,37 +8,19 @@
   },
   "Inputs": [
     {
-      "Id": "b5555555555555555555555555555555",
-      "Name": "Analysis Mode / 解析モード",
-      "Type": "selection",
-      "Type2": "dropdownSelection",
-      "Value": "Forward Shadow / 順日影",
-      "Description": "Choose Forward or Reverse analysis. Legacy graphs default to Forward.\n順日影または逆日影を選択します。従来グラフは順日影が既定です。",
-      "SelectedIndex": 0
-    },
-    {
-      "Id": "3daad2f0de954b2a971f92fd9f671601",
-      "Name": "Levels",
-      "Type": "selection",
-      "Type2": "dropdownSelection",
-      "Value": "1FL",
-      "Description": "Retained for existing workflow compatibility. Reverse Shadow does not use Level as average ground level or measurement plane.\n既存互換性のため表示。逆日影では平均地盤面・測定面には使用しない。",
-      "SelectedIndex": 0
-    },
-    {
-      "Id": "af2519f73dff436c8aba2f16c3788bf3",
-      "Name": "Select Model Element",
-      "Type": "selection",
-      "Type2": "hostSelection",
-      "Value": "bb22dfe1-e330-43c5-8837-ba31a4d21c8b-00650c73",
-      "Description": "Forward only. Ignored in Reverse Shadow.\n順日影で使用。逆日影では無視。"
-    },
-    {
       "Id": "70c7bb6dbe3647b180c23c419e57cc9c",
       "Name": "Site Boundary Area / 敷地境界エリア",
       "Type": "selection",
       "Type2": "hostSelection",
       "Description": "Required for Reverse Shadow. Select one placed Revit Area body.\n逆日影では必須。配置済みRevitエリア本体を1個選択。"
+    },
+    {
+      "Id": "af2519f73dff436c8aba2f16c3788bf3",
+      "Name": "Building Model / 建物モデル",
+      "Type": "selection",
+      "Type2": "hostSelection",
+      "Value": "bb22dfe1-e330-43c5-8837-ba31a4d21c8b-00650c73",
+      "Description": "Select the Mass or Generic Model proxy used as the building shadow caster in Forward analysis. Ignored in Reverse Shadow.\n順日影で建物の影を投影するMassまたはGeneric Modelプロキシを選択します。逆日影では無視されます。"
     },
     {
       "Id": "b1111111111111111111111111111111",
@@ -50,6 +32,15 @@
       "SelectedIndex": 0
     },
     {
+      "Id": "3daad2f0de954b2a971f92fd9f671601",
+      "Name": "Average Ground Level / 平均地盤面",
+      "Type": "selection",
+      "Type2": "dropdownSelection",
+      "Value": "1FL",
+      "Description": "Select the Level created in Revit at the average ground plane. Its Elevation is used as the average ground level elevation for shadow calculations.\nRevitで平均地盤面位置に作成したLevelを選択します。そのLevelのElevationを日影計算の平均地盤面標高として使用します。",
+      "SelectedIndex": 0
+    },
+    {
       "Id": "b4444444444444444444444444444444",
       "Name": "Calculation Accuracy / 計算精度",
       "Type": "selection",
@@ -57,6 +48,15 @@
       "Value": "Standard / 標準",
       "Description": "Forward: Fast = 1.0m / 30min (rapid iteration / 初期検討、coarse—not for final high-precision checks); Standard = 0.5m / 15min (normal design / 通常設計、default / 既定); High = 0.25m / 5min (final high-precision check / 最終高精度確認、longer runtime / 実行時間増大).\nReverse: Fast / Standard are supported. High currently uses the existing Reverse Standard-level accuracy. / 逆日影: Fast / Standard対応。Highは現行のReverse Standard相当精度です。",
       "SelectedIndex": 1
+    },
+    {
+      "Id": "b5555555555555555555555555555555",
+      "Name": "Analysis Mode / 解析モード",
+      "Type": "selection",
+      "Type2": "dropdownSelection",
+      "Value": "Forward Shadow / 順日影",
+      "Description": "Choose Forward or Reverse analysis. Legacy graphs default to Forward.\n順日影または逆日影を選択します。従来グラフは順日影が既定です。",
+      "SelectedIndex": 0
     },
     {
       "Id": "b2222222222222222222222222222222",
@@ -259,7 +259,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Retained for existing workflow compatibility. Reverse Shadow does not use Level as average ground level or measurement plane.\n既存互換性のため表示。逆日影では平均地盤面・測定面には使用しない。"
+      "Description": "Select the Level created in Revit at the average ground plane. Its Elevation is used as the average ground level elevation for shadow calculations.\nRevitで平均地盤面位置に作成したLevelを選択します。そのLevelのElevationを日影計算の平均地盤面標高として使用します。"
     },
     {
       "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
@@ -281,7 +281,7 @@
         }
       ],
       "Replication": "Disabled",
-      "Description": "Forward only. Ignored in Reverse Shadow.\n順日影で使用。逆日影では無視。"
+      "Description": "Select the Mass or Generic Model proxy used as the building shadow caster in Forward analysis. Ignored in Reverse Shadow.\n順日影で建物の影を投影するMassまたはGeneric Modelプロキシを選択します。逆日影では無視されます。"
     },
     {
       "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
@@ -610,27 +610,27 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -326.89163960879176,
-        "Y": 250
+        "Y": 50.0
       },
       {
         "Id": "3daad2f0de954b2a971f92fd9f671601",
-        "Name": "Levels",
+        "Name": "Average Ground Level / 平均地盤面",
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
         "X": -246.25093313007994,
-        "Y": 80
+        "Y": 200.0
       },
       {
         "Id": "af2519f73dff436c8aba2f16c3788bf3",
-        "Name": "Select Model Element",
+        "Name": "Building Model / 建物モデル",
         "IsSetAsInput": true,
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
         "X": -258.004212107366,
-        "Y": 200
+        "Y": 100.0
       },
       {
         "Id": "f688e0f729b946d0b8ac25514f4531da",
@@ -650,7 +650,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 300
+        "Y": 150.0
       },
       {
         "Id": "b2222222222222222222222222222222",
@@ -660,7 +660,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 400
+        "Y": 350.0
       },
       {
         "Id": "b3333333333333333333333333333333",
@@ -670,7 +670,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 450
+        "Y": 400.0
       },
       {
         "Id": "b4444444444444444444444444444444",
@@ -680,7 +680,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 350
+        "Y": 250.0
       },
       {
         "Id": "b5555555555555555555555555555555",
@@ -690,7 +690,7 @@
         "Excluded": false,
         "ShowGeometry": true,
         "X": -320.0,
-        "Y": 30.0
+        "Y": 300.0
       }
     ],
     "Annotations": [],
