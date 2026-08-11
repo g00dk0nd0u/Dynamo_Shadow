@@ -447,7 +447,15 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         "large_grid_preflight_status": duration_engine.get("large_grid_preflight_status"),
         "estimated_working_memory_bytes": duration_engine.get("estimated_working_memory_bytes"),
         "memory_budget_bytes": duration_engine.get("memory_budget_bytes"),
-        "containment_reduction_ratio": duration_engine.get("containment_reduction_ratio"),
+        "small_grid_materialization_limit": duration_engine.get(
+            "small_grid_materialization_limit"),
+        "large_grid_hard_point_cap": duration_engine.get("large_grid_hard_point_cap"),
+        "equal_time_contour_effective_segment_cap": equal_time_contours.get(
+            "effective_segment_cap"),
+        "site_distance_effective_segment_cap": site_distance_contours.get(
+            "effective_segment_cap"),
+        "active_evaluation_point_reduction_ratio": duration_engine.get(
+            "active_evaluation_point_reduction_ratio"),
     })
     pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks, resolved_regulatory_preset=resolved_preset, selected_limit_comparison=selected_limit_comparison, legal_judgement=legal_judgement, site_distance_contours=site_distance_contours, site_result_preview=site_result_preview)
     warnings.extend(shadow_casters.get("warnings", []))

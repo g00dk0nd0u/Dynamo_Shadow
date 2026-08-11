@@ -1,7 +1,7 @@
 """Pure-Python 5m/10m site distance display contours."""
 import math
 
-from shadow_contours import _cell_segments, _stitch
+from shadow_contours import _cell_segments, _effective_segment_cap, _stitch
 from shadow_site_masks import _dist_point_seg, _inside
 
 METHOD = "signed_distance_grid_marching_squares_v1"
@@ -104,7 +104,7 @@ def _validate_grid_coordinates(grid, nx, ny, ox, oy, resolution):
 
 
 def build_site_distance_contours(shadow_duration, site_boundary_geometry, distance_tolerance_m=1e-6,
-                                 duration_field=None, maximum_segment_count=2000000):
+                                 duration_field=None, maximum_segment_count=None):
     tolerance = _finite(distance_tolerance_m)
     if tolerance is None or tolerance < 0.0:
         return _empty("invalid_site_distance_tolerance")
@@ -143,6 +143,8 @@ def build_site_distance_contours(shadow_duration, site_boundary_geometry, distan
         "source": {"site_boundary_method": (site_boundary_geometry or {}).get("method"), "grid_source": "shadow_duration", "spatial_resolution_m": resolution},
         "row_streaming": compact is not None,
     })
+    effective_segment_cap = _effective_segment_cap(duration, maximum_segment_count)
+    result["effective_segment_cap"] = effective_segment_cap
     contours = []
     generated = set()
     for level in DISTANCE_LEVELS_M:
@@ -156,7 +158,7 @@ def build_site_distance_contours(shadow_duration, site_boundary_geometry, distan
                 corners = [(x0, y0, previous[ix]), (x1, y0, previous[ix+1]),
                            (x1, y1, current[ix+1]), (x0, y1, current[ix])]
                 segments.extend(_cell_segments(corners, level))
-                if len(segments) > maximum_segment_count:
+                if len(segments) > effective_segment_cap:
                     return _empty("site_distance_contour_segment_budget_exceeded")
             previous = current
         lines = _stitch(segments)

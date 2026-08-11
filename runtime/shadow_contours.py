@@ -5,6 +5,19 @@ from shadow_utils import _is_sequence
 METHOD = "marching_squares_linear_interpolation_v1"
 SOURCE_METHOD = "grid_trapezoidal_time_integration_v1"
 EPSILON = 1e-9
+FIXED_HARD_SEGMENT_CAP = 100000
+CONSERVATIVE_BYTES_PER_SEGMENT = 512
+FALLBACK_SEGMENT_MEMORY_BUDGET_BYTES = 64 * 1024 * 1024
+
+
+def _effective_segment_cap(duration, requested_cap=None):
+    diagnostics = (duration or {}).get("engine_diagnostics") or {}
+    budget = diagnostics.get("memory_budget_bytes")
+    if not isinstance(budget, (int, float)) or budget <= 0:
+        budget = FALLBACK_SEGMENT_MEMORY_BUDGET_BYTES
+    memory_cap = max(1, int(budget) // CONSERVATIVE_BYTES_PER_SEGMENT)
+    requested = FIXED_HARD_SEGMENT_CAP if requested_cap is None else max(1, int(requested_cap))
+    return min(FIXED_HARD_SEGMENT_CAP, memory_cap, requested)
 
 
 def _empty():
@@ -118,7 +131,7 @@ def _stitch(segments):
 
 
 def build_equal_time_contours(shadow_duration, settings=None, duration_field=None,
-                              maximum_segment_count=2000000):
+                              maximum_segment_count=None):
     result = _empty(); duration = shadow_duration or {}
     if duration.get("complete") is not True:
         return _block(result, "complete_shadow_duration_required")
@@ -150,6 +163,8 @@ def build_equal_time_contours(shadow_duration, settings=None, duration_field=Non
     except (KeyError, TypeError, ValueError):
         return _block(result, "invalid_equal_time_contour_settings")
     result["requested_levels_minutes"] = levels
+    effective_segment_cap = _effective_segment_cap(duration, maximum_segment_count)
+    result["effective_segment_cap"] = effective_segment_cap
     contours = []
     for level in levels:
         segments = []
@@ -158,7 +173,7 @@ def build_equal_time_contours(shadow_duration, settings=None, duration_field=Non
                 indices = (iy*nx+ix, iy*nx+ix+1, (iy+1)*nx+ix+1, (iy+1)*nx+ix)
                 corners = [(ox + (index % nx)*resolution, oy + (index // nx)*resolution, values[index]) for index in indices]
                 segments.extend(_cell_segments(corners, level))
-                if len(segments) > maximum_segment_count:
+                if len(segments) > effective_segment_cap:
                     return _block(_empty(), "equal_time_contour_segment_budget_exceeded")
         for line in _stitch(segments):
             closed = len(line) > 2 and line[0] == line[-1]

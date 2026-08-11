@@ -14,6 +14,7 @@ LARGE_GRID_HARD_POINT_CAP = 2000000
 LARGE_GRID_HARD_WORK_CAP = 100000000
 LARGE_GRID_FALLBACK_MEMORY_BUDGET_BYTES = 64 * 1024 * 1024
 DEFAULT_TILE_SIZE_CELLS = 32
+DEFAULT_SMALL_GRID_MATERIALIZATION_LIMIT = 250000
 
 
 class DurationField(object):
@@ -152,6 +153,7 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
     try:
         resolution = float(normalized.get("grid_resolution_m", 1.0)); margin = float(normalized.get("analysis_margin_m", 20.0))
         maximum = int(normalized.get("max_duration_grid_points", 250000))
+        materialization_limit = min(maximum, DEFAULT_SMALL_GRID_MATERIALIZATION_LIMIT)
         tile_size_cells = int(tile_size_cells)
         if resolution <= 0 or margin < 0 or maximum <= 0 or tile_size_cells <= 0: raise ValueError()
         times = [_minutes(s.get("true_solar_time")) for s in slices]
@@ -190,11 +192,13 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
     result.update({"temporal_step_minutes": intervals[0] if all(abs(v-intervals[0]) <= 1e-9 for v in intervals) else None,
         "spatial_resolution_m": resolution,
         "maximum_grid_point_count": maximum,
+        "small_grid_materialization_limit": materialization_limit,
+        "large_grid_hard_point_cap": LARGE_GRID_HARD_POINT_CAP,
         "core_bounds_preflight": core_preflight,
         "boundary_bounds_preflight": boundary_preflight,
         "site_boundary_expansion_m": 10.0 if site_available else None})
 
-    large_path_enabled = maximum >= 250000
+    large_path_enabled = maximum >= DEFAULT_SMALL_GRID_MATERIALIZATION_LIMIT
     if (core_preflight["requested_grid_point_count"] > LARGE_GRID_HARD_POINT_CAP or
             (not large_path_enabled and not core_preflight["within_point_limit"])):
         result.update({"grid_point_count": core_preflight["requested_grid_point_count"],
@@ -204,8 +208,9 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
             "site_boundary_bounds_included": False,
             "boundary_evaluation_coverage_complete": False})
         result["blockers"].append({
-            "failure_code": ("large_grid_memory_budget_exceeded" if large_path_enabled
-                             else "max_duration_grid_points_exceeded"),
+            "failure_code": ("large_grid_hard_point_cap_exceeded" if
+                             core_preflight["requested_grid_point_count"] > LARGE_GRID_HARD_POINT_CAP else
+                             "max_duration_grid_points_exceeded"),
             "requested_grid_point_count": core_preflight["requested_grid_point_count"],
             "max_duration_grid_points": maximum,
             "selected_accuracy_preset": selected_accuracy_preset,
@@ -229,6 +234,7 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
     bounds = chosen["bounds_m"]
     min_x, min_y = bounds["min_x"], bounds["min_y"]
     nx, ny, count = chosen["x_count"], chosen["y_count"], chosen["requested_grid_point_count"]
+    large_grid_path = count > materialization_limit
     result.update({"grid_point_count": count, "requested_grid_point_count": count,
         "bounds_sources": boundary_sources if use_boundary else ["unified_shadow_polygons", "analysis_margin"],
         "site_boundary_bounds_included": use_boundary,
@@ -269,12 +275,12 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
         memory_budget = min(LARGE_GRID_FALLBACK_MEMORY_BUDGET_BYTES, int(available * 0.25))
     estimated_memory = compact_bytes + active_count // 8 + len(ordered_tiles) * 32
     estimated_work = active_count * len(slices)
-    if count > maximum and estimated_memory > memory_budget:
+    if large_grid_path and estimated_memory > memory_budget:
         result["blockers"].append({"failure_code": "large_grid_memory_budget_exceeded"})
         result["engine_diagnostics"] = {"large_grid_preflight_status": "blocked_memory",
             "estimated_working_memory_bytes": estimated_memory, "memory_budget_bytes": memory_budget}
         return (result, None) if return_internal else result
-    if count > maximum and estimated_work > LARGE_GRID_HARD_WORK_CAP:
+    if large_grid_path and estimated_work > LARGE_GRID_HARD_WORK_CAP:
         result["blockers"].append({"failure_code": "large_grid_work_budget_exceeded"})
         result["engine_diagnostics"] = {"large_grid_preflight_status": "blocked_work",
             "estimated_working_memory_bytes": estimated_memory, "memory_budget_bytes": memory_budget}
@@ -320,7 +326,7 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
         durations[index] = duration
         if duration > 0: shadowed += 1
         max_duration = max(max_duration, duration)
-    materialized = count <= maximum
+    materialized = count <= materialization_limit
     grid = []
     if materialized:
         for index, duration in enumerate(durations):
@@ -345,6 +351,8 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
             "storage_mode": "materialized_small_v1" if materialized else "compact_large_v1",
             "duration_grid_materialized": materialized,
             "logical_grid_point_count": count,
+            "small_grid_materialization_limit": materialization_limit,
+            "large_grid_hard_point_cap": LARGE_GRID_HARD_POINT_CAP,
             "active_evaluation_point_count": active_count,
             "implicit_zero_point_count": count - active_count,
             "tile_size_cells": tile_size_cells, "total_logical_tile_count": total_tiles,
@@ -355,7 +363,7 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
             "estimated_working_memory_bytes": estimated_memory, "memory_budget_bytes": memory_budget,
             "dense_candidate_containment_estimate": count * len(slices),
             "actual_containment_evaluation_count": counters[1],
-            "containment_reduction_ratio": 1.0 - float(active_count) / count if count else 0.0,
+            "active_evaluation_point_reduction_ratio": 1.0 - float(active_count) / count if count else 0.0,
             "per_point_states_list_used": False,
             "bbox_pruning_enabled": bool(bbox_pruning),
             "bbox_reject_count": counters[0],
