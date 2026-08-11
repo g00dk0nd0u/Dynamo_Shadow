@@ -259,6 +259,10 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
             "bbox_reject_count": counters[0],
             "containment_evaluation_count": counters[1],
             "chunk_count": int(math.ceil(float(count) / selected_chunk)),
+            "chunk_role": "execution_partition",
+            "end_to_end_bounded_memory": False,
+            "full_compact_duration_buffer_materialized": True,
+            "legacy_duration_grid_materialized": True,
             "memory_aware_chunk": chunk_policy,
         }})
     return result

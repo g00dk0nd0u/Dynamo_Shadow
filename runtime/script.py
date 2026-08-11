@@ -406,7 +406,22 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         equal_time_contour_preview, site_result_preview = build_preview_compatibility_summaries(
             shadow_check_presentation, equal_time_contours)
     performance.end("presentation")
-    performance_diagnostics = performance.result()
+    duration_engine = shadow_duration.get("engine_diagnostics") or {}
+    duration_chunk = duration_engine.get("memory_aware_chunk") or {}
+    performance_diagnostics = performance.result({
+        "grid_point_count": shadow_duration.get("grid_point_count"),
+        "time_sample_count": len(unified_shadow_slices.get("slices") or []),
+        "shadowed_point_count": shadow_duration.get("shadowed_point_count"),
+        "formal_polygon_count": formal_shadow_polygons.get("polygon_count"),
+        "unified_polygon_count": unified_shadow_slices.get("output_polygon_count"),
+        "unified_component_count": unified_shadow_slices.get("output_component_count"),
+        "analyzer_count": None,
+        "union_operation_count": None,
+        "bbox_reject_count": duration_engine.get("bbox_reject_count"),
+        "containment_evaluation_count": duration_engine.get("containment_evaluation_count"),
+        "selected_chunk_size": duration_chunk.get("selected_chunk_size"),
+        "chunk_count": duration_engine.get("chunk_count"),
+    })
     pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks, resolved_regulatory_preset=resolved_preset, selected_limit_comparison=selected_limit_comparison, legal_judgement=legal_judgement, site_distance_contours=site_distance_contours, site_result_preview=site_result_preview)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))

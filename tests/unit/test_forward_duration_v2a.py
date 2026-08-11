@@ -1,5 +1,6 @@
 import shadow_duration as duration
-from shadow_performance import ForwardPerformanceRecorder, select_duration_chunk_size
+from shadow_performance import (ForwardPerformanceRecorder, get_process_memory_snapshot,
+    select_duration_chunk_size)
 
 
 def _polygon(points, role="outer", component=0):
@@ -39,6 +40,26 @@ def test_chunk_and_bbox_invariance_preserves_small_grid_contract():
     assert lookup[(3.0, 2.0)] < lookup[(1.0, 2.0)]  # hole semantics remain active
 
 
+def test_chunk_invariance_crosses_real_chunk_boundaries():
+    rectangle = _polygon([(0, 0), (100, 0), (100, 99), (0, 99)])
+    source = {"complete": True, "slices": [
+        {"complete": True, "true_solar_time": "08:00", "polygons": [rectangle]},
+        {"complete": True, "true_solar_time": "08:30", "polygons": [rectangle]}]}
+    settings = {"grid_resolution_m": 1, "analysis_margin_m": 0,
+        "max_duration_grid_points": 20000}
+    results = [duration.build_shadow_duration(source, settings, chunk_size=size)
+        for size in (4096, 8192, 32768)]
+    assert results[0]["grid_point_count"] == 10100
+    assert results[0]["engine_diagnostics"]["chunk_count"] == 3
+    assert results[1]["engine_diagnostics"]["chunk_count"] == 2
+    assert results[0]["engine_diagnostics"]["chunk_count"] > 1
+    for result in results[1:]:
+        assert result["duration_grid"] == results[0]["duration_grid"]
+        assert result["maximum_shadow_duration_minutes"] == results[0]["maximum_shadow_duration_minutes"]
+        assert result["shadowed_point_count"] == results[0]["shadowed_point_count"]
+        assert result["grid_spec"] == results[0]["grid_spec"]
+
+
 def test_legacy_states_reference_parity_for_irregular_intervals():
     source = _unified()
     result = duration.build_shadow_duration(source, SETTINGS, chunk_size=8192)
@@ -76,3 +97,35 @@ def test_telemetry_failure_is_non_fatal_and_json_safe():
     diagnostic = recorder.result()
     assert diagnostic["stages"]["shadow_duration"]["elapsed_ms"] >= 0
     assert diagnostic["stages"]["shadow_duration"]["process_working_set_after_bytes"] is None
+
+
+def test_stage_clock_excludes_snapshot_overhead_in_deterministic_order():
+    events = []
+    times = iter((10.0, 20.0, 23.5, 30.0))
+    snapshots = iter((100, 200, 300, 400))
+
+    def clock():
+        events.append("clock")
+        return next(times)
+
+    def snapshot():
+        events.append("snapshot")
+        value = next(snapshots)
+        return {"process_working_set_bytes": value}
+
+    recorder = ForwardPerformanceRecorder(snapshot, clock)
+    recorder.begin("stage")
+    recorder.end("stage")
+    result = recorder.result()
+    assert events == ["snapshot", "clock", "snapshot", "clock",
+        "clock", "snapshot", "clock", "snapshot"]
+    assert result["stages"]["stage"]["elapsed_ms"] == 3500.0
+    assert result["stages"]["total"]["process_working_set_before_bytes"] == 100
+    assert result["stages"]["total"]["process_working_set_after_bytes"] == 400
+
+
+def test_platform_memory_snapshot_is_non_fatal_and_separates_sources():
+    snapshot = get_process_memory_snapshot()
+    assert "physical_memory_telemetry_available" in snapshot
+    assert "process_memory_telemetry_available" in snapshot
+    assert snapshot["total_physical_memory_bytes"] is None or snapshot["total_physical_memory_bytes"] > 0

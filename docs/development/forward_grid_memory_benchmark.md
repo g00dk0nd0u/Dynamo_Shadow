@@ -117,6 +117,12 @@ informational only and is not a CI pass/fail gate. The disabled run is a useful
 containment-work baseline; mathematical parity is enforced separately by focused
 legacy-reference, chunk-invariance, and pruning-invariance tests.
 
+The chunk is an execution partition only. V2-A still retains one complete row-major
+`array('d')` and then materializes the legacy list-of-dictionaries output, so chunk
+selection alone does not bound end-to-end peak memory. Bounded-memory downstream
+consumption is intentionally deferred to #119; sparse tiling remains deferred to
+#118.
+
 On the initial CPython/Linux development run, `--size 100 --chunk 8192` produced
 19,881 grid points and four time samples. The compact duration buffer was 159,048
 bytes. Pruning rejected 38,720 loop tests and reduced actual containment calls from
