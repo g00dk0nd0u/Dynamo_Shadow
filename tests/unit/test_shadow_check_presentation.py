@@ -6,6 +6,42 @@ from shadow_regulatory_presets import resolve_regulatory_shadow_preset
 from shadow_readiness import _build_pipeline_readiness
 
 
+class _Id:
+    def __init__(self, value): self.IntegerValue = value
+
+
+class _Color:
+    def __init__(self, red, green, blue):
+        self.Red, self.Green, self.Blue, self.IsValid = red, green, blue, True
+
+
+class _Override:
+    def SetProjectionLineColor(self, color): self.ProjectionLineColor = color
+    def SetProjectionLineWeight(self, weight): self.ProjectionLineWeight = weight
+
+
+class _View:
+    def __init__(self, value, name, fail=False):
+        self.Id, self.Name, self.fail = _Id(value), name, fail
+        self.overrides, self.set_calls = {}, 0
+    def SetElementOverrides(self, element_id, override):
+        self.set_calls += 1
+        if self.fail: raise RuntimeError("unsupported active view")
+        self.overrides[element_id] = override
+    def GetElementOverrides(self, element_id): return self.overrides[element_id]
+
+
+def _override_test_setup(monkeypatch, active, managed):
+    monkeypatch.setattr(presentation, "OverrideGraphicSettings", _Override)
+    monkeypatch.setattr(presentation, "Color", _Color)
+    document = type("Document", (), {"ActiveView": active})()
+    targets = presentation._override_targets(document, managed)
+    summaries = {"all": presentation.empty_readback_summary(),
+                 "active": presentation.empty_readback_summary()}
+    diagnostics = presentation._apply_overrides(targets, 99, "near_limit", summaries)
+    return targets, summaries, diagnostics
+
+
 def _contour(level):
     return {"level_minutes": level, "closed": True,
             "points_m": [{"x": 0, "y": 0}, {"x": 1, "y": 0}]}
@@ -19,6 +55,35 @@ def test_regulatory_color_semantics_for_selected_pairs():
         assert presentation.STYLE_SEMANTICS["near_contour"]["rgb"] == (220, 30, 30)
         assert presentation.classify_contour_level(far, preset) == "far_contour"
         assert presentation.STYLE_SEMANTICS["far_contour"]["rgb"] == (30, 90, 220)
+
+
+def test_active_and_managed_views_each_receive_verified_override(monkeypatch):
+    active, plan, three = (_View(1, "Working 3D"), _View(2, "Managed plan"),
+                           _View(3, "Managed 3D"))
+    targets, summaries, diagnostics = _override_test_setup(
+        monkeypatch, active, [("managed_plan", plan), ("managed_3d", three)])
+    assert [target["view_role"] for target in targets] == ["active", "managed_plan", "managed_3d"]
+    assert all(item["verified"] for item in diagnostics)
+    assert presentation.aggregate_status(summaries["all"])["graphical_overrides_verified"] is True
+
+
+def test_active_view_is_deduplicated_from_managed_view_by_element_id(monkeypatch):
+    active, plan = _View(3, "Managed active 3D"), _View(2, "Managed plan")
+    targets, _, diagnostics = _override_test_setup(
+        monkeypatch, active, [("managed_plan", plan), ("managed_3d", active)])
+    assert [target["view_role"] for target in targets] == ["active", "managed_plan"]
+    assert active.set_calls == 1 and len(diagnostics) == 2
+
+
+def test_active_view_override_failure_is_nonfatal_to_managed_views(monkeypatch):
+    active, plan, three = (_View(1, "Template", fail=True), _View(2, "Managed plan"),
+                           _View(3, "Managed 3D"))
+    _, summaries, diagnostics = _override_test_setup(
+        monkeypatch, active, [("managed_plan", plan), ("managed_3d", three)])
+    assert diagnostics[0]["set_succeeded"] is False
+    assert all(item["verified"] for item in diagnostics[1:])
+    assert summaries["active"]["write_failure_count"] == 1
+    assert plan.set_calls == three.set_calls == 1
 
 
 def test_preview_adapters_share_review_color_and_weight_rules():
@@ -86,6 +151,30 @@ def test_equal_time_compatibility_preserves_level_counts():
         canonical, {"available": True, "contours": [_contour(180), _contour(300)]})
     assert equal["requested_level_count"] == equal["created_level_count"] == 2
     assert equal["created_element_count"] == 2 and equal["partial_success"] is False
+
+
+def test_compatibility_summaries_preserve_graphical_override_diagnostics():
+    override = {"view_role": "active", "set_succeeded": True,
+                "readback_succeeded": True, "verified": True}
+    canonical = {"enabled": True, "mode": "replace", "attempted": True,
+        "available": True, "complete": True, "created_element_count": 2,
+        "deleted_element_count": 0, "blockers": [], "warnings": [],
+        "graphical_overrides_write_succeeded": True,
+        "graphical_overrides_readback_succeeded": True,
+        "graphical_overrides_verified": True,
+        "graphical_override_readback": {"attempted_element_count": 2},
+        "groups": [
+            {"kind": "equal_time_contour", "level_minutes": 300, "created": True,
+             "element_id": 1, "curve_count": 3, "graphical_override": override,
+             "graphical_overrides": [override]},
+            {"kind": "site_distance_5m", "created": True, "element_id": 2,
+             "curve_count": 4, "graphical_override": override,
+             "graphical_overrides": [override]}]}
+    equal, site = presentation.build_preview_compatibility_summaries(
+        canonical, {"available": True, "contours": [_contour(300)]})
+    assert equal["graphical_overrides_verified"] is True
+    assert equal["groups"][0]["graphical_override"] == override
+    assert site["groups"][0]["graphical_override"] == override
 
 
 def test_cleanup_sets_include_only_exact_current_and_legacy_application_ids(monkeypatch):

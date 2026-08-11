@@ -15,6 +15,8 @@ from shadow_revit_api import (BuiltInCategory, BuiltInParameter, ElementId, Dire
     FilteredElementCollector, OverrideGraphicSettings, Color, SubTransaction,
     ViewPlan, View3D, ViewFamilyType, ViewFamily, View, Level, PlanViewPlane,
     BoundingBoxXYZ, ViewDetailLevel, DisplayStyle, ViewDiscipline)
+from shadow_graphical_override import (apply_and_readback, empty_readback_summary,
+    add_to_readback_summary, aggregate_status)
 
 try:
     from RevitServices.Persistence import DocumentManager
@@ -109,7 +111,9 @@ def build_preview_compatibility_summaries(presentation, equal_contours):
     common = {key: source.get(key) for key in (
         "enabled", "mode", "attempted", "available", "complete",
         "deleted_element_count", "blockers", "warnings",
-        "permit_ready_certified")}
+        "permit_ready_certified", "graphical_overrides_write_succeeded",
+        "graphical_overrides_readback_succeeded", "graphical_overrides_verified",
+        "graphical_override_readback", "active_view_graphical_override")}
     common["partial_success"] = bool(source.get("available") and not source.get("complete")
                                      and source.get("created_element_count", 0) > 0)
 
@@ -122,7 +126,9 @@ def build_preview_compatibility_summaries(presentation, equal_contours):
         equal_groups.append({"level_minutes": level, "contour_count": len(matches),
             "curve_count": sum(int(g.get("curve_count", 0)) for g in matches),
             "created": bool(matches) and all(g.get("created") is True for g in matches),
-            "element_id": matches[0].get("element_id") if len(matches) == 1 else None})
+            "element_id": matches[0].get("element_id") if len(matches) == 1 else None,
+            "graphical_override": matches[0].get("graphical_override") if len(matches) == 1 else None,
+            "graphical_overrides": matches[0].get("graphical_overrides") if len(matches) == 1 else []})
     equal_created = [g for g in canonical_groups
                      if g.get("kind") == "equal_time_contour" and g.get("created") is True]
     equal_summary = dict(common)
@@ -144,14 +150,18 @@ def build_preview_compatibility_summaries(presentation, equal_contours):
         site_groups.append({"output_kind": "site_distance_contour", "distance_m": distance,
             "contour_count": len(matches), "curve_count": sum(int(g.get("curve_count", 0)) for g in matches),
             "created": bool(matches) and all(g.get("created") is True for g in matches),
-            "element_id": matches[0].get("element_id") if len(matches) == 1 else None})
+            "element_id": matches[0].get("element_id") if len(matches) == 1 else None,
+            "graphical_override": matches[0].get("graphical_override") if len(matches) == 1 else None,
+            "graphical_overrides": matches[0].get("graphical_overrides") if len(matches) == 1 else []})
     for key, zone in (("near", "near_5_to_10m"), ("far", "far_over_10m")):
         matches = [g for g in canonical_groups if g.get("kind") == "%s_maximum_marker" % key]
         if matches:
             group = matches[0]
             site_groups.append({"output_kind": "maximum_shadow_duration_marker", "zone": zone,
                 "curve_count": int(group.get("curve_count", 0)),
-                "created": group.get("created") is True, "element_id": group.get("element_id")})
+                "created": group.get("created") is True, "element_id": group.get("element_id"),
+                "graphical_override": group.get("graphical_override"),
+                "graphical_overrides": group.get("graphical_overrides") or []})
     site_created = [g for g in site_groups if g.get("created") is True]
     site_summary = dict(common)
     site_summary.update({"requested_group_count": len(site_groups),
@@ -341,11 +351,45 @@ def _prepare_views(document, measurement_plane, groups):
     return {"plan": plan, "three_d": three}
 
 
-def _override(view, element_id, style):
-    if view is None or OverrideGraphicSettings is None or Color is None: return False
-    spec = STYLE_SEMANTICS[style]; settings = OverrideGraphicSettings()
-    settings.SetProjectionLineColor(Color(*spec["rgb"])); settings.SetProjectionLineWeight(spec["weight"])
-    view.SetElementOverrides(element_id, settings); return True
+def _view_name(view):
+    try:
+        return str(view.Name)
+    except BaseException:
+        return None
+
+
+def _override_targets(document, managed_views):
+    """Return Active View plus managed views, deduplicated by Revit ElementId."""
+    candidates = [("active", getattr(document, "ActiveView", None))]
+    candidates.extend((role, view) for role, view in managed_views)
+    targets, seen = [], set()
+    for role, view in candidates:
+        if view is None:
+            continue
+        view_id = _element_id(view)
+        key = ("element_id", view_id) if view_id is not None else ("object", id(view))
+        if key in seen:
+            continue
+        seen.add(key)
+        targets.append({"view_role": role, "view": view, "view_id": view_id,
+                        "view_name": _view_name(view), "active_view": role == "active"})
+    return targets
+
+
+def _apply_overrides(targets, element_id, style, summaries):
+    """Apply one semantic style to every target; API failures remain diagnostic."""
+    spec = STYLE_SEMANTICS[style]
+    diagnostics = []
+    for target in targets:
+        diagnostic = apply_and_readback(target["view"], element_id, spec["rgb"],
+                                        spec["weight"], OverrideGraphicSettings, Color)
+        diagnostic.update({key: target[key] for key in
+                           ("view_role", "view_id", "view_name", "active_view")})
+        diagnostics.append(diagnostic)
+        add_to_readback_summary(summaries["all"], diagnostic)
+        if target["active_view"]:
+            add_to_readback_summary(summaries["active"], diagnostic)
+    return diagnostics
 
 
 def build_shadow_check_presentation(site_geometry, distance_contours, equal_contours,
@@ -358,6 +402,8 @@ def build_shadow_check_presentation(site_geometry, distance_contours, equal_cont
         "current_deleted_element_count": 0, "created_element_ids": [], "groups": [],
         "style_semantics": STYLE_SEMANTICS, "style_legend": STYLE_LEGEND,
         "measurement_plane_elevation_m": elevation,
+        "graphical_override_readback": empty_readback_summary(),
+        "active_view_graphical_override": None,
         "blockers": [], "warnings": list(config["warnings"]), "legal_judgement_generated": False,
         "ordinance_selection_certified": False, "permit_ready_certified": False}
     views = {"plan": _view_result("FloorPlan", elevation, (measurement_plane or {}).get("measurement_height_m")),
@@ -380,6 +426,9 @@ def build_shadow_check_presentation(site_geometry, distance_contours, equal_cont
     if not current_cleanup.get("succeeded") or not all(item.get("succeeded") for item in legacy_cleanups):
         result["blockers"].append({"failure_code": "shadow_check_cleanup_collection_failed"}); return result, views
     started = False; sub = None
+    override_targets = []
+    override_summaries = {"all": result["graphical_override_readback"],
+                          "active": empty_readback_summary()}
     try:
         TransactionManager.Instance.EnsureInTransaction(document); started = True
         sub = SubTransaction(document); sub.Start()
@@ -390,11 +439,15 @@ def build_shadow_check_presentation(site_geometry, distance_contours, equal_cont
                 document.Delete(ident); result["legacy_deleted_element_count"] += 1
         result["deleted_element_count"] = (result["current_deleted_element_count"] +
                                            result["legacy_deleted_element_count"])
-        view_objects = []
         if config["mode"] == "replace":
             views = _prepare_views(document, measurement_plane, groups)
             ids = {views[k].get("view_id") for k in views}
             view_objects = [v for v in _collect(document, View) if _element_id(v) in ids]
+            by_id = {_element_id(view): view for view in view_objects}
+            override_targets = _override_targets(document, [
+                ("managed_plan", by_id.get(views["plan"].get("view_id"))),
+                ("managed_3d", by_id.get(views["three_d"].get("view_id"))),
+            ])
             tolerance = float(getattr(document.Application, "ShortCurveTolerance", 0.0))
             for index, group in enumerate(groups):
                 curves = (_marker_curves(group["point"], elevation, tolerance) if group.get("point") is not None
@@ -407,9 +460,13 @@ def build_shadow_check_presentation(site_geometry, distance_contours, equal_cont
                 diag = {"warnings": []}; _set_plan_curve_representation(shape, curves, diag); result["warnings"].extend(diag["warnings"])
                 shape.Name = STYLE_SEMANTICS[group["style"]]["name"]; shape.ApplicationId = APPLICATION_ID
                 shape.ApplicationDataId = "kind=%s;index=%d" % (group["kind"], index)
-                for view in view_objects: _override(view, shape.Id, group["style"])
+                overrides = _apply_overrides(override_targets, shape.Id, group["style"],
+                                             override_summaries)
                 ident = _element_id(shape); result["created_element_ids"].append(ident)
-                diagnostic.update({"created": True, "element_id": ident})
+                active_override = next((item for item in overrides if item["active_view"]), None)
+                diagnostic.update({"created": True, "element_id": ident,
+                    "graphical_override": active_override or (overrides[0] if overrides else None),
+                    "graphical_overrides": overrides})
         sub.Commit(); sub = None
     except BaseException as exc:
         if sub is not None:
@@ -425,6 +482,14 @@ def build_shadow_check_presentation(site_geometry, distance_contours, equal_cont
             try: TransactionManager.Instance.TransactionTaskDone()
             except BaseException as exc: result["warnings"].append(_safe_message(exc))
     result["created_element_count"] = len(result["created_element_ids"])
+    result.update(aggregate_status(result["graphical_override_readback"]))
+    active_target = next((target for target in override_targets if target["active_view"]), None)
+    if active_target is not None:
+        result["active_view_graphical_override"] = dict(
+            {key: active_target[key] for key in ("view_id", "view_name")},
+            **override_summaries["active"])
+        result["active_view_graphical_override"].update(
+            aggregate_status(override_summaries["active"]))
     result["available"] = not result["blockers"]
     result["complete"] = result["available"] and (config["mode"] == "clear" or result["created_element_count"] == len(groups))
     return result, views
