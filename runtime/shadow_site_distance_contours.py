@@ -103,7 +103,8 @@ def _validate_grid_coordinates(grid, nx, ny, ox, oy, resolution):
     return values
 
 
-def build_site_distance_contours(shadow_duration, site_boundary_geometry, distance_tolerance_m=1e-6):
+def build_site_distance_contours(shadow_duration, site_boundary_geometry, distance_tolerance_m=1e-6,
+                                 duration_field=None, maximum_segment_count=2000000):
     tolerance = _finite(distance_tolerance_m)
     if tolerance is None or tolerance < 0.0:
         return _empty("invalid_site_distance_tolerance")
@@ -127,29 +128,37 @@ def build_site_distance_contours(shadow_duration, site_boundary_geometry, distan
     except Exception:
         return _empty("duration_grid_spec_missing_or_invalid")
     grid = duration.get("duration_grid") or []
-    if len(grid) != nx * ny:
-        return _empty("duration_grid_size_mismatch")
-    try:
-        points = _validate_grid_coordinates(grid, nx, ny, ox, oy, resolution)
-    except Exception:
-        return _empty("invalid_duration_grid_coordinates")
-
-    signed_values = [_signed_distance(point, polygon, tolerance) for point in points]
+    compact = getattr(duration_field, "values", None)
+    if compact is None:
+        if len(grid) != nx * ny:
+            return _empty("duration_grid_size_mismatch")
+        try:
+            _validate_grid_coordinates(grid, nx, ny, ox, oy, resolution)
+        except Exception:
+            return _empty("invalid_duration_grid_coordinates")
     result = _empty()
     result.update({
         "available": True,
         "complete": True,
         "source": {"site_boundary_method": (site_boundary_geometry or {}).get("method"), "grid_source": "shadow_duration", "spatial_resolution_m": resolution},
+        "row_streaming": compact is not None,
     })
     contours = []
     generated = set()
     for level in DISTANCE_LEVELS_M:
         segments = []
+        previous = [_signed_distance((ox + ix*resolution, oy), polygon, tolerance) for ix in range(nx)]
         for iy in range(ny - 1):
+            y0 = oy + iy * resolution; y1 = y0 + resolution
+            current = [_signed_distance((ox + ix*resolution, y1), polygon, tolerance) for ix in range(nx)]
             for ix in range(nx - 1):
-                indices = (iy * nx + ix, iy * nx + ix + 1, (iy + 1) * nx + ix + 1, (iy + 1) * nx + ix)
-                corners = [(points[index][0], points[index][1], signed_values[index]) for index in indices]
+                x0 = ox + ix * resolution; x1 = x0 + resolution
+                corners = [(x0, y0, previous[ix]), (x1, y0, previous[ix+1]),
+                           (x1, y1, current[ix+1]), (x0, y1, current[ix])]
                 segments.extend(_cell_segments(corners, level))
+                if len(segments) > maximum_segment_count:
+                    return _empty("site_distance_contour_segment_budget_exceeded")
+            previous = current
         lines = _stitch(segments)
         if not lines:
             result["warnings"].append({"warning_code": WARNING_NOT_GENERATED, "distance_m": level})

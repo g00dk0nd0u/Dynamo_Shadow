@@ -117,7 +117,8 @@ def _stitch(segments):
     return sorted(lines, key=lambda line: (line[0], len(line), line))
 
 
-def build_equal_time_contours(shadow_duration, settings=None):
+def build_equal_time_contours(shadow_duration, settings=None, duration_field=None,
+                              maximum_segment_count=2000000):
     result = _empty(); duration = shadow_duration or {}
     if duration.get("complete") is not True:
         return _block(result, "complete_shadow_duration_required")
@@ -137,11 +138,13 @@ def build_equal_time_contours(shadow_duration, settings=None):
             raise ValueError()
     except (KeyError, TypeError, ValueError, OverflowError):
         return _block(result, "duration_grid_spec_missing_or_invalid")
-    if len(grid) != nx * ny: return _block(result, "duration_grid_size_mismatch")
+    compact = getattr(duration_field, "values", None)
+    if compact is None and len(grid) != nx * ny: return _block(result, "duration_grid_size_mismatch")
+    if compact is not None and len(compact) != nx * ny: return _block(result, "duration_grid_size_mismatch")
     try:
-        values = [float(item["shadow_duration_minutes"]) for item in grid]
+        values = compact if compact is not None else [float(item["shadow_duration_minutes"]) for item in grid]
         if any(not math.isfinite(value) for value in values): raise ValueError()
-        levels = _levels(settings, max(values) if values else 0.0)
+        levels = _levels(settings, float(duration.get("maximum_shadow_duration_minutes", 0.0)))
     except OverflowError:
         return _block(result, "max_equal_time_contour_levels_exceeded")
     except (KeyError, TypeError, ValueError):
@@ -155,6 +158,8 @@ def build_equal_time_contours(shadow_duration, settings=None):
                 indices = (iy*nx+ix, iy*nx+ix+1, (iy+1)*nx+ix+1, (iy+1)*nx+ix)
                 corners = [(ox + (index % nx)*resolution, oy + (index // nx)*resolution, values[index]) for index in indices]
                 segments.extend(_cell_segments(corners, level))
+                if len(segments) > maximum_segment_count:
+                    return _block(_empty(), "equal_time_contour_segment_budget_exceeded")
         for line in _stitch(segments):
             closed = len(line) > 2 and line[0] == line[-1]
             length = sum(math.hypot(b[0]-a[0], b[1]-a[1]) for a, b in zip(line, line[1:]))
@@ -172,6 +177,7 @@ def build_equal_time_contours(shadow_duration, settings=None):
     result.update({"available": True, "complete": True, "generated_levels_minutes": sorted(per_level),
                    "contour_count": len(contours), "closed_contour_count": sum(c["closed"] for c in contours),
                    "open_contour_count": sum(not c["closed"] for c in contours), "contours": contours})
+    result["scalar_copy_materialized"] = compact is None
     return result
 
 
