@@ -103,6 +103,8 @@ try:
     from shadow_accuracy_presets import overlay_calculation_accuracy_settings
     from shadow_settings import _normalize_settings
     from shadow_level_adapter import resolve_average_ground_level
+    from shadow_project_location_adapter import (apply_true_north_to_settings,
+        mark_true_north_applied, resolve_runtime_true_north)
     from shadow_measurement_plane import _build_law56_2_awareness_context, _construct_measurement_plane
     from shadow_geometry import _diagnose_shadow_caster_geometry
     from shadow_footprint import _build_footprint_extraction_summary
@@ -298,6 +300,8 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         raw_inputs.get("site_latitude_deg"), raw_inputs.get("site_longitude_deg"))
     overlaid_settings, resolved_accuracy, _, accuracy_warnings, _ = overlay_calculation_accuracy_settings(
         overlaid_settings, raw_inputs.get("calculation_accuracy_preset"))
+    true_north = resolve_runtime_true_north(overlaid_settings)
+    overlaid_settings = apply_true_north_to_settings(overlaid_settings, true_north)
     if resolved_preset is None:
         resolved_preset = resolve_regulatory_shadow_preset("standard_all")
     elif not resolved_preset.get("valid"):
@@ -308,6 +312,7 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         warnings.extend(resolved_accuracy.get("blockers", []))
     resolved_agl = resolve_average_ground_level(raw_inputs.get("level"))
     settings_normalized = _normalize_settings(overlaid_settings, resolved_agl)
+    settings_normalized["true_north"] = true_north
     if not preview_allowed:
         normalized_for_calculation = dict(settings_normalized.get("normalized") or {})
         normalized_for_calculation.update({
@@ -321,6 +326,8 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
     performance.end("geometry_extraction")
     footprint_extraction = _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized, site_boundary)
     sun_time_slices, sun_position_diagnostics, sun_position_policy, solar_calculation_v1 = _build_sun_position_diagnostics(settings_normalized)
+    true_north = mark_true_north_applied(true_north, solar_calculation_v1)
+    settings_normalized["true_north"] = true_north
     shadow_projection_diagnostics, shadow_projection_policy = _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_plane, sun_time_slices)
     performance.begin("formal_projection")
     try:
@@ -469,6 +476,7 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
     warnings.extend(site_distance_contours.get("warnings", []))
     warnings.extend(selected_limit_comparison.get("warnings", []))
     warnings.extend(settings_normalized.get("warnings", []))
+    warnings.extend(true_north.get("warnings", []))
     warnings.extend(law56_2_awareness.get("warnings", []))
     warnings.extend(measurement_plane.get("warnings", []))
     warnings.extend(shadow_caster_geometry.get("warnings", []))
@@ -532,6 +540,7 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         "legal_constants": LEGAL_CONSTANTS,
         "unit_conversion_diagnostics": unit_conversion_diagnostics,
         "unit_conversion_policy": UNIT_CONVERSION_POLICY,
+        "true_north": true_north,
         "inputs": {
             "source": input_source,
             "building_elements": _summarize_input(raw_inputs.get("building_elements")),

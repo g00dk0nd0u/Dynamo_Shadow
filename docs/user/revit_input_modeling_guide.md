@@ -13,9 +13,9 @@
 - `building_elements = IN[0]`: 複数選択された shadow caster proxy elements。
 - `site_boundary = IN[1]`: optional な敷地境界。未選択でも等時間日影出力フローは継続し、敷地境界依存ステップだけを skip する。
 - `level = IN[2] if exists else None`: optional な作業参照。
-- `settings = IN[3] if exists else None`: 平均地盤面、測定面高さ、緯度経度、真北角度、グリッド解像度など。
+- `settings = IN[3] if exists else None`: 平均地盤面、測定面高さ、緯度経度、グリッド解像度など。Revit実行時の真北はsettingsではなくActive Project Locationから取得する。
 
-重要: `level` は法規上の高さ基準ではありません。Level Elevation を平均地盤面として扱わず、平均地盤面は `settings.average_ground_level_elevation_m` で扱います。
+重要: 選択したRevit Level ElevationをForward / Reverse共通の平均地盤面として扱います。Level自体は測定面ではなく、測定面は平均地盤面 + measurement heightです。
 
 ## 3. Settings and height reference policy
 
@@ -26,9 +26,11 @@
 - `average_ground_level_elevation_m`: 平均地盤面高さ。
 - `measurement_height_m`: 平均地盤面からの測定面高さ。
 - `latitude` / `longitude`: 将来の太陽方向計算に必要な緯度経度。
-- `true_north_deg`: 将来の太陽方向計算に必要な真北角度。
+- 真北はRevitのActive Project Locationに設定されたTrue Northをsource of truthとして自動取得する。Playerへの角度手入力はない。
 
-Revit Level は作業参照であり、法規上の高さ基準ではありません。Level Elevation を平均地盤面として使わず、測定面としても使いません。
+Project Northは図面・モデルの作図方向、True Northは実際の地理上の北です。日影方向にはTrue Northを使用するため、ユーザーはRevitの「真北を回転」で正しい方向を設定してから実行してください。Dynamo_ShadowはProject Locationを作成せず、True Northを変更せず、読み取りだけを行います。取得できない場合は0°として成功扱いにしません。Latitude / Longitudeは従来どおりPlayer入力です。
+
+Level未選択時のみ、pure-Python / legacy互換としてsettingsの平均地盤面をfallbackにできます。選択済みLevelのElevationが読めない場合はsettingsへsilent fallbackしません。
 
 ```text
 measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m

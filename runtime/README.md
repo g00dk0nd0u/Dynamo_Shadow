@@ -21,6 +21,8 @@
 
 Forward / Reverseともに、`Average Ground Level / 平均地盤面`で選択したRevit LevelのElevationをinternal unitsからmeterへ変換してAGLとして使う。Level自体は測定面ではなく、測定面はAGL + 規制presetのmeasurement heightである。Level未選択時のみsettingsのAGLを互換fallbackとして使い、選択済みLevelのElevationが読めない場合はsilent fallbackしない。
 
+Forward / Reverseともに、日影方向はActive Project Locationに設定されたRevit標準のTrue Northを自動使用する。Project Northは作図方向、True Northは実際の地理上の北である。Playerに真北角度入力はないため、実行前にRevit側でTrue Northを正しく設定する。取得不能時は0°へsilent fallbackせずdiagnosticsへwarning/blockerを出す。緯度・経度は従来どおりPlayer入力を使用する。
+
 ## フォルダ名
 
 このフォルダは「日影図」「日影検討ツール」などへ改名してよい。

@@ -11,6 +11,7 @@ Implemented prototype capabilities include:
 - Multiple selected Mass / Generic Model shadow caster proxies.
 - Revit geometry extraction and footprint extraction prototype.
 - NOAA solar calculation with true solar time.
+- Automatic True North orientation from the active Revit Project Location.
 - Formal time-slice shadow projection.
 - Per-time-slice Revit-native union.
 - Grid/trapezoidal shadow-duration accumulation.
@@ -61,7 +62,9 @@ Forward and Reverse use the selected Average Ground Level's Revit Level Elevatio
 - `building_elements`: one or more selected Mass or Generic Model proxy elements used as shadow casters.
 - `site_boundary`: optional for core shadow duration and equal-time contours; the formal boundary-dependent input is exactly one placed Revit Area selected once in Dynamo Player.
 - `level`: the selected Revit Level at the average ground position, shared by Forward and Reverse as the authoritative AGL elevation source.
-- `settings`: optional for diagnostics and internal compatibility. Explicit values or selected presets are required for legal-calculation parameters such as average ground level, measurement height, latitude, longitude, and true north.
+- `settings`: optional for diagnostics and internal compatibility. Explicit values or selected presets are required for legal-calculation parameters such as average ground level, measurement height, latitude, and longitude. In Revit, True North is read automatically from the active Project Location; no Player angle input is provided.
+
+Project North is the model's drawing orientation, while True North is geographic north. Dynamo_Shadow uses True North for both Forward and Reverse shadow directions. Users must set Revit's True North correctly before running the graph; the adapter reads the setting without creating or modifying Project Locations. Latitude and longitude remain the existing Player inputs.
 
 Users select the placed Area body for `site_boundary`, not Area Boundary lines, Area Tags, Property Line segments, Model Lines, Detail Lines, Filled Regions, Floors, Generic Models, CAD imports, Toposolids, or families. Property Line / Site Property inputs are not the current formal site-boundary input.
 
