@@ -4,7 +4,6 @@ import math
 from datetime import date
 from shadow_policies import SETTINGS_SCHEMA_VERSION, SETTINGS_REQUIRED_FOR_MEASUREMENT_PLANE, SETTINGS_REQUIRED_FOR_SOLAR_TIME_TRUE_SOLAR, SETTINGS_REQUIRED_FOR_SOLAR_TIME_JAPAN_STANDARD, SETTINGS_DIAGNOSTIC_DEFAULTS
 from shadow_utils import *
-from shadow_level_adapter import resolve_average_ground_level
 
 
 def _object_items_from_keys_values(value):
@@ -181,7 +180,7 @@ def _range_warning(key, value):
         return "settings.{0} is outside the accepted range.".format(key)
     return None
 
-def _normalize_settings(settings, level=None):
+def _normalize_settings(settings, resolved_average_ground_level=None):
     settings_dict, input_format, warnings, errors = _coerce_settings_to_dict(settings)
     normalized = {}
     defaults_applied = []
@@ -341,14 +340,19 @@ def _normalize_settings(settings, level=None):
         warnings.append("settings.sun_time_step_minutes must be a positive integer."); invalid_keys.append("sun_time_step_minutes"); sun_step = None
     normalized["sun_time_step_minutes"] = sun_step
 
-    level_resolution = resolve_average_ground_level(level)
+    level_resolution = resolved_average_ground_level or {
+        "level_reference_present": False,
+        "level_elevation_m": None,
+        "level_elevation_readable": False,
+        "warnings": [],
+    }
     warnings.extend(level_resolution["warnings"])
     if level_resolution["level_elevation_readable"]:
         normalized["average_ground_level_elevation_m"] = level_resolution["level_elevation_m"]
         average_ground_level_source = "revit_level"
         if "average_ground_level_elevation_m" in invalid_keys:
             invalid_keys.remove("average_ground_level_elevation_m")
-    elif level is not None:
+    elif level_resolution.get("level_reference_present"):
         normalized["average_ground_level_elevation_m"] = None
         average_ground_level_source = "unavailable_invalid_revit_level"
         if "average_ground_level_elevation_m" not in invalid_keys:
@@ -358,9 +362,8 @@ def _normalize_settings(settings, level=None):
     else:
         average_ground_level_source = "unavailable"
     normalized["average_ground_level_source"] = average_ground_level_source
-    normalized["level_reference_present"] = level is not None
+    normalized["level_reference_present"] = bool(level_resolution.get("level_reference_present"))
     normalized["level_used_as_average_ground_level"] = level_resolution["level_elevation_readable"]
-    normalized["level_elevation_internal"] = level_resolution["level_elevation_internal"]
     normalized["level_elevation_m"] = level_resolution["level_elevation_m"]
 
     agl = normalized.get("average_ground_level_elevation_m")
@@ -426,9 +429,8 @@ def _normalize_settings(settings, level=None):
         "warnings": warnings,
         "errors": errors,
         "info": info,
-        "level_reference_present": level is not None,
+        "level_reference_present": bool(level_resolution.get("level_reference_present")),
         "average_ground_level_source": average_ground_level_source,
-        "level_elevation_internal": level_resolution["level_elevation_internal"],
         "level_elevation_m": level_resolution["level_elevation_m"],
         "level_used_as_average_ground_level": level_resolution["level_elevation_readable"],
         "level_used_as_measurement_plane": False,

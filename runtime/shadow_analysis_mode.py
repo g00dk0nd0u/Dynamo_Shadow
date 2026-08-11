@@ -3,6 +3,7 @@
 from shadow_accuracy_presets import resolve_calculation_accuracy_preset
 from shadow_contour_preview import build_equal_time_contour_preview
 from shadow_measurement_plane import _construct_measurement_plane
+from shadow_level_adapter import resolve_average_ground_level
 from shadow_preview import build_shadow_preview
 from shadow_regulatory_presets import overlay_player_settings, resolve_regulatory_shadow_preset
 from shadow_reverse_low_rise import build_low_rise_reverse_shadow_core
@@ -62,8 +63,9 @@ def build_reverse_workflow(raw_inputs, input_source, summarize_input):
         raw_inputs.get("site_latitude_deg"), raw_inputs.get("site_longitude_deg"))
     if preset is None:
         preset = resolve_regulatory_shadow_preset("standard_all")
-    settings = _normalize_settings(overlaid, raw_inputs.get("level"))
-    plane = _construct_measurement_plane(settings, raw_inputs.get("level"))
+    resolved_agl = resolve_average_ground_level(raw_inputs.get("level"))
+    settings = _normalize_settings(overlaid, resolved_agl)
+    plane = _construct_measurement_plane(settings)
     accuracy = resolve_calculation_accuracy_preset(raw_inputs.get("calculation_accuracy_preset"))
     core = build_low_rise_reverse_shadow_core(site, preset, plane, settings, accuracy)
 

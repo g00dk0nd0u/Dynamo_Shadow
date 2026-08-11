@@ -38,7 +38,7 @@ def _build_law56_2_awareness_context(settings_normalized, site_boundary=None):
         "info": ["Measurement-plane diagnostics do not perform solar calculation; the separate formal technical solar specification v1 supplies true-solar conversion and model directions. Legal judgement remains unimplemented."],
     }
 
-def _construct_measurement_plane(settings_normalized, level=None):
+def _construct_measurement_plane(settings_normalized):
     normalized = (settings_normalized or {}).get("normalized") or {}
     mp_norm = (settings_normalized or {}).get("measurement_plane") or {}
     agl = normalized.get("average_ground_level_elevation_m")
@@ -61,7 +61,8 @@ def _construct_measurement_plane(settings_normalized, level=None):
     if not available:
         warnings.append("Measurement plane could not be constructed; this is non-fatal for input diagnostics.")
     level_used_as_agl = (settings_normalized or {}).get("level_used_as_average_ground_level") is True
-    if level is not None and not level_used_as_agl:
+    level_reference_present = (settings_normalized or {}).get("level_reference_present") is True
+    if level_reference_present and not level_used_as_agl:
         warnings.append("Level reference is present but its Elevation was unavailable; the measurement plane is blocked and the settings AGL was not silently used.")
 
     return {
@@ -88,7 +89,7 @@ def _construct_measurement_plane(settings_normalized, level=None):
         "formula": "measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m",
         "source_keys": {"average_ground_level_elevation_m": (settings_normalized or {}).get("average_ground_level_source"), "measurement_height_m": "settings.measurement_height_m"},
         "average_ground_level_source": (settings_normalized or {}).get("average_ground_level_source"),
-        "level_reference_present": level is not None,
+        "level_reference_present": level_reference_present,
         "level_used_as_average_ground_level": level_used_as_agl,
         "level_used_as_measurement_plane": False,
         "legal_meaning": ["Article 56-2 measurement horizontal plane at designated height above average ground level.", "This is not a Revit Level.", "This is not a Revit element.", "This is not a legal judgement result."],

@@ -24,23 +24,22 @@ class UnreadableLevel(object):
 def test_level_internal_feet_are_converted_to_meters():
     adapter_result = resolve_average_ground_level(FakeLevel(10.0))
     assert math.isclose(adapter_result["level_elevation_m"], 3.048)
-    assert _normalize_settings({}, FakeLevel(0.0))["normalized"]["average_ground_level_elevation_m"] == 0.0
-    result = _normalize_settings({}, FakeLevel(10.0))
+    assert _normalize_settings({}, resolve_average_ground_level(FakeLevel(0.0)))["normalized"]["average_ground_level_elevation_m"] == 0.0
+    result = _normalize_settings({}, adapter_result)
     assert math.isclose(result["normalized"]["average_ground_level_elevation_m"], 3.048)
-    assert result["level_elevation_internal"] == 10.0
     assert result["average_ground_level_source"] == "revit_level"
 
 
 def test_wrapper_internal_element_elevation_is_supported():
-    result = _normalize_settings({}, FakeWrapper(10.0))
+    result = _normalize_settings({}, resolve_average_ground_level(FakeWrapper(10.0)))
     assert math.isclose(result["normalized"]["average_ground_level_elevation_m"], 3.048)
     assert result["level_used_as_average_ground_level"] is True
 
 
 def test_valid_level_takes_precedence_over_settings_and_builds_plane():
-    result = _normalize_settings({"average_ground_level_elevation_m": 99.0, "measurement_height_m": 4.0}, FakeLevel(10.0))
+    result = _normalize_settings({"average_ground_level_elevation_m": 99.0, "measurement_height_m": 4.0}, resolve_average_ground_level(FakeLevel(10.0)))
     assert math.isclose(result["normalized"]["average_ground_level_elevation_m"], 3.048)
-    plane = _construct_measurement_plane(result, FakeLevel(10.0))
+    plane = _construct_measurement_plane(result)
     assert math.isclose(plane["elevation_m"], 7.048)
     assert plane["level_used_as_average_ground_level"] is True
     assert plane["level_used_as_measurement_plane"] is False
@@ -60,7 +59,7 @@ def test_missing_level_and_setting_reports_unavailable():
 
 
 def test_invalid_selected_level_does_not_silently_fall_back_to_settings():
-    result = _normalize_settings({"average_ground_level_elevation_m": 12.5}, UnreadableLevel())
+    result = _normalize_settings({"average_ground_level_elevation_m": 12.5}, resolve_average_ground_level(UnreadableLevel()))
     assert result["normalized"]["average_ground_level_elevation_m"] is None
     assert result["average_ground_level_source"] == "unavailable_invalid_revit_level"
     assert "average_ground_level_elevation_m" in result["readiness"]["invalid_for_measurement_plane"]

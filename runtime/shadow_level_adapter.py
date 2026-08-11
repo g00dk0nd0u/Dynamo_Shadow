@@ -7,7 +7,6 @@ def resolve_average_ground_level(level):
     """Read a selected Level and cross the adapter boundary in SI meters."""
     result = {
         "level_reference_present": level is not None,
-        "level_elevation_internal": None,
         "level_elevation_m": None,
         "level_elevation_readable": False,
         "warnings": [],
@@ -40,7 +39,6 @@ def resolve_average_ground_level(level):
 
     elevation_m, conversion_warnings = _internal_length_to_meters(elevation_internal)
     result.update({
-        "level_elevation_internal": elevation_internal,
         "level_elevation_m": elevation_m,
         "level_elevation_readable": elevation_m is not None,
     })
