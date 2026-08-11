@@ -118,6 +118,7 @@ try:
         build_preview_compatibility_summaries)
     from shadow_union import _build_unified_shadow_slices
     from shadow_duration import _build_shadow_duration
+    from shadow_performance import ForwardPerformanceRecorder
     from shadow_contours import _build_equal_time_contours
     from shadow_site_area_adapter import extract_site_boundary_area
     from shadow_site_geometry import build_site_boundary_geometry
@@ -274,6 +275,7 @@ def _minimal_import_failure(error_text):
 
 
 def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None):
+    performance = ForwardPerformanceRecorder()
     _sync_dynamo_runtime_globals()
     raw_inputs, input_source = _read_inputs()
     warnings = []
@@ -311,18 +313,25 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         settings_normalized["normalized"] = normalized_for_calculation
     law56_2_awareness = _build_law56_2_awareness_context(settings_normalized, site_boundary)
     measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
+    performance.begin("geometry_extraction")
     shadow_caster_geometry, runtime_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized, measurement_plane, return_runtime_geometry=True)
+    performance.end("geometry_extraction")
     footprint_extraction = _build_footprint_extraction_summary(shadow_caster_geometry, measurement_plane, settings_normalized, site_boundary)
     sun_time_slices, sun_position_diagnostics, sun_position_policy, solar_calculation_v1 = _build_sun_position_diagnostics(settings_normalized)
     shadow_projection_diagnostics, shadow_projection_policy = _build_shadow_projection_diagnostics(shadow_caster_geometry, measurement_plane, sun_time_slices)
+    performance.begin("formal_projection")
     try:
         formal_shadow_polygons = _build_formal_shadow_polygons(runtime_geometry, measurement_plane, sun_time_slices, settings_normalized, shadow_projection_diagnostics)
     except BaseException as exc:
         formal_shadow_polygons = {"available": False, "complete": False, "partial_success": False, "engine": "revit_extrusion_analyzer_v1", "formal_geometry": True, "diagnostic_convex_hull_used_as_fallback": False, "blockers": [{"failure_code": "formal_shadow_engine_unhandled_exception", "failure_type": type(exc).__name__, "failure_message": _sanitize_text_for_debug(exc)}], "warnings": [], "slices": []}
+    performance.end("formal_projection")
+    performance.begin("per_slice_union")
     try:
         unified_shadow_slices = _build_unified_shadow_slices(formal_shadow_polygons, measurement_plane, settings_normalized)
     except BaseException as exc:
         unified_shadow_slices = {"engine": "revit_boolean_solid_union_v1", "available": False, "complete": False, "partial_success": False, "ready_for_duration_accumulation": False, "slices": [], "blockers": [{"failure_code": "formal_shadow_union_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
+    performance.end("per_slice_union")
+    performance.begin("shadow_duration")
     if resolved_accuracy is not None and not resolved_accuracy.get("valid"):
         shadow_duration = {"available": False, "complete": False,
             "method": "grid_trapezoidal_time_integration_v1",
@@ -336,6 +345,7 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
                 (resolved_accuracy or {}).get("preset_id"), site_boundary_geometry)
         except BaseException as exc:
             shadow_duration = {"available": False, "complete": False, "method": "grid_trapezoidal_time_integration_v1", "permit_ready_certified": False, "blockers": [{"failure_code": "shadow_duration_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
+    performance.end("shadow_duration")
     normalized_values = settings_normalized.get("normalized") or {}
     calculation_accuracy = {
         "preset_id": (resolved_accuracy or {}).get("preset_id"),
@@ -347,18 +357,25 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         "valid": None if resolved_accuracy is None else resolved_accuracy.get("valid"),
         "blockers": [] if resolved_accuracy is None else resolved_accuracy.get("blockers", []),
     }
+    performance.begin("equal_time_contours")
     try:
         equal_time_contours = _build_equal_time_contours(shadow_duration, settings_normalized)
     except BaseException as exc:
         equal_time_contours = {"available": False, "complete": False, "method": "marching_squares_linear_interpolation_v1", "source_duration_method": "grid_trapezoidal_time_integration_v1", "requested_levels_minutes": [], "generated_levels_minutes": [], "contour_count": 0, "closed_contour_count": 0, "open_contour_count": 0, "contours": [], "permit_ready_certified": False, "blockers": [{"failure_code": "equal_time_contours_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": []}
+    performance.end("equal_time_contours")
+    performance.begin("measurement_masks")
     try:
         measurement_masks = build_measurement_masks(shadow_duration, site_boundary_geometry)
     except BaseException as exc:
         measurement_masks = {"available": False, "complete": False, "method": "point_to_area_boundary_distance_v1", "boundary_dependent_ready": False, "blockers": [{"failure_code": "measurement_masks_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": [], "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
+    performance.end("measurement_masks")
+    performance.begin("site_distance_contours")
     try:
         site_distance_contours = build_site_distance_contours(shadow_duration, site_boundary_geometry)
     except BaseException as exc:
         site_distance_contours = {"available": False, "complete": False, "method": "signed_distance_grid_marching_squares_v1", "ready_for_revit_preview": False, "blockers": [{"failure_code": "site_distance_contours_unhandled_exception", "failure_type": type(exc).__name__}], "warnings": [], "legal_judgement_generated": False, "ordinance_selection_certified": False, "permit_ready_certified": False}
+    performance.end("site_distance_contours")
+    performance.begin("presentation")
     try:
         selected_limit_comparison = build_selected_limit_comparison(
             resolved_preset, measurement_masks, shadow_duration, settings_normalized)
@@ -388,6 +405,8 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
                               "three_d": {"available": False, "blockers": []}}
         equal_time_contour_preview, site_result_preview = build_preview_compatibility_summaries(
             shadow_check_presentation, equal_time_contours)
+    performance.end("presentation")
+    performance_diagnostics = performance.result()
     pipeline_readiness = _build_pipeline_readiness(shadow_casters, site_boundary, settings_normalized, shadow_caster_geometry, measurement_plane, footprint_extraction, formal_shadow_polygons, solar_calculation_v1, unified_shadow_slices, shadow_duration, equal_time_contours, site_boundary_area_extraction=site_boundary_area_extraction, site_boundary_geometry=site_boundary_geometry, measurement_masks=measurement_masks, resolved_regulatory_preset=resolved_preset, selected_limit_comparison=selected_limit_comparison, legal_judgement=legal_judgement, site_distance_contours=site_distance_contours, site_result_preview=site_result_preview)
     warnings.extend(shadow_casters.get("warnings", []))
     warnings.extend(site_boundary.get("warnings", []))
@@ -442,6 +461,7 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         "shadow_calculation_completed": True,
         "boundary_dependent_steps_completed": bool(pipeline_readiness.get("boundary_dependent_steps_ready")),
         "runtime_code_diagnostics": _RUNTIME_CODE_DIAGNOSTICS,
+        "performance_diagnostics": performance_diagnostics,
         "tool": TOOL_NAME,
         "stage": STAGE_NAME,
         "message": "Dynamo_Shadow formal time-slice polygons, per-slice union, duration accumulation v1, and equal-time contours v1. Legal judgement is not implemented.",

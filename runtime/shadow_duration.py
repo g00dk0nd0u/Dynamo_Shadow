@@ -5,6 +5,9 @@ not a permit-certified legal judgement. Revit-native geometry has already been
 unified before this explicit calculation-data-model boundary.
 """
 import math
+from array import array
+
+from shadow_performance import get_process_memory_snapshot, select_duration_chunk_size
 
 METHOD = "grid_trapezoidal_time_integration_v1"
 
@@ -56,21 +59,55 @@ def _inside_loop(x, y, points):
     return inside
 
 
+BOUNDARY_EPSILON_M = 1e-9
+
+
+def _bbox(points):
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    return (min(xs) - BOUNDARY_EPSILON_M, min(ys) - BOUNDARY_EPSILON_M,
+            max(xs) + BOUNDARY_EPSILON_M, max(ys) + BOUNDARY_EPSILON_M)
+
+
 def _compile_slice_polygons(polygons):
     groups = {}
     for polygon in polygons:
         points = tuple((float(p["x"]), float(p["y"])) for p in polygon.get("points_m", []))
         if len(points) < 3: continue
-        groups.setdefault(polygon.get("component_index", polygon.get("classification_group_key", 0)), []).append((polygon.get("role"), points))
+        groups.setdefault(polygon.get("component_index", polygon.get("classification_group_key", 0)), []).append((polygon.get("role"), points, _bbox(points)))
     return tuple((
-        tuple(points for role, points in loops if role == "outer"),
-        tuple(points for role, points in loops if role == "inner"),
+        tuple((points, bounds) for role, points, bounds in loops if role == "outer"),
+        tuple((points, bounds) for role, points, bounds in loops if role == "inner"),
     ) for loops in groups.values())
 
 
-def _compiled_slice_contains(compiled_polygons, x, y):
+def _bbox_contains(bounds, x, y):
+    return bounds[0] <= x <= bounds[2] and bounds[1] <= y <= bounds[3]
+
+
+def _compiled_slice_contains(compiled_polygons, x, y, bbox_pruning=True, counters=None):
     for outers, inners in compiled_polygons:
-        if any(_inside_loop(x, y, outer) for outer in outers) and not any(_inside_loop(x, y, inner) for inner in inners):
+        outer_inside = False
+        for outer, bounds in outers:
+            if bbox_pruning and not _bbox_contains(bounds, x, y):
+                if counters is not None: counters[0] += 1
+                continue
+            if counters is not None: counters[1] += 1
+            if _inside_loop(x, y, outer):
+                outer_inside = True
+                break
+        if not outer_inside:
+            continue
+        inner_inside = False
+        for inner, bounds in inners:
+            if bbox_pruning and not _bbox_contains(bounds, x, y):
+                if counters is not None: counters[0] += 1
+                continue
+            if counters is not None: counters[1] += 1
+            if _inside_loop(x, y, inner):
+                inner_inside = True
+                break
+        if not inner_inside:
             return True
     return False
 
@@ -90,7 +127,9 @@ def _preflight_bounds(min_x, min_y, max_x, max_y, resolution, maximum):
     }
 
 
-def build_shadow_duration(unified_shadow_slices, settings=None, selected_accuracy_preset=None, site_boundary_geometry=None):
+def build_shadow_duration(unified_shadow_slices, settings=None, selected_accuracy_preset=None,
+                          site_boundary_geometry=None, chunk_size=None, bbox_pruning=True,
+                          memory_snapshot=None):
     result = _empty(); unified = unified_shadow_slices or {}
     slices = list(unified.get("slices") or [])
     if unified.get("complete") is not True or not slices or any(s.get("complete") is not True for s in slices):
@@ -179,22 +218,49 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
         "bounds_m": bounds})
 
     compiled_slices = [_compile_slice_polygons(s.get("polygons") or []) for s in slices]
-    grid = []; max_duration = 0.0; shadowed = 0
-    for iy in range(ny):
-        y = min_y + iy * resolution
-        for ix in range(nx):
+    snapshot = memory_snapshot if isinstance(memory_snapshot, dict) else get_process_memory_snapshot()
+    chunk_policy = select_duration_chunk_size(snapshot, requested_chunk_size=chunk_size)
+    selected_chunk = chunk_policy["selected_chunk_size"]
+    durations = array("d")
+    max_duration = 0.0; shadowed = 0; counters = [0, 0]
+    for chunk_start in range(0, count, selected_chunk):
+        chunk_end = min(count, chunk_start + selected_chunk)
+        for index in range(chunk_start, chunk_end):
+            iy, ix = divmod(index, nx)
             x = min_x + ix * resolution
-            states = [_compiled_slice_contains(compiled, x, y) for compiled in compiled_slices]
-            duration = integrate_shadow_states_trapezoidal(states, times)
+            y = min_y + iy * resolution
+            previous = _compiled_slice_contains(compiled_slices[0], x, y, bbox_pruning, counters)
+            duration = 0.0
+            for slice_index, interval in enumerate(intervals):
+                current = _compiled_slice_contains(
+                    compiled_slices[slice_index + 1], x, y, bbox_pruning, counters)
+                duration += interval * (float(previous) + float(current)) / 2.0
+                previous = current
+            durations.append(duration)
             if duration > 0: shadowed += 1
             max_duration = max(max_duration, duration)
-            grid.append({"x_m": x, "y_m": y, "shadow_duration_minutes": duration})
+    grid = []
+    for index, duration in enumerate(durations):
+        iy, ix = divmod(index, nx)
+        grid.append({"x_m": min_x + ix * resolution,
+            "y_m": min_y + iy * resolution, "shadow_duration_minutes": duration})
     result.update({"available": True, "complete": True, "maximum_shadow_duration_minutes": max_duration,
         "shadowed_point_count": shadowed, "ready_for_equal_time_contour_generation": True,
         "duration_grid": grid,
         "grid_spec": {"x_count": nx, "y_count": ny, "origin_x_m": min_x,
             "origin_y_m": min_y, "resolution_m": resolution,
-            "ordering": "row_major_y_then_x"}})
+            "ordering": "row_major_y_then_x"},
+        "engine_diagnostics": {
+            "engine": "safe_duration_engine_v2_a",
+            "compact_buffer_type": "array('d')",
+            "compact_buffer_bytes": len(durations) * durations.itemsize,
+            "per_point_states_list_used": False,
+            "bbox_pruning_enabled": bool(bbox_pruning),
+            "bbox_reject_count": counters[0],
+            "containment_evaluation_count": counters[1],
+            "chunk_count": int(math.ceil(float(count) / selected_chunk)),
+            "memory_aware_chunk": chunk_policy,
+        }})
     return result
 
 _build_shadow_duration = build_shadow_duration

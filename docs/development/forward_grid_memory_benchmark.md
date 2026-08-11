@@ -107,6 +107,26 @@ The simplest safe Large Grid representation is **one full row-major
   into a Python list. Production output-contract compatibility must also be
   decided explicitly.
 
+## Safe Duration Engine v2-A informational benchmark
+
+`tools/benchmark_forward_duration_v2a.py` compares the same v2-A traversal with
+conservative bounding-box pruning disabled and enabled. It reports elapsed time,
+grid/time-sample counts, selected chunk, bbox rejects, containment evaluations,
+compact-buffer bytes, and the available process-memory observations. Timing is
+informational only and is not a CI pass/fail gate. The disabled run is a useful
+containment-work baseline; mathematical parity is enforced separately by focused
+legacy-reference, chunk-invariance, and pruning-invariance tests.
+
+On the initial CPython/Linux development run, `--size 100 --chunk 8192` produced
+19,881 grid points and four time samples. The compact duration buffer was 159,048
+bytes. Pruning rejected 38,720 loop tests and reduced actual containment calls from
+79,524 to 40,804. Windows/Revit process-memory observations remain required because
+this Linux run intentionally reports memory telemetry as unavailable.
+
+```bash
+python tools/benchmark_forward_duration_v2a.py --size 100 --chunk 8192
+```
+
 Reproduce the full container run with:
 
 ```bash
