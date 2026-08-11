@@ -62,8 +62,8 @@ def build_reverse_workflow(raw_inputs, input_source, summarize_input):
         raw_inputs.get("site_latitude_deg"), raw_inputs.get("site_longitude_deg"))
     if preset is None:
         preset = resolve_regulatory_shadow_preset("standard_all")
-    settings = _normalize_settings(overlaid, None)
-    plane = _construct_measurement_plane(settings, None)
+    settings = _normalize_settings(overlaid, raw_inputs.get("level"))
+    plane = _construct_measurement_plane(settings, raw_inputs.get("level"))
     accuracy = resolve_calculation_accuracy_preset(raw_inputs.get("calculation_accuracy_preset"))
     core = build_low_rise_reverse_shadow_core(site, preset, plane, settings, accuracy)
 
@@ -86,7 +86,7 @@ def build_reverse_workflow(raw_inputs, input_source, summarize_input):
         "analysis_mode": resolve_analysis_mode(REVERSE_SHADOW),
         "forward_pipeline_executed": False,
         "inputs": {"source": input_source, **{key: summarize_input(value) for key, value in raw_inputs.items()}},
-        "input_usage": {"building_elements": "ignored", "level": "ignored",
+        "input_usage": {"building_elements": "ignored", "level": "used_as_average_ground_level",
                         "site_boundary": "required", "settings": "used"},
         "site_boundary_area_extraction": area,
         "site_boundary_geometry": site,

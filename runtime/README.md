@@ -15,9 +15,11 @@
 ## 解析モード
 
 - `Forward Shadow / 順日影`: Buildingを選択し、従来の順日影計算を実行する。
-- `Reverse Shadow / 逆日影`: Site Boundary、特定のShadow Limitsペア、Accuracy、settings/緯度等から逆日影候補ボリュームを表示する。BuildingとLevelは使用しない。`All / 全候補`では生成できない。
+- `Reverse Shadow / 逆日影`: Site Boundary、特定のShadow Limitsペア、Accuracy、平均地盤面Level、settings/緯度等から逆日影候補ボリュームを表示する。Buildingは使用しない。`All / 全候補`では生成できない。
 
-Fast / Standardはモード別の解像度を使う。順日影は0.5 m / 30分と0.5 m / 15分、逆日影は4 m height grid / 4 m measurement / 30分と1 m height grid / 1 m measurement / 15分で、最終高さは0.5 m単位に安全側へ切り下げる。逆日影結果は必ず最終的な順日影で検証する。
+順日影の精度は Fast = 1.0 m / 30分、Standard = 0.5 m / 15分、High = 0.25 m / 5分。逆日影はFastで4 m height grid / 4 m measurement / 30分、Standardで1 m height grid / 1 m measurement / 15分を使い、最終高さは0.5 m単位に安全側へ切り下げる。逆日影のHighは現在Standard相当であり、逆日影結果は必ず最終的な順日影で検証する。
+
+Forward / Reverseともに、`Average Ground Level / 平均地盤面`で選択したRevit LevelのElevationをinternal unitsからmeterへ変換してAGLとして使う。Level自体は測定面ではなく、測定面はAGL + 規制presetのmeasurement heightである。Level未選択時のみsettingsのAGLを互換fallbackとして使い、選択済みLevelのElevationが読めない場合はsilent fallbackしない。
 
 ## フォルダ名
 

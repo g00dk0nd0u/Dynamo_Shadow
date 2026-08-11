@@ -2,6 +2,7 @@ import math
 
 from shadow_measurement_plane import _construct_measurement_plane
 from shadow_settings import _normalize_settings
+from shadow_level_adapter import resolve_average_ground_level
 
 
 class FakeLevel(object):
@@ -21,6 +22,8 @@ class UnreadableLevel(object):
 
 
 def test_level_internal_feet_are_converted_to_meters():
+    adapter_result = resolve_average_ground_level(FakeLevel(10.0))
+    assert math.isclose(adapter_result["level_elevation_m"], 3.048)
     assert _normalize_settings({}, FakeLevel(0.0))["normalized"]["average_ground_level_elevation_m"] == 0.0
     result = _normalize_settings({}, FakeLevel(10.0))
     assert math.isclose(result["normalized"]["average_ground_level_elevation_m"], 3.048)

@@ -8,7 +8,7 @@ The project is still a diagnostic and research prototype. It must not be treated
 
 The current single Dynamo graph exposes eight Dynamo Player inputs, while the Python Node has nine `IN[0]` through `IN[8]` ports because it also receives an internal settings input. Analysis Mode is append-only at `IN[8]`; `IN[0]` through `IN[7]` retain their established meanings.
 
-Current implemented prototype scope includes: Forward / Reverse Analysis Mode selection in one Player graph, low-rise reverse-shadow calculation and preview, multiple Mass / Generic Model shadow-caster selection, Revit geometry extraction, footprint extraction prototype, NOAA solar calculation, true solar time, formal time-slice shadow projection, per-time-slice Revit-native union, grid/trapezoidal shadow-duration accumulation, equal-time contour generation, equal-time contour DirectShape preview, placed Revit Area site-boundary extraction for one outer straight-segment loop with no holes, 5 m / 10 m / beyond-10 m distance masks, near/far maximum shadow duration and maximum points, fixed 5 m / 10 m signed-distance contour data, selected regulatory preset comparison, Fast / Standard Player accuracy selection, internal high-accuracy compatibility preset, and pure-Python regression tests.
+Current implemented prototype scope includes: Forward / Reverse Analysis Mode selection in one Player graph, low-rise reverse-shadow calculation and preview, multiple Mass / Generic Model shadow-caster selection, Revit geometry extraction, footprint extraction prototype, NOAA solar calculation, true solar time, formal time-slice shadow projection, per-time-slice Revit-native union, grid/trapezoidal shadow-duration accumulation, equal-time contour generation, equal-time contour DirectShape preview, placed Revit Area site-boundary extraction for one outer straight-segment loop with no holes, 5 m / 10 m / beyond-10 m distance masks, near/far maximum shadow duration and maximum points, fixed 5 m / 10 m signed-distance contour data, selected regulatory preset comparison, Fast / Standard / High Player accuracy selection, and pure-Python regression tests.
 
 Currently unimplemented scope includes: formal legal pass/fail judgement, automatic municipal ordinance selection, road/water/elevation-difference relaxations, verification report output, high-rise reverse-shadow workflows, C# Revit add-in, product UI, installer, and permit certification.
 
@@ -174,8 +174,9 @@ Future work should keep the repository aligned with three layers:
 - `settings` is optional for input diagnostics.
 - Missing `settings` must not be treated as a fatal error.
 - Equal-time shadow calculation requires explicit or preset-derived `average_ground_level_elevation_m`, `measurement_height_m`, `latitude`, `longitude`, and `true_north_deg`.
-- Do not use Revit Level Elevation as average ground level.
-- Do not use Revit Level Elevation as measurement plane.
+- Selected Revit Level Elevation is the authoritative Average Ground Level source for Forward and Reverse analysis; convert internal units to meters at the Revit Adapter boundary.
+- The Level itself is not the measurement plane; the measurement plane remains AGL elevation plus measurement height.
+- Settings AGL is fallback only when no Level is selected, primarily for pure-Python / legacy compatibility. If a selected Level Elevation is unreadable, do not silently fallback.
 - Settings units should be meters and degrees unless explicitly changed in a future task.
 - Do not invent legal defaults for `measurement_height_m` or `average_ground_level_elevation_m`.
 - Diagnostic defaults are allowed only for non-legal computational parameters such as `grid_resolution_m`, `analysis_margin_m`, and `closure_tolerance_m`.
@@ -223,8 +224,9 @@ For PRs containing geometry processing, also confirm:
 ## Measurement plane / law56_2 awareness rules
 
 - Measurement plane must be treated as the Article 56-2 horizontal plane at designated height above average ground level.
-- Do not use Revit Level Elevation as average ground level.
-- Do not use Revit Level Elevation as measurement plane.
+- Use selected Revit Level Elevation as the common Forward / Reverse average-ground source after adapter conversion to meters.
+- Do not use the Level itself as the measurement plane; keep `measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m`.
+- Use settings AGL only when no Level is selected, and never silently fallback after a selected Level read failure.
 - Measurement plane is internal diagnostic data only unless explicitly requested otherwise.
 - Do not create Revit elements for measurement plane diagnostics.
 - Measurement height must not be invented; it should come from settings / ordinance profile.
@@ -305,7 +307,7 @@ For PRs containing geometry processing, also confirm:
 - Hokkaido-area presets use 09:00–15:00 and include the 1.5-hour candidate.
 - Do not add a six-hour contour to statutory-time presets, but preserve technical generation of explicitly requested 360–480 minute contours.
 - Longitude does not directly affect calculations in true-solar-time mode.
-- Player exposes Fast and Standard accuracy choices. High accuracy remains an internal / advanced compatibility preset, not a public Player choice.
+- Player exposes Forward Fast (1.0 m / 30 min), Standard (0.5 m / 15 min), and High (0.25 m / 5 min) accuracy choices.
 
 ## Repository layout rules
 
