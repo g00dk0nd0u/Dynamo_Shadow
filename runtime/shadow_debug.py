@@ -675,6 +675,8 @@ def _summarize_out_for_debug(out_payload):
             "site_longitude_deg": normalized.get("site_longitude_deg"),
         }),
         "calculation_accuracy": _sanitize_for_debug(out_payload.get("calculation_accuracy")),
+        "accuracy_performance_summary": _sanitize_for_debug(
+            out_payload.get("accuracy_performance_summary")),
         "shadow_caster_summary": _summary_counts(out_payload.get("shadow_casters")),
         "site_boundary_summary": _summary_counts(out_payload.get("site_boundary")),
         "site_boundary_area_extraction_summary": _site_area_debug_summary(out_payload.get("site_boundary_area_extraction")),
@@ -739,6 +741,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "formal_shadow_polygon_summary": summary["formal_shadow_polygon_summary"],
         "unified_shadow_summary": summary["unified_shadow_summary"],
         "shadow_duration_summary": summary["shadow_duration_summary"],
+        "accuracy_performance_summary": summary["accuracy_performance_summary"],
         "performance_diagnostics": summary["performance_diagnostics"],
         "equal_time_contour_summary": summary["equal_time_contour_summary"],
         "shadow_preview": summary["shadow_preview"],

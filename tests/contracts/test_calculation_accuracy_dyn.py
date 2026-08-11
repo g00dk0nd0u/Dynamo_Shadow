@@ -24,10 +24,13 @@ def test_accuracy_custom_selection_is_player_input_defaulting_to_standard():
     assert node["ConcreteType"].startswith("CoreNodeModels.Input.CustomSelection")
     assert views[node["Id"]]["IsSetAsInput"] is True
     assert node["SelectedIndex"] == 1
-    assert [item["Item"] for item in node["SerializedItems"]] == ["rough", "standard"]
-    assert "high" not in [item["Item"] for item in node["SerializedItems"]]
+    assert {item["Item"] for item in node["SerializedItems"]} == {"rough", "standard", "high"}
     assert node["SelectedString"] == node["SerializedItems"][node["SelectedIndex"]]["Name"]
-    assert [item["Name"] for item in node["SerializedItems"]] == ["Fast / 高速", "Standard / 標準"]
+    assert {item["Name"] for item in node["SerializedItems"]} == {
+        "Fast / 高速", "Standard / 標準", "High / 高精度"}
+    assert "1.0m / 30min" in node["Description"]
+    assert "0.5m / 15min" in node["Description"]
+    assert "0.25m / 5min" in node["Description"]
 
 
 def test_player_input_display_order_and_settings_remains_hidden():

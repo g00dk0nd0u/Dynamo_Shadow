@@ -1,6 +1,6 @@
 import shadow_duration as duration
 from shadow_performance import (ForwardPerformanceRecorder, get_process_memory_snapshot,
-    select_duration_chunk_size)
+    build_accuracy_performance_summary, select_duration_chunk_size)
 
 
 def _polygon(points, role="outer", component=0):
@@ -129,3 +129,28 @@ def test_platform_memory_snapshot_is_non_fatal_and_separates_sources():
     assert "physical_memory_telemetry_available" in snapshot
     assert "process_memory_telemetry_available" in snapshot
     assert snapshot["total_physical_memory_bytes"] is None or snapshot["total_physical_memory_bytes"] > 0
+
+
+def test_accuracy_performance_summary_reuses_compact_existing_telemetry():
+    performance = {"memory_at_start": {"available_physical_memory_bytes": 900},
+        "memory": {"process_lifetime_peak_working_set_bytes": 800},
+        "stages": {"formal_projection": {"elapsed_ms": 1.5}, "total": {
+            "elapsed_ms": 9.0, "process_working_set_before_bytes": 100,
+            "process_working_set_after_bytes": 200}},
+        "workload_summary": {"time_sample_count": 97,
+            "logical_grid_point_count": 100000, "active_evaluation_point_count": 20000,
+            "selected_active_tile_count": 8, "active_tile_ratio": 0.08,
+            "selected_chunk_size": 8192, "storage_mode": "compact_large_v1",
+            "compact_buffer_bytes": 160000}}
+    result = build_accuracy_performance_summary(
+        {"preset_id": "high", "grid_resolution_m": .25,
+         "sun_time_step_minutes": 5}, performance,
+        {"near": {"maximum_shadow_duration_minutes": 120},
+         "far": {"maximum_shadow_duration_minutes": 60}})
+    assert result["display_mode"] == "High / 高精度"
+    assert result["time_sample_count"] == 97
+    assert result["storage_mode"] == "compact_large_v1"
+    assert result["grid_resolution_m"] == .25
+    assert result["sun_time_step_minutes"] == 5
+    assert result["automatic_accuracy_fallback_used"] is False
+    assert result["process_lifetime_peak_working_set_bytes_at_end"] == 800

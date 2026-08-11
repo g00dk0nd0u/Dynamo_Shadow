@@ -346,6 +346,7 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
         "duration_grid_materialized": materialized,
         "engine_diagnostics": {
             "engine": "safe_duration_engine_v2_a",
+            "automatic_accuracy_fallback_used": False,
             "compact_buffer_type": "array('d')",
             "compact_buffer_bytes": len(durations) * durations.itemsize,
             "storage_mode": "materialized_small_v1" if materialized else "compact_large_v1",
