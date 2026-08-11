@@ -33,7 +33,7 @@ def test_custom_selection_nodes_use_dynamo_serialized_items_contract():
     assert set(nodes) == {REGULATORY_ID, ACCURACY_ID, ANALYSIS_MODE_ID}
     assert len(nodes) == 3
 
-    expected_lengths = {REGULATORY_ID: 8, ACCURACY_ID: 2, ANALYSIS_MODE_ID: 2}
+    expected_lengths = {REGULATORY_ID: 8, ACCURACY_ID: 3, ANALYSIS_MODE_ID: 2}
     expected_selected_items = {REGULATORY_ID: "standard_all", ACCURACY_ID: "standard",
                                ANALYSIS_MODE_ID: "forward_shadow"}
     for node_id, node in nodes.items():
@@ -93,6 +93,7 @@ def test_player_menu_display_names_and_defaults_are_bilingual_and_stable():
     assert accuracy["SerializedItems"] == [
         {"Name": "Fast / 高速", "Item": "rough"},
         {"Name": "Standard / 標準", "Item": "standard"},
+        {"Name": "High / 高精度", "Item": "high"},
     ]
 
 
