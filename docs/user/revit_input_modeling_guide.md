@@ -134,11 +134,13 @@ The shadow measurement plane is not a Revit Level. It is the Article 56-2 horizo
 measurement_plane_elevation_m = average_ground_level_elevation_m + measurement_height_m
 ```
 
-- Put `average_ground_level_elevation_m` in `settings`; do not use Revit Level Elevation as average ground level.
+- Create a Revit Level at the actual average-ground position, then select it as `Average Ground Level / 平均地盤面` in Dynamo Player. Its Elevation is converted to meters and used as the common Forward / Reverse AGL elevation.
+- The selected Level is not the measurement plane. The measurement plane remains AGL elevation plus the ordinance / table-derived `measurement_height_m`.
+- `settings.average_ground_level_elevation_m` is a pure-Python / legacy fallback only when no Level is selected. A selected Level with unreadable Elevation blocks the calculation instead of silently falling back.
 - Put `measurement_height_m` in `settings` as the ordinance / table-derived measurement height; do not let the script invent it.
 - Mass / Generic Model shadow caster geometry remains raw Revit coordinates / raw internal units.
 - The measurement plane is an abstract legal SI meters plane used for diagnostics, not a Revit element.
-- Formal unit conversion between Revit raw geometry and legal SI meters is deferred to a later PR.
+- Average-ground Level conversion occurs at the Revit Adapter boundary; downstream AGL and measurement-plane data use SI meters.
 - site_boundary is not required to construct the measurement plane.
 - If site_boundary is missing, future legal judgement ranges such as beyond-5m range and own-site exclusion are not constructed.
 

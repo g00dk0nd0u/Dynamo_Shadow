@@ -102,6 +102,7 @@ try:
     from shadow_regulatory_presets import overlay_player_settings, resolve_regulatory_shadow_preset
     from shadow_accuracy_presets import overlay_calculation_accuracy_settings
     from shadow_settings import _normalize_settings
+    from shadow_level_adapter import resolve_average_ground_level
     from shadow_measurement_plane import _build_law56_2_awareness_context, _construct_measurement_plane
     from shadow_geometry import _diagnose_shadow_caster_geometry
     from shadow_footprint import _build_footprint_extraction_summary
@@ -305,7 +306,8 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
     warnings.extend(accuracy_warnings)
     if resolved_accuracy is not None and not resolved_accuracy.get("valid"):
         warnings.extend(resolved_accuracy.get("blockers", []))
-    settings_normalized = _normalize_settings(overlaid_settings, raw_inputs.get("level"))
+    resolved_agl = resolve_average_ground_level(raw_inputs.get("level"))
+    settings_normalized = _normalize_settings(overlaid_settings, resolved_agl)
     if not preview_allowed:
         normalized_for_calculation = dict(settings_normalized.get("normalized") or {})
         normalized_for_calculation.update({
@@ -313,7 +315,7 @@ def _build_success(preview_allowed=True, mode_resolution=None, mode_cleanup=None
         settings_normalized = dict(settings_normalized)
         settings_normalized["normalized"] = normalized_for_calculation
     law56_2_awareness = _build_law56_2_awareness_context(settings_normalized, site_boundary)
-    measurement_plane = _construct_measurement_plane(settings_normalized, raw_inputs.get("level"))
+    measurement_plane = _construct_measurement_plane(settings_normalized)
     performance.begin("geometry_extraction")
     shadow_caster_geometry, runtime_geometry = _diagnose_shadow_caster_geometry(raw_inputs.get("building_elements"), shadow_casters, settings_normalized, measurement_plane, return_runtime_geometry=True)
     performance.end("geometry_extraction")
@@ -684,7 +686,8 @@ def _build_failure(error_text):
         site_boundary_area_extraction = {"provided": False, "available": False, "complete": False, "blockers": []}
         site_boundary_geometry = {"available": False, "complete": False, "blockers": []}
     try:
-        settings_normalized = _normalize_settings(raw_inputs.get("settings"), raw_inputs.get("level"))
+        resolved_agl = resolve_average_ground_level(raw_inputs.get("level"))
+        settings_normalized = _normalize_settings(raw_inputs.get("settings"), resolved_agl)
     except Exception:
         settings_normalized = None
     try:
@@ -692,7 +695,7 @@ def _build_failure(error_text):
     except Exception:
         law56_2_awareness = None
     try:
-        measurement_plane = _construct_measurement_plane(settings_normalized or {}, raw_inputs.get("level"))
+        measurement_plane = _construct_measurement_plane(settings_normalized or {})
     except Exception:
         measurement_plane = None
     try:

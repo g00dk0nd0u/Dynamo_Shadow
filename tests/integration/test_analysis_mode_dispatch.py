@@ -3,6 +3,10 @@ import shadow_debug
 import script
 
 
+class FakeLevel(object):
+    Elevation = 10.0
+
+
 def test_analysis_mode_resolution_preserves_legacy_forward_default():
     assert mode.resolve_analysis_mode(None) == {
         "mode_id": "forward_shadow", "requested_value": None, "valid": True,
@@ -14,7 +18,25 @@ def test_analysis_mode_resolution_preserves_legacy_forward_default():
     assert invalid["blockers"][0]["failure_code"] == "invalid_analysis_mode"
 
 
-def test_reverse_vertical_slice_uses_real_core_without_building_or_level(monkeypatch):
+def test_forward_workflow_uses_selected_level_as_average_ground(monkeypatch):
+    raw = {
+        "building_elements": None, "site_boundary": None, "level": FakeLevel(),
+        "settings": {"measurement_height_m": 4, "time_basis": "true_solar_time",
+                     "solar_parameter_mode": "regulatory_winter_solstice_v1",
+                     "true_north_deg": 0},
+        "regulatory_shadow_preset": "standard_all", "site_latitude_deg": 35,
+        "site_longitude_deg": 139, "calculation_accuracy_preset": "standard",
+        "analysis_mode": "forward_shadow",
+    }
+    monkeypatch.setattr(script, "INPUTS", raw, raising=False)
+    monkeypatch.setattr(script._shadow_utils, "INPUTS", raw, raising=False)
+    result = script._build_success()
+    assert result["settings_normalized"]["average_ground_level_source"] == "revit_level"
+    assert result["settings_normalized"]["normalized"]["average_ground_level_elevation_m"] == 3.048
+    assert result["measurement_plane"]["elevation_m"] == 7.048
+
+
+def test_reverse_vertical_slice_uses_real_core_without_building(monkeypatch):
     site = {"complete": True, "method": "test_rectangle", "outer_loop": [
         {"x_m": 0, "y_m": 0}, {"x_m": 12, "y_m": 0},
         {"x_m": 12, "y_m": 12}, {"x_m": 0, "y_m": 12}], "warnings": []}
@@ -26,7 +48,7 @@ def test_reverse_vertical_slice_uses_real_core_without_building_or_level(monkeyp
     monkeypatch.setattr(mode, "build_reverse_shadow_preview",
                         lambda core, plane, settings: preview_calls.append((core, settings)) or
                         {"complete": True, "available": True, "warnings": []})
-    raw = {"building_elements": None, "site_boundary": object(), "level": object(),
+    raw = {"building_elements": None, "site_boundary": object(), "level": FakeLevel(),
            "settings": {"solar_parameter_mode": "regulatory_winter_solstice_v1",
                         "time_basis": "true_solar_time", "average_ground_level_elevation_m": 0,
                         "measurement_height_m": 4, "true_north_deg": 0},
@@ -37,7 +59,12 @@ def test_reverse_vertical_slice_uses_real_core_without_building_or_level(monkeyp
     assert result["success"] and not result["partial_success"]
     assert not result["forward_pipeline_executed"]
     assert result["input_usage"]["building_elements"] == "ignored"
-    assert result["input_usage"]["level"] == "ignored"
+    assert result["input_usage"]["level"] == "used_as_average_ground_level"
+    assert result["settings_normalized"]["average_ground_level_source"] == "revit_level"
+    assert result["settings_normalized"]["normalized"]["average_ground_level_elevation_m"] == 3.048
+    assert result["measurement_plane"]["elevation_m"] == 7.048
+    assert result["measurement_plane"]["level_used_as_average_ground_level"] is True
+    assert result["measurement_plane"]["level_used_as_measurement_plane"] is False
     assert result["calculation_accuracy"]["height_field_grid_resolution_m"] == 1.0
     assert result["calculation_accuracy"]["sun_time_step_minutes"] == 15
     assert preview_calls and preview_calls[0][1]["reverse_shadow_preview_mode"] == "replace"

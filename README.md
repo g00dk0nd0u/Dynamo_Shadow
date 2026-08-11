@@ -43,23 +43,24 @@ Not implemented:
 
 The single `Shadow.dyn` graph exposes eight Dynamo Player inputs:
 
-1. `Analysis Mode / 解析モード`
-2. `Levels`
-3. `Select Model Element`
-4. `Site Boundary Area / 敷地境界エリア`
-5. `Shadow Limits / 日影規制時間`
-6. `Calculation Accuracy / 計算精度`
+1. `Site Boundary Area / 敷地境界エリア`
+2. `Building Model / 建物モデル`
+3. `Shadow Limits / 日影規制時間`
+4. `Average Ground Level / 平均地盤面`
+5. `Calculation Accuracy / 計算精度`
+6. `Analysis Mode / 解析モード`
 7. `Site Latitude / 緯度`
 8. `Site Longitude / 経度`
 
 The Python Node has nine ports, `IN[0]` through `IN[8]`, because it also receives an internal settings input. `IN[0]` through `IN[7]` retain their existing meanings; Analysis Mode is append-only at `IN[8]`. Missing mode values default to Forward for legacy compatibility.
 
-Forward uses the existing Building and Level inputs. Reverse ignores both Building and Level, requires a valid Site Boundary and a specific near/far Shadow Limits pair, and never treats Level as average ground or the measurement plane. Reverse Fast uses a 4 m height grid / 4 m measurement spacing / 30-minute step; Reverse Standard uses a 1 m height grid / 1 m measurement spacing / 15-minute step. Reverse High currently retains the same accuracy as Reverse Standard. Reverse height limits use a conservative 0.5 m vertical floor.
+Forward and Reverse use the selected Average Ground Level's Revit Level Elevation as their common AGL source after conversion from internal units to meters. The measurement plane remains AGL plus the preset measurement height; the Level itself is not the measurement plane. Settings AGL is used only when no Level is selected. Reverse continues to ignore Building Model, requires a valid Site Boundary and a specific near/far Shadow Limits pair. Reverse Fast uses a 4 m height grid / 4 m measurement spacing / 30-minute step; Reverse Standard uses a 1 m height grid / 1 m measurement spacing / 15-minute step. Reverse High currently retains the same accuracy as Reverse Standard. Reverse height limits use a conservative 0.5 m vertical floor.
 
 ## Intended Revit inputs
 
 - `building_elements`: one or more selected Mass or Generic Model proxy elements used as shadow casters.
 - `site_boundary`: optional for core shadow duration and equal-time contours; the formal boundary-dependent input is exactly one placed Revit Area selected once in Dynamo Player.
+- `level`: the selected Revit Level at the average ground position, shared by Forward and Reverse as the authoritative AGL elevation source.
 - `settings`: optional for diagnostics and internal compatibility. Explicit values or selected presets are required for legal-calculation parameters such as average ground level, measurement height, latitude, longitude, and true north.
 
 Users select the placed Area body for `site_boundary`, not Area Boundary lines, Area Tags, Property Line segments, Model Lines, Detail Lines, Filled Regions, Floors, Generic Models, CAD imports, Toposolids, or families. Property Line / Site Property inputs are not the current formal site-boundary input.

@@ -12,12 +12,12 @@ Dynamo / Revit 上で概略設計段階の日影検討を進める前に、v0/v1
 
 - `building_elements`: 単一要素ではなく複数選択を前提とする shadow caster proxy elements。ユーザーが明示的に作成・選択した Mass / Generic Model を対象とする。
 - `site_boundary`: optional な敷地境界。未入力でも等時間日影図の出力フローは継続可能で、敷地境界依存ステップだけを skip する。
-- `level`: optional な参照入力。法規上の高さ基準ではなく、平均地盤面でもない。
-- `settings.average_ground_level_elevation_m`: 法規上の高さ基準として扱う平均地盤面高さ。
+- `level`: Player で選択するForward / Reverse共通の平均地盤面 Level。Elevation を Revit internal units から meter へ変換し、法規上の高さ基準として扱う。
+- `settings.average_ground_level_elevation_m`: Level 未選択時の pure-Python / legacy 用 fallback。
 - `settings.measurement_height_m`: 平均地盤面からの測定面高さ。
 - 真北角度、緯度・経度、地域プロファイル、用途地域、日影規制種別、規制時間、グリッド解像度。
 
-測定面は `average_ground_level_elevation_m + measurement_height_m` として扱う。Revit Level の Elevation を、そのまま平均地盤面や測定面高さとして扱わない。
+平均地盤面の優先順位は、読取可能な選択 Revit Level Elevation、settings fallback、unavailable の順とする。測定面は `average_ground_level_elevation_m + measurement_height_m` として扱い、Revit Level 自体を測定面にはしない。
 
 ## Shadow caster proxy 方針
 

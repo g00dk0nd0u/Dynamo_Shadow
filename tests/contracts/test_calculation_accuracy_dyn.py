@@ -37,8 +37,10 @@ def test_player_input_display_order_and_settings_remains_hidden():
     graph = _graph()
     players = sorted((v for v in graph["View"]["NodeViews"] if v["IsSetAsInput"]), key=lambda v: v["Y"])
     assert [v["Name"] for v in players] == [
-        "Analysis Mode / 解析モード", "Levels", "Select Model Element", "Site Boundary Area / 敷地境界エリア",
-        "Shadow Limits / 日影規制時間（5–10m / 10m超）", "Calculation Accuracy / 計算精度", "Site Latitude / 緯度（deg）", "Site Longitude / 経度（deg）",
+        "Site Boundary Area / 敷地境界エリア", "Building Model / 建物モデル",
+        "Shadow Limits / 日影規制時間（5–10m / 10m超）", "Average Ground Level / 平均地盤面",
+        "Calculation Accuracy / 計算精度", "Analysis Mode / 解析モード",
+        "Site Latitude / 緯度（deg）", "Site Longitude / 経度（deg）",
     ]
     settings = next(v for v in graph["View"]["NodeViews"] if v["Id"] == "f688e0f729b946d0b8ac25514f4531da")
     assert settings["IsSetAsInput"] is False
@@ -56,15 +58,35 @@ def test_top_level_inputs_register_accuracy_once_with_default_and_order():
     assert accuracy["Value"] == "Standard / 標準"
     assert accuracy["SelectedIndex"] == 1
     assert [item["Name"] for item in inputs] == [
-        "Analysis Mode / 解析モード",
-        "Levels",
-        "Select Model Element",
         "Site Boundary Area / 敷地境界エリア",
+        "Building Model / 建物モデル",
         "Shadow Limits / 日影規制時間（5–10m / 10m超）",
+        "Average Ground Level / 平均地盤面",
         "Calculation Accuracy / 計算精度",
+        "Analysis Mode / 解析モード",
         "Site Latitude / 緯度（deg）",
         "Site Longitude / 経度（deg）",
     ]
+
+
+def test_player_reorder_does_not_change_python_input_wiring():
+    graph = _graph()
+    python_node = next(item for item in graph["Nodes"] if item["NodeType"] == "PythonScriptNode")
+    nodes = {item["Id"]: item for item in graph["Nodes"]}
+    expected_sources = [
+        "af2519f73dff436c8aba2f16c3788bf3",  # building_elements
+        "70c7bb6dbe3647b180c23c419e57cc9c",  # site_boundary
+        "3daad2f0de954b2a971f92fd9f671601",  # level
+        "f688e0f729b946d0b8ac25514f4531da",  # hidden settings
+        "b1111111111111111111111111111111",  # regulatory preset
+        "b2222222222222222222222222222222",  # latitude
+        "b3333333333333333333333333333333",  # longitude
+        "b4444444444444444444444444444444",  # accuracy
+        "b5555555555555555555555555555555",  # analysis mode
+    ]
+    wiring = {(item["Start"], item["End"]) for item in graph["Connectors"]}
+    for index, source_id in enumerate(expected_sources):
+        assert (nodes[source_id]["Outputs"][0]["Id"], python_node["Inputs"][index]["Id"]) in wiring
 
 
 def test_analysis_mode_is_append_only_in8_and_player_dropdown():
