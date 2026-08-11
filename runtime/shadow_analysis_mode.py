@@ -4,6 +4,8 @@ from shadow_accuracy_presets import resolve_calculation_accuracy_preset
 from shadow_contour_preview import build_equal_time_contour_preview
 from shadow_measurement_plane import _construct_measurement_plane
 from shadow_level_adapter import resolve_average_ground_level
+from shadow_project_location_adapter import (apply_true_north_to_settings,
+    mark_true_north_applied, resolve_runtime_true_north)
 from shadow_preview import build_shadow_preview
 from shadow_regulatory_presets import overlay_player_settings, resolve_regulatory_shadow_preset
 from shadow_reverse_low_rise import build_low_rise_reverse_shadow_core
@@ -61,13 +63,21 @@ def build_reverse_workflow(raw_inputs, input_source, summarize_input):
     overlaid, preset, _, overlay_warnings, _ = overlay_player_settings(
         raw_inputs.get("settings"), raw_inputs.get("regulatory_shadow_preset"),
         raw_inputs.get("site_latitude_deg"), raw_inputs.get("site_longitude_deg"))
+    true_north = resolve_runtime_true_north(overlaid)
+    overlaid = apply_true_north_to_settings(overlaid, true_north)
     if preset is None:
         preset = resolve_regulatory_shadow_preset("standard_all")
     resolved_agl = resolve_average_ground_level(raw_inputs.get("level"))
     settings = _normalize_settings(overlaid, resolved_agl)
+    settings["true_north"] = true_north
     plane = _construct_measurement_plane(settings)
     accuracy = resolve_calculation_accuracy_preset(raw_inputs.get("calculation_accuracy_preset"))
     core = build_low_rise_reverse_shadow_core(site, preset, plane, settings, accuracy)
+    reverse_sun_samples = []
+    for zone in (core.get("zones") or {}).values():
+        reverse_sun_samples.extend((zone.get("sun_ray_fan") or {}).get("samples", []))
+    true_north = mark_true_north_applied(true_north, {"slices": reverse_sun_samples})
+    settings["true_north"] = true_north
 
     preview_settings = dict(settings.get("normalized") or {})
     preview_settings["reverse_shadow_preview_mode"] = (
@@ -79,6 +89,7 @@ def build_reverse_workflow(raw_inputs, input_source, summarize_input):
     warnings.extend(area.get("warnings", []))
     warnings.extend(site.get("warnings", []))
     warnings.extend(settings.get("warnings", []))
+    warnings.extend(true_north.get("warnings", []))
     warnings.extend(plane.get("warnings", []))
     warnings.extend(core.get("warnings", []))
     warnings.extend(preview.get("warnings", []))
@@ -93,6 +104,7 @@ def build_reverse_workflow(raw_inputs, input_source, summarize_input):
         "site_boundary_area_extraction": area,
         "site_boundary_geometry": site,
         "settings_normalized": settings,
+        "true_north": true_north,
         "regulatory_shadow_preset": preset,
         "measurement_plane": plane,
         "calculation_accuracy": core.get("reverse_shadow_accuracy"),

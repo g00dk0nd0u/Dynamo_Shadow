@@ -432,7 +432,7 @@ def _build_solar_calculation_v1(settings_normalized):
         "atmospheric_refraction_applied": False, "true_north_convention": TRUE_NORTH_CONVENTION,
         "azimuth_convention": "clockwise_from_true_north", "internal_precision": "full_double_precision",
         "serialized_rounding_decimal_places": SERIALIZED_ROUNDING_DECIMAL_PLACES,
-        "true_north_source_note": "true_north_deg is supplied through settings; automatic Revit ActiveProjectLocation extraction is not implemented.",
+        "true_north_source_note": "Revit runtime uses the JSON-safe rotation resolved from ActiveProjectLocation; pure-Python callers may supply an explicit resolved rotation.",
         "permit_ready_certified": False,
     }
     return {
