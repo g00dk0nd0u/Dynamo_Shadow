@@ -137,7 +137,7 @@ BoundingBox summary 抽出を日影計算ロードマップの主工程にしな
 19. legal judgement mask preparation
 20. optional 5m / 10m measurement line generation when site_boundary is available
 21. true solar time diagnostics
-22. project location True North adapter — the read-only raw `Document.ActiveProjectLocation.GetProjectPosition(XYZ.Zero).Angle` (directed True-North-to-Project-North angle) is explicitly sign-inverted into Dynamo_Shadow's JSON-safe clockwise Project-North/model-+Y-to-True-North rotation shared by Forward / Reverse (implemented; Revit 2024.3 real-machine sign validation pending; latitude/longitude extraction remains out of scope)
+22. project location True North adapter — the read-only raw `Document.ActiveProjectLocation.GetProjectPosition(XYZ.Zero).Angle` is used without sign inversion as Dynamo_Shadow's JSON-safe clockwise Project-North/model-+Y-to-True-North rotation shared by Forward / Reverse (implemented; Revit 2024.3 verified: clockwise Rotate True North 30 degrees yields raw/internal -30 degrees; latitude/longitude extraction remains out of scope)
 23. sun vector calculation — NOAA primary calculation with `SunAndShadowSettings` as an independent cross-check (cross-check planned; not yet implemented; requires Revit 2024.3 runtime validation)
 24. time-slice shadow projection per caster — `SolidUtils.SplitVolumes` then `ExtrusionAnalyzer` candidate engine; retain diagnostic point-cloud projection separately (planned; not yet implemented; requires Revit 2024.3 runtime validation)
 25. logical union of shadows per time slice
