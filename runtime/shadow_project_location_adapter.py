@@ -31,15 +31,14 @@ def _current_document():
 
 
 def _revit_project_position_angle_to_model_true_north_rotation(raw_angle_rad):
-    """Convert Autodesk's True-North-to-Project-North angle to our inverse.
+    """Convert the verified Revit Project Location angle to our convention.
 
-    ``ProjectPosition.Angle`` is the Revit API angle from True North to Project
-    North. Dynamo_Shadow instead needs the inverse orientation: clockwise from
-    model +Y / Project North to True North. Reversing the directed angle is an
-    explicit sign inversion; neither contract is inferred from the other.
+    Revit 2024.3 returns -30 degrees after Rotate True North is set clockwise
+    30 degrees. That value already matches Dynamo_Shadow's clockwise-positive
+    model +Y / Project North to True North convention, so it is not negated.
     """
     raw = _finite_float(raw_angle_rad)
-    return None if raw is None else -raw
+    return raw
 
 
 def _result(available=False, radians=None, source="unavailable", warnings=None,
@@ -53,9 +52,10 @@ def _result(available=False, radians=None, source="unavailable", warnings=None,
         "raw_revit_project_position_angle_rad": raw_revit_angle_rad,
         "true_north_applied_to_shadow_direction": False,
         "angle_contract": (
-            "Revit ProjectPosition.Angle is the directed angle from True North "
-            "to Project North; the adapter negates it to obtain Dynamo_Shadow's "
-            "clockwise model +Y / Project North to True North rotation"
+            "Revit 2024.3 ProjectPosition.Angle is used without sign inversion "
+            "as Dynamo_Shadow's clockwise model +Y / Project North to True "
+            "North rotation; verified clockwise Rotate True North 30 degrees "
+            "produces an internal rotation of -30 degrees"
         ),
         "warnings": list(warnings or []),
     }

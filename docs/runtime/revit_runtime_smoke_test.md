@@ -18,6 +18,15 @@ Confirm that:
 - **Site Latitude** is displayed as a Number input; and
 - **Site Longitude** is displayed as a Number input.
 
+## True North verified contract
+
+On Revit 2024.3, the Survey Point Y axis is True North. After **Rotate True
+North** clockwise 30 degrees, True North view shows the project/model rotated
+clockwise 30 degrees, so True North in project/model XY is counterclockwise 30
+degrees. Dynamo_Shadow therefore uses the raw `ProjectPosition.Angle` without
+negation: its clockwise-positive internal `true_north_deg` is `-30` degrees.
+Forward and Reverse use this same resolved contract.
+
 ## Preset tests
 
 ### `standard_all`

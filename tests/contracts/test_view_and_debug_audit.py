@@ -34,3 +34,28 @@ def test_clip_diagnostics_are_retained_without_coordinate_or_native_payloads():
     text = json.dumps(payload)
     assert payload["formal_shadow_polygon_summary"]["clip_diagnostics"][0]["clipped_volume_m3"] == 80
     assert "native_solid" not in text and "points_m" not in text and "object at 0x" not in text
+
+
+def test_true_north_runtime_evidence_is_retained_in_sanitized_debug_payload():
+    evidence = {
+        "true_north_source": "revit_active_project_location",
+        "true_north_rotation_deg": -30.0,
+        "true_north_rotation_rad": -0.5235987755982988,
+        "raw_revit_project_position_angle_rad": -0.5235987755982988,
+        "angle_contract": "privacy-safe angle contract",
+        "shadow_direction_check_samples": [{
+            "input_time": "08:00",
+            "shadow_direction_model": {"x": -0.5, "y": 0.8660254038},
+        }],
+        "project_location_name": "must not be logged",
+    }
+    payload = _build_debug_log_payload({"success": True, "true_north": evidence})
+
+    assert payload["true_north"] == {
+        key: evidence[key] for key in (
+            "true_north_source", "true_north_rotation_deg", "true_north_rotation_rad",
+            "raw_revit_project_position_angle_rad", "angle_contract",
+            "shadow_direction_check_samples",
+        )
+    }
+    assert "project_location_name" not in json.dumps(payload)

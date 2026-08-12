@@ -30,7 +30,7 @@ class _XYZ:
 
 @pytest.mark.parametrize(
     ("raw_revit_angle_deg", "internal_clockwise_angle_deg"),
-    [(0.0, 0.0), (-90.0, 90.0), (90.0, -90.0), (-30.0, 30.0)],
+    [(0.0, 0.0), (-30.0, -30.0), (30.0, 30.0)],
 )
 def test_raw_revit_angle_is_converted_to_internal_clockwise_rotation(
         monkeypatch, raw_revit_angle_deg, internal_clockwise_angle_deg):
@@ -44,6 +44,18 @@ def test_raw_revit_angle_is_converted_to_internal_clockwise_rotation(
     assert result["true_north_rotation_deg"] == pytest.approx(
         internal_clockwise_angle_deg)
     assert result["true_north_source"] == "revit_active_project_location"
+
+
+@pytest.mark.parametrize(
+    ("rotation_deg", "expected_x", "expected_y"),
+    [(0.0, 0.0, 1.0),
+     (-30.0, -0.5, 0.8660254038),
+     (30.0, 0.5, 0.8660254038)],
+)
+def test_true_north_model_xy_vector_contract(rotation_deg, expected_x, expected_y):
+    _, vector = _model_direction_from_true_north_azimuth(0.0, rotation_deg)
+    assert vector["x"] == pytest.approx(expected_x)
+    assert vector["y"] == pytest.approx(expected_y)
 
 
 def test_zero_angle_preserves_existing_shadow_direction_exactly():

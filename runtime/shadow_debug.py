@@ -216,6 +216,17 @@ def _solar_specification_debug_summary(solar_calculation):
     })
 
 
+def _true_north_debug_summary(value):
+    """Allowlist privacy-safe orientation values used by both analysis modes."""
+    value = value if isinstance(value, dict) else {}
+    keys = (
+        "true_north_source", "true_north_rotation_deg", "true_north_rotation_rad",
+        "raw_revit_project_position_angle_rad", "angle_contract",
+        "shadow_direction_check_samples",
+    )
+    return _sanitize_for_debug({key: value.get(key) for key in keys})
+
+
 def _formal_footprint_debug_summary(footprint_extraction):
     """Return an allowlisted, coordinate-free formal-footprint summary."""
     extraction = footprint_extraction if isinstance(footprint_extraction, dict) else {}
@@ -703,6 +714,7 @@ def _summarize_out_for_debug(out_payload):
             out_payload.get("reverse_shadow_preview")),
         "solar_calculation_summary": _solar_calculation_debug_summary(out_payload.get("solar_calculation_v1")),
         "solar_specification_summary": _solar_specification_debug_summary(out_payload.get("solar_calculation_v1")),
+        "true_north": _true_north_debug_summary(out_payload.get("true_north")),
         "pipeline_readiness": _sanitize_for_debug(out_payload.get("pipeline_readiness")),
         "unit_conversion_summary": _unit_conversion_summary(out_payload),
         "runtime_code_diagnostics": _runtime_code_summary(out_payload),
@@ -751,6 +763,7 @@ def _build_debug_log_payload(out_payload, raw_inputs=None):
         "reverse_shadow_preview_summary": summary["reverse_shadow_preview_summary"],
         "solar_calculation_summary": summary["solar_calculation_summary"],
         "solar_specification_summary": summary["solar_specification_summary"],
+        "true_north": summary["true_north"],
         "pipeline_readiness": summary["pipeline_readiness"],
         "unit_conversion_summary": summary["unit_conversion_summary"],
         "runtime_code_diagnostics": summary["runtime_code_diagnostics"],
