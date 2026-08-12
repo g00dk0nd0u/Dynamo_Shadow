@@ -182,7 +182,7 @@ High は計算負荷が大きくなります。また High を使用しても `p
 - duration grid の大きさ
 - Reverse の candidate / measurement grid 数
 
-Forward / Standard では、実機の一例として 0.5 m / 15分、33 time samples、約15万 logical grid points のケースで約23秒の実行を確認しています。これは **benchmark example であり、性能保証ではありません**。モデル形状、敷地範囲、PC、Revit session の状態によって変動します。
+Forward / Standard では、開発中の単一実機での参考測定として、0.5 m / 15分、33 time samples、約15万 logical grid points のケースで約23秒の実行を確認しています。これは **ハードウェア条件やモデル条件を正規化した正式 benchmark ではなく、性能保証でもありません**。モデル形状、敷地範囲、PC、Revit session の状態によって変動します。
 
 計算結果の数値精度は PC 性能によって変更しない方針です。PC 差は execution time、memory capacity、chunking 等にのみ影響させ、精度 preset を silent に変更しません。
 
@@ -198,7 +198,7 @@ Forward / Standard では、実機の一例として 0.5 m / 15分、33 time sam
 
 正式な minimum / recommended hardware requirement は、まだ十分な複数PC benchmark がないため確定していません。
 
-Technical Preview の暫定的な評価目安としては、Revit 2024.3 を快適に扱える現行の multi-core CPU と十分な RAM を推奨します。大きな duration grid や Reverse 計算ではメモリ余裕が重要です。32 GB RAM 以上は評価時の実用的な目安ですが、正式な minimum requirement ではありません。
+現段階では、Revit 2024.3 を安定して実行できる CPU / RAM 環境での評価を想定しています。大きな duration grid や Reverse 計算ではメモリ使用量が増えるため、余裕のある環境ほど扱いやすくなります。具体的な RAM 容量や CPU class の推奨値は、複数環境での benchmark が揃うまで設定しません。
 
 GPU acceleration は現在使用していません。
 
