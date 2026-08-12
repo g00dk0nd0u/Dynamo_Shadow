@@ -1,84 +1,245 @@
 # Dynamo Shadow
 
-Dynamo Shadow is a Dynamo/Revit diagnostic prototype for studying workflows related to Japanese Building Standard Law Article 56-2 shadow regulations.
+Dynamo Shadow は、Autodesk Revit / Dynamo 上で、日本の建築基準法第56条の2に関連する日影検討ワークフローを研究・検証するための公開技術プロトタイプです。
 
-This repository is for research and review. The current Dynamo/Python implementation is a reference prototype, not a permit-ready product, not a released Revit add-in, and not a finalized C# migration target. `permit_ready_certified` remains `false`.
+Forward Shadow（日影計算）と、低層建物向けの Reverse Shadow（初期ボリューム検討）を、1つの Dynamo Player ワークフローで扱います。計算ロジック、検証状況、制約を公開し、第三者が技術的に確認・再現できることを重視しています。
 
-## Current implementation status
+> **Technical Preview / 技術プレビュー**
+>
+> Dynamo Shadow は現在、研究・設計検討・技術検証を目的とした Technical Preview です。
+> 確認申請用の認証済み計算ソフトではなく、法的な適否判定を行う製品でもありません。
+> `permit_ready_certified=false`
 
-Implemented prototype capabilities include:
+## English Summary
 
-- Multiple selected Mass / Generic Model shadow caster proxies.
-- Revit geometry extraction and footprint extraction prototype.
-- NOAA solar calculation with true solar time.
-- Automatic True North orientation from the active Revit Project Location.
-- Formal time-slice shadow projection.
-- Per-time-slice Revit-native union.
-- Grid/trapezoidal shadow-duration accumulation.
-- Equal-time contour generation and equal-time contour DirectShape preview.
-- Site boundary extraction from exactly one placed Revit Area.
-- Validation for a single outer site-boundary loop with no holes and straight segments only.
-- Site distance masks for within 5 m, beyond 5 m through 10 m, and beyond 10 m.
-- Near/far maximum shadow duration and maximum point outputs.
-- Fixed 5 m / 10 m signed-distance contour polyline data.
-- Revit DirectShape preview for fixed 5 m / 10 m contours.
-- Revit X-marker preview for near/far maximum-duration points.
-- Numeric comparison against the selected regulatory preset.
-- Forward Fast / Standard / High Dynamo Player accuracy selection.
-- Pure-Python regression tests.
-- Low-rise reverse-shadow core and Revit tessellated preview, accessible from the same Dynamo Player graph as forward shadow. The coarse candidate volume still requires final forward equal-time shadow validation.
+Dynamo Shadow is an open technical preview for exploring Japanese Building Standard Law Article 56-2 shadow-study workflows inside Autodesk Revit and Dynamo. It provides experimental Forward Shadow and low-rise Reverse Shadow workflows with transparent calculation logic and reproducible diagnostics. It is intended for research, design exploration, technical review, and validation, and is not a permit-ready certified calculation product.
 
-Not implemented:
+## このプロジェクトの目的
 
-- Selected-limit exceedance styling for preview graphics.
-- Formal legal pass/fail judgement.
-- Automatic municipal ordinance selection.
-- Road, water, elevation-difference, or similar relaxations.
-- Verification report output.
-- C# Revit add-in.
-- Product UI.
-- Installer.
-- Permit certification.
+このリポジトリは、次のことを検証するために公開しています。
 
-## Dynamo inputs
+- Revit モデルから、日影検討に必要な形状・平均地盤面・True North を直接取得して計算できるか。
+- 日影計算のロジックをブラックボックス化せず、第三者がコードと診断情報を確認できる形にできるか。
+- Dynamo / Python を Revit 実機検証用の reference implementation として使い、将来の Revit add-in 化に耐えられる仕様を固められるか。
+- Forward と Reverse を同一の入力・座標・精度 contract の上で扱えるか。
 
-The single `Shadow.dyn` graph exposes eight Dynamo Player inputs:
+既存の商用日影計算ソフトを置き換えることや、現段階で確認申請用途を保証することを目的としていません。
 
-1. `Site Boundary Area / 敷地境界エリア`
-2. `Building Model / 建物モデル`
-3. `Shadow Limits / 日影規制時間`
-4. `Average Ground Level / 平均地盤面`
-5. `Calculation Accuracy / 計算精度`
-6. `Analysis Mode / 解析モード`
-7. `Site Latitude / 緯度`
-8. `Site Longitude / 経度`
+## 現在できること
 
-The Python Node has nine ports, `IN[0]` through `IN[8]`, because it also receives an internal settings input. `IN[0]` through `IN[7]` retain their existing meanings; Analysis Mode is append-only at `IN[8]`. Missing mode values default to Forward for legacy compatibility.
+### Forward Shadow / 日影計算
 
-Forward and Reverse use the selected Average Ground Level's Revit Level Elevation as their common AGL source after conversion from internal units to meters. The measurement plane remains AGL plus the preset measurement height; the Level itself is not the measurement plane. Settings AGL is used only when no Level is selected. Reverse continues to ignore Building Model, requires a valid Site Boundary and a specific near/far Shadow Limits pair. Reverse Fast uses a 4 m height grid / 4 m measurement spacing / 30-minute step; Reverse Standard uses a 1 m height grid / 1 m measurement spacing / 15-minute step. Reverse High currently retains the same accuracy as Reverse Standard. Reverse height limits use a conservative 0.5 m vertical floor.
+- Revit の Mass / Generic Model を shadow caster として使用。
+- Revit Area を Site Boundary として使用。
+- Revit Level を Average Ground Level / 平均地盤面として使用。
+- Revit Active Project Location から True North を自動取得。
+- 真太陽時を基準とした太陽位置計算。
+- 時刻ごとの formal shadow projection。
+- 時刻ごとの Revit-native union。
+- 空間グリッドと台形則による日影時間の累積。
+- 等時間日影線の生成と DirectShape preview。
+- 敷地境界から 5 m / 10 m の距離帯を扱う診断処理。
+- 近側 / 遠側の最大日影時間と代表点の出力。
+- Fast / Standard / High の精度プリセット。
 
-## Intended Revit inputs
+### Reverse Shadow / 逆日影
 
-- `building_elements`: one or more selected Mass or Generic Model proxy elements used as shadow casters.
-- `site_boundary`: optional for core shadow duration and equal-time contours; the formal boundary-dependent input is exactly one placed Revit Area selected once in Dynamo Player.
-- `level`: the selected Revit Level at the average ground position, shared by Forward and Reverse as the authoritative AGL elevation source.
-- `settings`: optional for diagnostics and internal compatibility. Explicit values or selected presets are required for legal-calculation parameters such as average ground level, measurement height, latitude, and longitude. In Revit, True North is read automatically from the active Project Location; no Player angle input is provided.
+- 低層建物の初期ボリューム検討用の conservative な Reverse Shadow。
+- Forward と同じ Site Boundary / Average Ground Level / True North contract を使用。
+- 時刻・空間を離散化した制約から height field を作成し、Revit に tessellated candidate volume を表示。
+- Reverse の結果は「唯一の最大建築可能ボリューム」ではありません。
+- 最終確認には必ず Forward Shadow による再検証が必要です。
 
-Project North is the model's drawing orientation, while True North is geographic north. Dynamo_Shadow uses True North for both Forward and Reverse shadow directions. Users must set Revit's True North correctly before running the graph; the adapter reads the setting without creating or modifying Project Locations. Latitude and longitude remain the existing Player inputs.
+## Quick Start / 最短の使い方
 
-Users select the placed Area body for `site_boundary`, not Area Boundary lines, Area Tags, Property Line segments, Model Lines, Detail Lines, Filled Regions, Floors, Generic Models, CAD imports, Toposolids, or families. Property Line / Site Property inputs are not the current formal site-boundary input.
+### 確認済みソフトウェア環境
 
-Existing Walls, Floors, Roofs, equipment, CAD imports, and topography-derived edges are not auto-used as shadow casters or site boundaries.
+- Autodesk Revit 2024.3
+- Dynamo 3.3
+- CPython3
+- Windows（Revit がサポートする環境）
 
-## Accuracy and regulatory presets
+現時点では installer や Revit add-in はありません。
 
-In Dynamo Player, the regulatory shadow preset, calculation accuracy, site latitude, and site longitude are separate inputs; the retained settings JSON is internal and hidden. Forward Fast uses 1.0 m / 30 minutes for rapid initial iteration, Standard uses 0.5 m / 15 minutes for normal design and remains the default, and High uses 0.25 m / 5 minutes for a final high-precision check with increased runtime. Fast is coarse and is not intended for final high-precision review. High does not imply permit certification; `permit_ready_certified` remains `false`.
+### 実行方法
 
-Player values take priority over settings JSON, which takes priority over Python diagnostic defaults. Regulatory presets only expose candidate values appearing in Appended Table 4; the actually applicable classification must be confirmed against the relevant municipal ordinance. `standard_all` is the initial QA display intended for areas such as Tokyo, Osaka, Kyoto, and Kyushu. Hokkaido-area choices use 09:00–15:00 and include the 1.5-hour candidate. Six-hour contours are intentionally excluded from statutory-time presets, while the technical ability to generate explicitly requested 360–480 minute contours remains. Longitude does not directly change results in true-solar-time mode.
+1. リポジトリを取得します。
+2. `runtime/` フォルダをローカルへコピーします。
+3. Revit モデルを開きます。
+4. Dynamo Player から `runtime/Shadow.dyn` を開きます。
+5. 必要な Player input を設定します。
+6. Revit の Project Location / True North が正しく設定されていることを確認します。
+7. `Run` を実行します。
 
-## Preview settings
+`runtime/` はそのまま配布可能な runtime bundle です。`Shadow.dyn`、loader、script、`shadow_*.py` を同じフォルダに保ってください。
 
-Preview is visualization-only. The policy default is `preview_mode="off"`; the current `runtime/Shadow.dyn` initial setting is `preview_mode="replace"`. The settings JSON input accepts, for example:
+## Dynamo Player Inputs
+
+| Input | 入力内容 | 用途 / 注意 |
+|---|---|---|
+| `Site Boundary Area / 敷地境界エリア` | 配置済み Revit Area を1つ選択 | 現在の正式な敷地境界入力。Area Boundary line そのものではありません。 |
+| `Building Model / 建物モデル` | Mass / Generic Model | Forward の shadow caster。Reverse では現在使用しません。 |
+| `Shadow Limits / 日影規制時間` | 候補 preset | 適用する規制区分は自治体条例等で利用者が確認する必要があります。 |
+| `Average Ground Level / 平均地盤面` | Revit Level | Level Elevation を共通 AGL source として使用します。 |
+| `Calculation Accuracy / 計算精度` | Fast / Standard / High | 空間分解能と時間刻みを変更します。 |
+| `Analysis Mode / 解析モード` | Forward / Reverse | Forward Shadow または Reverse Shadow を選択します。 |
+| `Site Latitude / 緯度` | 緯度（度） | Player 入力。 |
+| `Site Longitude / 経度` | 経度（度） | Player 入力。真太陽時モードでは longitude が直接結果を変えない場合があります。 |
+
+True North の手入力はありません。Revit の Active Project Location を source of truth として自動取得します。
+
+## Revit 側で準備するもの
+
+### Average Ground Level / 平均地盤面
+
+Forward / Reverse ともに、選択した Revit Level の Elevation を平均地盤面として使用します。Revit internal units から meter へ変換した値が Shadow Core に渡されます。
+
+測定面は Level 自体ではなく、
+
+`measurement plane = average ground level + measurement height`
+
+です。
+
+### Project North / True North
+
+Project North は作図上の基準方向、True North は実際の地理上の北です。Dynamo Shadow は日影方向の計算に True North を使用します。
+
+Revit Runtime では、Active Project Location の `ProjectPosition.Angle` を読み取り、Forward / Reverse 共通の model XY orientation として使用します。Project Location を作成・変更する処理は行いません。
+
+Revit 2024.3 実機では True North の符号 contract を確認しており、Survey Point の True North 表示と shadow direction が一致することを検証対象としています。
+
+## Forward Shadow の計算ロジック
+
+Forward は概ね次の pipeline で処理します。
+
+```text
+Revit geometry
+→ geometry / footprint extraction
+→ solar position
+→ Revit True North を反映した model-XY shadow direction
+→ time-slice formal shadow projection
+→ per-slice union
+→ bounded grid sampling
+→ trapezoidal shadow-duration accumulation
+→ equal-time contour generation
+→ Revit DirectShape preview
+```
+
+主な contract は次の通りです。
+
+- 太陽方位は True North から時計回りで扱います。
+- 基本の法規検討モードでは真太陽時を使用します。
+- Shadow Core に渡る計算データは meter / degree / minute を基本単位とします。
+- Revit API / internal units の責務は Revit Adapter 側に閉じ込めます。
+- 日影時間は時間方向・空間方向ともに離散化を含む数値近似です。
+- 精度を自動的に落として計算を成功扱いにする silent fallback は行いません。
+
+## Reverse Shadow の考え方
+
+Reverse Shadow は、Site Boundary と規制条件から低層建物の初期 massing を検討するための補助機能です。
+
+```text
+Site Boundary
+→ measurement / candidate grids
+→ time-discretized solar constraints
+→ conservative height envelope
+→ tessellated candidate volume
+→ final Forward validation
+```
+
+Reverse は初期検討用です。道路・水面・高低差等の緩和、自治体固有の条件、法的な最大ボリューム判定は含みません。
+
+## 計算精度
+
+### Forward
+
+| Preset | 空間分解能 | 時間刻み | 想定用途 |
+|---|---:|---:|---|
+| Fast | 1.0 m | 30分 | 初期検討・素早い反復 |
+| Standard | 0.5 m | 15分 | 通常の設計検討（default） |
+| High | 0.25 m | 5分 | より高い分解能での技術確認 |
+
+High は計算負荷が大きくなります。また High を使用しても `permit_ready_certified=false` は変わりません。
+
+### Reverse
+
+| Preset | Site distance | Measurement spacing | Height grid XY | 時間刻み | Vertical step |
+|---|---:|---:|---:|---:|---:|
+| Fast | 1 m | 4 m | 4 m | 30分 | 0.5 m |
+| Standard | 1 m | 1 m | 1 m | 15分 | 0.5 m |
+| High | 1 m | 1 m | 1 m | 15分 | 0.5 m |
+
+現在の Reverse High は Reverse Standard と同じ数値分解能です。
+
+## 計算負荷 / Performance
+
+実行時間とメモリ使用量は、主に次の条件で変わります。
+
+- 敷地の大きさ
+- Calculation Accuracy
+- 時刻 sample 数
+- caster solid の数と形状複雑度
+- duration grid の大きさ
+- Reverse の candidate / measurement grid 数
+
+Forward / Standard では、開発中の単一実機での参考測定として、0.5 m / 15分、33 time samples、約15万 logical grid points のケースで約23秒の実行を確認しています。これは **ハードウェア条件やモデル条件を正規化した正式 benchmark ではなく、性能保証でもありません**。モデル形状、敷地範囲、PC、Revit session の状態によって変動します。
+
+計算結果の数値精度は PC 性能によって変更しない方針です。PC 差は execution time、memory capacity、chunking 等にのみ影響させ、精度 preset を silent に変更しません。
+
+## 推奨環境について
+
+### 確認済み
+
+- Revit 2024.3
+- Dynamo 3.3
+- CPython3
+
+### Hardware
+
+正式な minimum / recommended hardware requirement は、まだ十分な複数PC benchmark がないため確定していません。
+
+現段階では、Revit 2024.3 を安定して実行できる CPU / RAM 環境での評価を想定しています。大きな duration grid や Reverse 計算ではメモリ使用量が増えるため、余裕のある環境ほど扱いやすくなります。具体的な RAM 容量や CPU class の推奨値は、複数環境での benchmark が揃うまで設定しません。
+
+GPU acceleration は現在使用していません。
+
+## 検証と信頼性
+
+このプロジェクトでは、結果を「正しいと宣言する」より、どの部分をどう検証したかを追跡できることを重視しています。
+
+現在の主な検証方法:
+
+- Pure-Python unit / regression / contract / integration tests
+- GitHub CI
+- Revit 2024.3 実機検証
+- formal projection の direction / extent runtime validation
+- True North の実機 sign / orientation validation
+- no-silent-accuracy-fallback contract
+- privacy-safe debug diagnostics
+- Forward / Reverse 共通の座標・AGL contract tests
+
+独立ソフトウェアや固定 Golden fixture との比較は、今後も継続して強化する対象です。
+
+## Known Limitations / 現在の主な制約
+
+- 確認申請用の認証済み計算ソフトではありません。
+- Formal legal pass / fail judgement は未実装です。
+- 自治体条例の自動選択は行いません。
+- 適用する日影規制区分は利用者が確認する必要があります。
+- 道路、水面、高低差その他の法規緩和は未実装です。
+- Site Boundary は現在、単一 outer loop・hole なし・straight segment を基本対象としています。
+- Forward の shadow caster は現在 Mass / Generic Model を中心に扱います。
+- Existing Wall / Floor / Roof / equipment / CAD import / topography edge を自動 caster 化しません。
+- Reverse Shadow は unique / maximum legally buildable volume を求めるものではありません。
+- Reverse の結果には最終 Forward validation が必要です。
+- High accuracy はモデルによって計算負荷が大きくなります。
+- Product UI / installer / C# add-in は未提供です。
+- Verification report output は未実装です。
+
+## Preview 表示
+
+Preview は可視化用であり、法的な合否判定ではありません。
+
+`runtime/Shadow.dyn` の現在の initial setting は `preview_mode="replace"` です。
 
 ```json
 {"preview_mode": "off"}
@@ -92,72 +253,76 @@ Preview is visualization-only. The policy default is `preview_mode="off"`; the c
 {"preview_mode": "clear"}
 ```
 
-`replace` removes prior Dynamo Shadow preview DirectShapes before creating preview geometry. Equal-time contour DirectShape preview is implemented. Site result preview reuses `equal_time_contour_preview_mode` to display fixed 5 m / 10 m DirectShape Curve contours and near/far maximum-point X markers. Preview colors are visual distinctions only and do not indicate legal pass/fail. `clear` removes owned previews without creating replacements.
+`replace` は既存の Dynamo Shadow preview DirectShape を削除して新しい preview を作ります。`clear` は owned preview を削除し、新規作成しません。色は表示上の識別用であり、legal pass / fail を意味しません。
 
-## Architecture direction
+## Architecture
 
-Future development should keep three boundaries clear:
+開発上は次の3層を分離しています。
 
-- **Revit Adapter**: reads Revit elements and placed Areas, preserves native Revit geometry where needed, performs formal Revit shadow projection and Revit-native Boolean / union work, owns Revit preview/write behavior, and converts Revit internal units.
-- **Shadow Core**: works on meter-based JSON-safe data, performs solar calculation, duration accumulation, equal-time contours, site geometry validation, distance masks, 5 m / 10 m distance contour data, selected limit comparison, and future reverse-shadow algorithms. Shadow Core must not import `Autodesk.Revit.DB` or operate on Revit internal units.
-- **Dynamo Host**: consists of `runtime/Shadow.dyn`, `runtime/dynamo_loader.py`, Player inputs, `IN[]` / `INPUTS` mapping, `runtime/script.py` orchestration, and `OUT` inspection.
+- **Revit Adapter**: Revit element / Area / Level / Project Location を読み、Revit geometry、unit conversion、formal projection、Boolean、preview/write behavior を担当。
+- **Shadow Core**: meter-based / JSON-safe data で solar calculation、duration accumulation、contours、distance masks、Reverse logic 等を担当。`Autodesk.Revit.DB` を直接 import しません。
+- **Dynamo Host**: `Shadow.dyn`、loader、`IN[]` / `INPUTS` mapping、`script.py` orchestration、`OUT` を担当。
 
-A future C# Revit add-in is a development direction, not current product scope. The Python/Dynamo implementation should remain the reference implementation until Revit runtime behavior, display outputs, external software comparisons, reverse-shadow specifications, and fixed Golden fixtures are stable enough to justify migration.
+Dynamo / Python 実装は、将来 add-in 化する場合にも仕様・実機挙動を比較できる reference implementation として維持する方針です。
 
-## Project structure
+## Project Structure
 
-- `runtime/` is both the source of truth for development and the complete, directly distributable Dynamo/Revit runtime bundle. No separate `dist` copy is maintained.
-- `runtime/Shadow.dyn` is the Dynamo Player graph and contains the Python Node bootstrap.
-- `runtime/dynamo_loader.py` is the same-folder loader that maps Dynamo `IN[]` values to named `INPUTS` and runs `runtime/script.py`.
-- `runtime/script.py` is the orchestration entry for imports, fallback behavior outside Dynamo, and top-level `OUT` construction.
-- `runtime/shadow_*.py` contains the Revit Adapter, Shadow Core, and supporting runtime modules.
-- `tests/` contains development-only unit, integration, and contract tests; fixed test data remains under `tests/fixtures/`.
-- `tools/` contains development-only repository checks and is not part of the runtime distribution.
-- `docs/` contains user guidance, runtime QA notes, specifications, and development notes under their corresponding subdirectories.
+- `runtime/` — 実行可能な Dynamo/Revit runtime bundle と開発 source of truth
+- `runtime/Shadow.dyn` — Dynamo Player graph
+- `runtime/dynamo_loader.py` — same-folder loader と input mapping
+- `runtime/script.py` — top-level orchestration
+- `runtime/shadow_*.py` — Revit Adapter / Shadow Core / supporting modules
+- `tests/` — unit / integration / contract tests と fixtures
+- `tools/` — repository checks
+- `docs/` — user guide、specification、runtime QA、development notes
 
-To run the graph, open `runtime/Shadow.dyn` with Dynamo Player. The `runtime/` directory alone may be copied for distribution and renamed after copying; keep `Shadow.dyn`, the loader, the script, and every local module together in that one directory. Future forward-shadow and reverse-shadow workflows should share this runtime bundle and common modules rather than creating duplicate distributions.
+## Debug Logs
 
-## Debug logs
+Debug logging は default では無効です。有効時は、コピーした `runtime/` 内の `debug_logs/latest_debug.json` に runtime diagnostics を書きます。
 
-Debug logging is disabled by default. Runtime files are written to `debug_logs/latest_debug.json` inside the copied `runtime/` bundle (relative to `Shadow.dyn`, not the process working directory) and must not be committed. The repository-root `debug_logs/` directory is not a runtime output location. Fixed samples needed by tests or repository checks belong under `tests/fixtures/debug_logs/`, must remain small and sanitized, and must not contain local paths, usernames, email addresses, client or project names, personal cloud paths, raw Revit object representations, or large geometry payloads.
+Debug log には local path、username、email、client/project name、raw Revit object representation、大規模 geometry payload 等を残さない方針です。True North、精度、計算時間、grid size、projection validation 等の privacy-safe な情報を技術検証に使用します。
 
 ## Units
 
-Revit geometry values are preserved as raw internal units, normally feet, inside Revit Adapter diagnostics. Settings and Article 56-2 measurement-plane values are in meters and degrees unless a future specification changes them. Meter conversions are added with explicit `_m`, `_m2`, or `_m3` suffixes; raw fields are not silently replaced. After the adapter-to-core boundary, calculation data should use meters, degrees, and minutes.
+Revit Adapter 内では必要に応じて Revit internal units を扱いますが、Shadow Core 側では meter / degree / minute を基本とします。meter-based field には `_m`、`_m2`、`_m3` suffix を付け、raw field を無言で置き換えません。
 
-## Tests
+## 技術レビュー歓迎
 
-At the latest confirmed main for this documentation sync, the repository-wide pure-Python test suite had 367 passing tests. This count is a confirmation snapshot, not a permanent specification.
+技術的な指摘、再現可能な不具合、精度比較、Revit API 上の挙動確認を歓迎します。
+
+特にレビュー対象として重要な領域:
+
+- Revit Project Location / True North
+- Average Ground Level / measurement plane
+- Revit geometry extraction
+- solar coordinate convention
+- formal shadow projection
+- duration accumulation
+- equal-time contour generation
+- Reverse Shadow approximation
+- performance / memory behavior
+
+再現条件を伴う Issue / Pull Request は、実装改善の重要な材料になります。
 
 ## Documentation
 
-- Architecture and add-in migration direction: `docs/development/addin_migration_direction.md`
+- Architecture / add-in migration: `docs/development/addin_migration_direction.md`
 - Research notes: `docs/development/research_shadow_diagram.md`
 - v0 specification: `docs/development/spec_v0.md`
 - Revit input modeling guide: `docs/user/revit_input_modeling_guide.md`
 - Site boundary Area setup: `docs/user/site_boundary_area_setup.md`
 - Settings schema: `docs/specifications/settings_schema_v1.md`
-- Measurement plane notes: `docs/specifications/measurement_plane_v1.md`
-- Geometry extraction notes: `docs/development/geometry_extraction_v1.md`
-- Footprint extraction notes: `docs/specifications/footprint_extraction_v1.md`
-- Debug logging notes: `docs/runtime/debug_logging_v1.md`
-- Unit conversion notes: `docs/specifications/unit_conversion_v1.md`
-- Contributor and agent rules: `AGENTS.md`
+- Measurement plane: `docs/specifications/measurement_plane_v1.md`
+- Geometry extraction: `docs/development/geometry_extraction_v1.md`
+- Footprint extraction: `docs/specifications/footprint_extraction_v1.md`
+- Debug logging: `docs/runtime/debug_logging_v1.md`
+- Unit conversion: `docs/specifications/unit_conversion_v1.md`
+- Contributor / agent rules: `AGENTS.md`
 
-## Scope warning
+## Professional Use / Scope Warning
 
-This repository must not be used as a complete building permit calculation tool. Formal code checks, permit submissions, and regulatory decisions require validated professional tools and confirmation against applicable laws, ordinances, and reviewing authority requirements.
+Dynamo Shadow は、設計検討や独立した技術確認を補助することはできますが、専門家による判断、適用条例の確認、確認申請審査機関との協議を置き換えるものではありません。
 
-## Direction verification status
+正式な法規判定、確認申請、行政・審査機関への提出には、適用法令・条例・審査要件を別途確認してください。
 
-The serialized formal-slice contract distinguishes the downward `physical_shadow_ray_model` from the reversed `extrusion_analyzer_input_direction` required to analyze an extrusion from the measurement plane toward the caster. Pure-Python checks cover the 08:00 northwest, 12:00 north, and 16:00 northeast reference directions, true-north rotation, opposite-sign rejection, and the analytical `height * shadow_length_factor` projection length. Revit runtime verification additionally compares clipped-Solid edge endpoint projections with the extracted polygon extents; both direction and extent checks must pass. Active-view up direction is diagnostic only and must not be confused with calculated true north.
-
-The required Revit runtime check uses true north 0 degrees, a simple box above a 4 m measurement plane, and confirms: noon extends toward model +Y; 08:00/16:00 extend symmetrically northwest/northeast; all nine hourly lines appear in plan; and no 3D thickness exists. This prototype remains `permit_ready_certified=false`.
-
-## Shadow duration accumulation v1
-
-Complete `unified_shadow_slices` can be sampled on a bounded meter grid and integrated between adjacent slices with the trapezoidal rule. Outer/inner loops and multiple components are supported, and `max_duration_grid_points` stops oversized grids before allocation. The result remains a numerical approximation at the configured temporal step, works without a site boundary, and is not permit-certified.
-
-## Equal-time contours v1
-
-`runtime/shadow_contours.py` reconstructs the row-major duration grid from `grid_spec`, resolves ambiguous Marching Squares cases deterministically from the cell mean, removes duplicate or zero-length segments, and joins segments into ordered open or closed polylines. Explicit `equal_time_contour_levels_minutes` take priority; otherwise levels use `equal_time_contour_interval_minutes=60`. `max_equal_time_contour_levels=100` bounds output work. These are technical/diagnostic levels, not statutory thresholds, and legal judgement remains unimplemented.
+`permit_ready_certified=false`
