@@ -16,7 +16,9 @@ jobs:
           python-version: "3.12"
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip

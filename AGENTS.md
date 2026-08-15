@@ -137,12 +137,17 @@ Future work should keep the repository aligned with three layers:
 
 ## Python ↔ C# synchronization rule
 
-1. Python is the canonical implementation.
-2. Change and test Python behavior first.
-3. Port the corresponding behavior to C# without changing Python merely to simplify the port.
+1. Python is canonical for portable calculation semantics, inputs/outputs, contracts, presets, and validation/comparison behavior.
+2. Python is not necessarily canonical for Revit-version-specific host API implementation details; compiled hosts should use the best supported API for their target version rather than reproduce obsolete Revit 2024 workarounds.
+3. Change and test Python calculation behavior first, then port the corresponding behavior to C# without changing Python merely to simplify the port.
 4. Run the C# tests.
 5. Run Python/C# parity tests.
 6. Do not release while parity is known to be broken.
+
+Compiled-product support begins at Revit 2025. Revit 2025/2026 hosts use .NET 8,
+and Revit 2027 hosts use .NET 10; new compiled code does not need Revit 2024
+support. Keep `ShadowCore` host-independent and do not create speculative shared
+assemblies before implementation proves they are needed.
 
 ## Shadow regulation implementation rules
 

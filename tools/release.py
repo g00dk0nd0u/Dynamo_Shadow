@@ -18,6 +18,7 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 PRODUCT_ROOT = REPOSITORY_ROOT / "product"
 DIST_ROOT = REPOSITORY_ROOT / "dist"
+REVIT_HOST_FRAMEWORKS = ("net8.0-windows", "net10.0-windows")
 
 
 class ReleaseError(RuntimeError):
@@ -100,6 +101,17 @@ def run_compiled_validation() -> None:
         ],
     )
 
+    missing_outputs = [
+        PRODUCT_ROOT / "revit" / "bin" / "Release" / framework / "RevitShadow.dll"
+        for framework in REVIT_HOST_FRAMEWORKS
+        if not (
+            PRODUCT_ROOT / "revit" / "bin" / "Release" / framework / "RevitShadow.dll"
+        ).is_file()
+    ]
+    if missing_outputs:
+        missing = ", ".join(str(path.relative_to(REPOSITORY_ROOT)) for path in missing_outputs)
+        raise ReleaseError(f"RevitShadow multi-target build output is missing: {missing}")
+
 
 def reset_distribution() -> None:
     if DIST_ROOT.exists():
@@ -107,63 +119,16 @@ def reset_distribution() -> None:
     DIST_ROOT.mkdir()
 
 
-def require_files(paths: list[Path], product_name: str) -> None:
-    missing = [path.relative_to(REPOSITORY_ROOT) for path in paths if not path.is_file()]
-    if missing:
-        details = ", ".join(str(path) for path in missing)
-        raise ReleaseError(
-            f"{product_name} is not ready for product packaging; missing: {details}"
-        )
-
-
 def assemble_distributions() -> None:
-    core_dll = PRODUCT_ROOT / "core" / "bin" / "Release" / "netstandard2.0" / "ShadowCore.dll"
-    dynamo_graph = PRODUCT_ROOT / "dynamo" / "DynamoShadow.dyn"
-    dynamo_manifest = PRODUCT_ROOT / "dynamo" / "pkg.json"
-    revit_dll = PRODUCT_ROOT / "revit" / "bin" / "Release" / "net48" / "RevitShadow.dll"
-    revit_manifest = PRODUCT_ROOT / "revit" / "RevitShadow.addin"
-
-    require_files(
-        [core_dll, dynamo_graph, dynamo_manifest], "DynamoShadow"
+    """Stop until real, version-validated product hosts are implemented."""
+    raise ReleaseError(
+        "Compiled product packaging is not ready: DynamoShadow.dll, "
+        "DynamoShadow.dyn, pkg.json, Revit API references, version-specific "
+        "Revit validation, and RevitShadow.addin are not implemented"
     )
-    require_files(
-        [core_dll, revit_dll, revit_manifest], "RevitShadow"
-    )
-
-    dynamo_dist = DIST_ROOT / "DynamoShadow"
-    revit_dist = DIST_ROOT / "RevitShadow"
-    (dynamo_dist / "bin").mkdir(parents=True)
-    (dynamo_dist / "extra").mkdir()
-    revit_dist.mkdir()
-
-    shutil.copy2(core_dll, dynamo_dist / "bin" / "ShadowCore.dll")
-    shutil.copy2(dynamo_graph, dynamo_dist / "extra" / "DynamoShadow.dyn")
-    shutil.copy2(dynamo_manifest, dynamo_dist / "pkg.json")
-    shutil.copy2(core_dll, revit_dist / "ShadowCore.dll")
-    shutil.copy2(revit_dll, revit_dist / "RevitShadow.dll")
-    shutil.copy2(revit_manifest, revit_dist / "RevitShadow.addin")
 
 
 def validate_distribution() -> None:
-    required = {
-        "DynamoShadow/bin/ShadowCore.dll",
-        "DynamoShadow/extra/DynamoShadow.dyn",
-        "DynamoShadow/pkg.json",
-        "RevitShadow/ShadowCore.dll",
-        "RevitShadow/RevitShadow.dll",
-        "RevitShadow/RevitShadow.addin",
-    }
-    actual = {
-        str(path.relative_to(DIST_ROOT)).replace("\\", "/")
-        for path in DIST_ROOT.rglob("*")
-        if path.is_file()
-    }
-    if actual != required:
-        raise ReleaseError(
-            f"Distribution file set mismatch; missing={sorted(required - actual)}, "
-            f"unexpected={sorted(actual - required)}"
-        )
-
     forbidden_suffixes = {".py", ".cs", ".csproj", ".sln", ".pdb", ".map"}
     forbidden_names = {"RevitAPI.dll", "RevitAPIUI.dll"}
     forbidden_parts = {

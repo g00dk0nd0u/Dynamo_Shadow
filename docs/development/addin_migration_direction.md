@@ -112,6 +112,8 @@ The Dynamo/Python implementation remains the behavioral source of truth. C# work
 
 Initial work should establish portable `ShadowCore` build/test infrastructure and product boundaries rather than bulk-translating `runtime/shadow_*.py`. Portable, JSON-safe calculation modules are candidates for gradual semantic ports; Revit API code remains isolated in the Revit Adapter. The current module classification above remains the starting point rather than a requirement to map every Python module into C#.
 
+The compiled-product support target begins at Revit 2025. Revit 2025/2026 host builds use .NET 8, while Revit 2027 host builds use .NET 10. One portable `netstandard2.0` `ShadowCore` assembly remains shared, but Revit and Dynamo host binaries may require framework- and Revit-version-specific builds and tests. Exact Autodesk API references are deferred until real host implementation; the final adapter/host assembly decomposition remains unfrozen. Python is canonical for portable calculation behavior and contracts, not necessarily for obsolete Revit 2024-specific host workarounds. The existing Python reference environment remains Revit 2024.3.
+
 ## Readiness gates for broader migration
 
 The following remain gates for broad migration and product claims, not blockers to focused infrastructure or small semantic ports:
