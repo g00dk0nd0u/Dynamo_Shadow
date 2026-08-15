@@ -135,6 +135,15 @@ Future work should keep the repository aligned with three layers:
 - If adding generated outputs, logs, backups, or exports, keep them out of Git.
 - Run lightweight syntax checks for Python files when possible.
 
+## Python ↔ C# synchronization rule
+
+1. Python is the canonical implementation.
+2. Change and test Python behavior first.
+3. Port the corresponding behavior to C# without changing Python merely to simplify the port.
+4. Run the C# tests.
+5. Run Python/C# parity tests.
+6. Do not release while parity is known to be broken.
+
 ## Shadow regulation implementation rules
 
 - Fixed legal assumptions should not be turned into arbitrary user inputs.

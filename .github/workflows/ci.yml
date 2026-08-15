@@ -14,6 +14,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
@@ -25,4 +28,5 @@ jobs:
           python -m compileall -q runtime tests tools -x '(^|[\\/])(\.git|\.pytest_cache|debug_logs)([\\/]|$)'
           python -m json.tool runtime/Shadow.dyn > /dev/null
           python tools/check_debug_log_privacy.py
+          dotnet test product/tests/ShadowCore.Tests.csproj --configuration Release
           git diff --check
