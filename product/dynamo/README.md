@@ -22,10 +22,10 @@ The wrapper contains no preset values; it delegates their resolution to
    ```
 
    MSBuild places both required assemblies in the deterministic directory
-   `product/dynamo/bin/Release/net8.0-windows/`.
+   `product/dynamo/bin/Release/net8.0/`.
 2. Open **Revit 2025**, then open its bundled Dynamo from **Manage > Dynamo**.
 3. In Dynamo, choose **File > Import Library**, select
-   `product/dynamo/bin/Release/net8.0-windows/DynamoShadow.dll`, and confirm the
+   `product/dynamo/bin/Release/net8.0/DynamoShadow.dll`, and confirm the
    `DynamoShadow.AccuracyPresetNodes.GetGridResolutionMeters` node is available.
    Keep `ShadowCore.dll` beside it; the project-reference build already does so.
 4. Open `product/dynamo/DynamoShadow_PoC.dyn`.
