@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ShadowCore;
+using DynamoShadow;
 using Xunit;
 
 namespace ShadowCore.Tests;
@@ -37,6 +38,18 @@ public sealed class AccuracyPresetsTests
     {
         Assert.False(AccuracyPresets.TryResolve(value, out var preset));
         Assert.Null(preset);
+    }
+
+    [Fact]
+    public void DynamoHostDelegatesGridResolutionToShadowCore()
+    {
+        const string presetId = "standard";
+        Assert.True(AccuracyPresets.TryResolve(presetId, out var preset));
+        Assert.NotNull(preset);
+
+        Assert.Equal(
+            preset.GridResolutionM,
+            AccuracyPresetNodes.GetGridResolutionMeters(presetId));
     }
 
     private sealed class PresetFixture
