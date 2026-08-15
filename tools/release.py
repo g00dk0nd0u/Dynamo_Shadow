@@ -70,6 +70,16 @@ def run_python_validation() -> None:
 
 def run_compiled_validation() -> None:
     run_stage(
+        "DynamoShadow Release build",
+        [
+            "dotnet",
+            "build",
+            "product/dynamo/DynamoShadow.csproj",
+            "--configuration",
+            "Release",
+        ],
+    )
+    run_stage(
         "ShadowCore tests",
         [
             "dotnet",
@@ -122,8 +132,8 @@ def reset_distribution() -> None:
 def assemble_distributions() -> None:
     """Stop until real, version-validated product hosts are implemented."""
     raise ReleaseError(
-        "Compiled product packaging is not ready: DynamoShadow.dll, "
-        "DynamoShadow.dyn, pkg.json, Revit API references, version-specific "
+        "Compiled product packaging is not ready: final DynamoShadow.dyn, "
+        "pkg.json, Revit API references, version-specific "
         "Revit validation, and RevitShadow.addin are not implemented"
     )
 
