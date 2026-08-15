@@ -1,6 +1,6 @@
 # Add-in migration direction
 
-This note records the current architecture direction after the PR #78 mainline state. It is documentation only: no C# migration, runtime behavior change, schema freeze, Golden fixture work, installer work, licensing work, or product repository split is started here.
+This note records the architecture direction for incremental product development. Product infrastructure and gradual C# semantic porting may now begin, but this does not change the current Python runtime, freeze its schemas, or claim that a distributable product exists.
 
 ## Current role of the Dynamo/Python version
 
@@ -106,15 +106,17 @@ The current likely canonical calculation-data boundary is at or just after `unif
 
 That boundary is attractive because it is after formal Revit projection and per-time-slice union, while before Shadow Core duration accumulation, contouring, distance masking, comparison, and future reverse-shadow work. It may become the handoff point from a future C# Revit Adapter to a C# Shadow Core, but the final contract should not be frozen yet.
 
-## Why C# migration is not starting now
+## Incremental C# migration is now approved
 
-C# migration is intentionally deferred because the current Revit-runtime behavior and final output contracts are not stable enough to freeze. Starting a C# solution now would risk duplicating unstable Python behavior, locking premature DTO/schema choices, and creating Golden tests before validated examples are available.
+The Dynamo/Python implementation remains the behavioral source of truth. C# work must follow it module by module: change and test Python first, port the corresponding behavior, then run C# and representative Python/C# parity tests. Python must not be changed merely to make a C# port easier, and releases must stop when parity is known to be broken.
 
-The Python/Dynamo version should remain the reference implementation while forward-shadow behavior, display behavior, external comparisons, reverse-shadow requirements, and fixture strategy are still being finalized.
+Initial work should establish portable `ShadowCore` build/test infrastructure and product boundaries rather than bulk-translating `runtime/shadow_*.py`. Portable, JSON-safe calculation modules are candidates for gradual semantic ports; Revit API code remains isolated in the Revit Adapter. The current module classification above remains the starting point rather than a requirement to map every Python module into C#.
 
-## Conditions to start C# migration
+The compiled-product support target begins at Revit 2025. Revit 2025/2026 host builds use .NET 8, while Revit 2027 host builds use .NET 10. One portable `netstandard2.0` `ShadowCore` assembly remains shared, but Revit and Dynamo host binaries may require framework- and Revit-version-specific builds and tests. Exact Autodesk API references are deferred until real host implementation; the final adapter/host assembly decomposition remains unfrozen. Python is canonical for portable calculation behavior and contracts, not necessarily for obsolete Revit 2024-specific host workarounds. The existing Python reference environment remains Revit 2024.3.
 
-Begin C# migration only after all of the following are true:
+## Readiness gates for broader migration
+
+The following remain gates for broad migration and product claims, not blockers to focused infrastructure or small semantic ports:
 
 1. Forward-shadow behavior is stable in live Revit testing.
 2. Revit display for 5 m / 10 m contours is stable.
@@ -134,7 +136,9 @@ C# Revit Adapter
   -> Revit UI / output
 ```
 
-At this stage, that is only a recorded design direction. This repository should not add a C# solution, DTO/schema package, product UI, installer, licensing code, report schema, reverse-shadow implementation, or Golden fixture framework until the prerequisites above are satisfied.
+The repository may now contain the C# solution and projects needed to develop that shape incrementally. A future compiled Dynamo Package and Revit add-in remain separate product artifacts from `runtime/Shadow.dyn`; neither is currently distributable. Product UI, installer, licensing, report schemas, bulk reverse-shadow migration, and premature contract freezes remain deferred.
+
+Formal legal judgement and permit certification are not implemented. `permit_ready_certified` must remain `false` until a separate certification workflow is explicitly implemented.
 
 ## Deferred issue and contract work
 

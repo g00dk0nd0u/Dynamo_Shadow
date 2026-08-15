@@ -30,3 +30,8 @@ Thumbs.db
 
 # Runtime debug output; fixed sanitized fixtures live under tests/fixtures/debug_logs/.
 debug_logs/
+
+# Generated product distributions and .NET build output
+dist/
+**/bin/
+**/obj/
