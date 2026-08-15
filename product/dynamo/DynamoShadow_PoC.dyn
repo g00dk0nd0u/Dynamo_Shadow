@@ -1,0 +1,137 @@
+{
+  "Uuid": "56f07ac5-18fa-4e6e-8cb9-6acde3fbebc0",
+  "IsCustomNode": false,
+  "Description": "Minimal compiled Dynamo host proof of load.",
+  "Name": "DynamoShadow_PoC",
+  "ElementResolver": { "ResolutionMap": {} },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "Id": "c5c86acfce444e96bd7e8e271cf6197a",
+      "NodeType": "StringInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "a0c20ad746064bb184ec14cf2ad174b2",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Accuracy preset identifier.",
+      "InputValue": "standard"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "NodeType": "FunctionNode",
+      "FunctionSignature": "DynamoShadow.AccuracyPresetNodes.GetGridResolutionMeters@string",
+      "FunctionType": "GenericFunction",
+      "Id": "f37d3960f1fc4489a56c2b42d6600f53",
+      "Inputs": [
+        {
+          "Id": "db89db73370a4ca9b83cfaa4d93c7257",
+          "Name": "presetId",
+          "Description": "string",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "5e48c53f66fb4df39defae0c7c5a7be6",
+          "Name": "double",
+          "Description": "double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Gets the grid resolution from ShadowCore."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 120.0,
+      "WatchHeight": 80.0,
+      "Id": "071185549301473f882a92d10fd033bb",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "16e5b42e88154f968f678766574866e5",
+          "Name": "",
+          "Description": "Displays the output.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "b9640a39f6bd451db31cd4763bd0f21d",
+          "Name": "",
+          "Description": "Watch output.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Displays the returned grid resolution."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "a0c20ad746064bb184ec14cf2ad174b2",
+      "End": "db89db73370a4ca9b83cfaa4d93c7257",
+      "Id": "53298076aa7046df8ed91dbce61620fe",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "5e48c53f66fb4df39defae0c7c5a7be6",
+      "End": "16e5b42e88154f968f678766574866e5",
+      "Id": "ef96098376d54a40bcbd2aa0f4502610",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [
+    {
+      "Name": "DynamoShadow",
+      "Version": "1.0.0.0",
+      "ReferenceType": "ZeroTouch",
+      "Nodes": ["f37d3960f1fc4489a56c2b42d6600f53"]
+    }
+  ],
+  "EnableLegacyPolyCurveBehavior": true,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [],
+  "Author": "",
+  "Linting": { "activeLinter": "None", "activeLinterId": "", "warningCount": 0, "errorCount": 0 },
+  "Bindings": [],
+  "View": {
+    "Dynamo": { "ScaleFactor": 1.0, "HasRunWithoutCrash": false, "IsVisibleInDynamoLibrary": true, "Version": "3.3.0.6316", "RunType": "Manual", "RunPeriod": "1000" },
+    "Camera": { "Name": "Background Preview", "EyeX": -17.0, "EyeY": 24.0, "EyeZ": 50.0, "LookX": 12.0, "LookY": -13.0, "LookZ": -58.0, "UpX": 0.0, "UpY": 1.0, "UpZ": 0.0 },
+    "ConnectorPins": [],
+    "NodeViews": [
+      { "Id": "c5c86acfce444e96bd7e8e271cf6197a", "Name": "Preset", "IsSetAsInput": false, "IsSetAsOutput": false, "Excluded": false, "ShowGeometry": true, "X": 0.0, "Y": 0.0 },
+      { "Id": "f37d3960f1fc4489a56c2b42d6600f53", "Name": "GetGridResolutionMeters", "IsSetAsInput": false, "IsSetAsOutput": false, "Excluded": false, "ShowGeometry": true, "X": 250.0, "Y": 0.0 },
+      { "Id": "071185549301473f882a92d10fd033bb", "Name": "Watch", "IsSetAsInput": false, "IsSetAsOutput": false, "Excluded": false, "ShowGeometry": true, "X": 600.0, "Y": 0.0 }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}

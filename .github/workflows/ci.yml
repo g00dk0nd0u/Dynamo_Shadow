@@ -31,5 +31,6 @@ jobs:
           python -m json.tool runtime/Shadow.dyn > /dev/null
           python tools/check_debug_log_privacy.py
           dotnet test product/tests/ShadowCore.Tests.csproj --configuration Release
+          dotnet build product/dynamo/DynamoShadow.csproj --configuration Release
           dotnet build product/revit/RevitShadow.csproj --configuration Release
           git diff --check

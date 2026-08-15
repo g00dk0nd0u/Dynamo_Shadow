@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../core/ShadowCore.csproj" />
+    <ProjectReference Include="../dynamo/DynamoShadow.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../tests/fixtures/parity/accuracy_presets.json"
