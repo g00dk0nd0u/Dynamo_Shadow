@@ -110,7 +110,7 @@ Future work should keep the repository aligned with three layers:
 
 ### Revit version compatibility
 
-- The primary target is Revit 2024.3 with Dynamo 3.3 and CPython3.
+- The primary target for the current Python/Dynamo reference runtime is Revit 2024.3 with Dynamo 3.3 and CPython3. This does not define the compiled-product support floor. New compiled-product hosts target Revit 2025 and later.
 - Documentation for Revit 2025/2026 is not evidence that an API exists in Revit 2024.3.
 - New Revit APIs require optional imports, runtime capability checks, an explicit blocker or fallback when unavailable, and continued import/`py_compile` support in normal Python.
 - Isolate optional API imports so one missing class never sets the established core Revit imports to `None`.
