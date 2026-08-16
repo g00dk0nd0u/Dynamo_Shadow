@@ -27,7 +27,13 @@ public static class ForwardVerticalSliceV0
   public int CompareTo(PointKey other){var byX=X.CompareTo(other.X);return byX!=0?byX:Y.CompareTo(other.Y);}
   public bool Equals(PointKey other)=>X.Equals(other.X)&&Y.Equals(other.Y);
   public override bool Equals(object? obj)=>obj is PointKey other&&Equals(other);
-  public override int GetHashCode()=>HashCode.Combine(X,Y);
+  public override int GetHashCode()
+  {
+   unchecked
+   {
+    return (X.GetHashCode()*397)^Y.GetHashCode();
+   }
+  }
   public static bool operator ==(PointKey left,PointKey right)=>left.Equals(right);
   public static bool operator !=(PointKey left,PointKey right)=>!left.Equals(right);
  }
@@ -38,7 +44,13 @@ public static class ForwardVerticalSliceV0
   public int CompareTo(EdgeKey other){var byA=A.CompareTo(other.A);return byA!=0?byA:B.CompareTo(other.B);}
   public bool Equals(EdgeKey other)=>A.Equals(other.A)&&B.Equals(other.B);
   public override bool Equals(object? obj)=>obj is EdgeKey other&&Equals(other);
-  public override int GetHashCode()=>HashCode.Combine(A,B);
+  public override int GetHashCode()
+  {
+   unchecked
+   {
+    return (A.GetHashCode()*397)^B.GetHashCode();
+   }
+  }
  }
  public static ForwardVerticalSliceResultV0 Run(ForwardVerticalSliceInputV0 input)
  {
