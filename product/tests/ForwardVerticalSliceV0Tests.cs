@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using ShadowCore;
 using Xunit;
@@ -32,6 +33,15 @@ public sealed class ForwardVerticalSliceV0Tests
     }
 
     [Fact]
+    public void RejectsDuplicateFootprintPointsWithNumericIdentity()
+    {
+        var input=Valid();
+        input.Caster.FootprintPointsM=new List<Point2M>{new(-2,-1),new(2,-1),new(2,1),new(-2,1),new(-2,-1)};
+
+        Assert.Contains("duplicate_footprint_point",ForwardVerticalSliceV0.Run(input).Blockers);
+    }
+
+    [Fact]
     public void ContoursRetainWorldModelCoordinatesAndStartAtNumericMinimum()
     {
         using var fixture=JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"fixtures","parity","forward_vertical_slice_v0.json")));
@@ -40,6 +50,30 @@ public sealed class ForwardVerticalSliceV0Tests
         Assert.Equal(actual.Duration.GridSpec.OriginXM+actual.Duration.GridSpec.ResolutionM,first.X,5);
         Assert.Equal(-10.87757,first.X,5);
         Assert.Equal(15.0,first.Y,5);
+    }
+
+    [Fact]
+    public void ContourIdentityAndOrderingAreDeterministicUnderCommaDecimalCulture()
+    {
+        using var fixture=JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"fixtures","parity","forward_vertical_slice_v0.json")));
+        var originalCulture=CultureInfo.CurrentCulture;var originalUiCulture=CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentCulture=CultureInfo.GetCultureInfo("de-DE");CultureInfo.CurrentUICulture=CultureInfo.GetCultureInfo("de-DE");
+            var input=Build(fixture.RootElement.GetProperty("input"));
+            var first=ForwardVerticalSliceV0.Run(input);var second=ForwardVerticalSliceV0.Run(input);
+            var firstContours=first.Contours.Contours.Select(c=>(c.LevelMinutes,c.Closed,Points:c.PointsM.Select(p=>(p.X,p.Y)).ToArray())).ToArray();
+            var secondContours=second.Contours.Contours.Select(c=>(c.LevelMinutes,c.Closed,Points:c.PointsM.Select(p=>(p.X,p.Y)).ToArray())).ToArray();
+
+            Assert.Equal(firstContours.Length,secondContours.Length);
+            for(var i=0;i<firstContours.Length;i++){Assert.Equal(firstContours[i].LevelMinutes,secondContours[i].LevelMinutes);Assert.Equal(firstContours[i].Closed,secondContours[i].Closed);Assert.Equal(firstContours[i].Points,secondContours[i].Points);}
+            Assert.Equal(-10.87757,firstContours[0].Points[0].X,5);
+            Assert.Equal(first.Contours.Contours.Min(c=>c.PointsM[0].X),firstContours[0].Points[0].X);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture=originalCulture;CultureInfo.CurrentUICulture=originalUiCulture;
+        }
     }
 
     private static ForwardVerticalSliceInputV0 Build(JsonElement x){var caster=x.GetProperty("caster");return new ForwardVerticalSliceInputV0{LatitudeDeg=x.GetProperty("latitude_deg").GetDouble(),SolarDeclinationDeg=x.GetProperty("solar_declination_deg").GetDouble(),TrueNorthDeg=x.GetProperty("true_north_deg").GetDouble(),TrueSolarStartMinutes=x.GetProperty("true_solar_start_minutes").GetDouble(),TrueSolarEndMinutes=x.GetProperty("true_solar_end_minutes").GetDouble(),SunTimeStepMinutes=x.GetProperty("sun_time_step_minutes").GetDouble(),MeasurementPlaneElevationM=x.GetProperty("measurement_plane_elevation_m").GetDouble(),GridResolutionM=x.GetProperty("grid_resolution_m").GetDouble(),AnalysisMarginM=x.GetProperty("analysis_margin_m").GetDouble(),MaxGridPoints=x.GetProperty("max_grid_points").GetInt32(),ContourLevelsMinutes=x.GetProperty("contour_levels_minutes").EnumerateArray().Select(v=>v.GetDouble()).ToList(),Caster=new ConvexPrismCasterV0{BaseZM=caster.GetProperty("base_z_m").GetDouble(),TopZM=caster.GetProperty("top_z_m").GetDouble(),FootprintPointsM=caster.GetProperty("footprint_points_m").EnumerateArray().Select(p=>new Point2M(p.GetProperty("x").GetDouble(),p.GetProperty("y").GetDouble())).ToList()}};}
