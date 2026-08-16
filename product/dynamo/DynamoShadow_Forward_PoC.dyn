@@ -1,0 +1,833 @@
+{
+  "Uuid": "73a91a5e-d8c9-41e9-ae88-563ac0b5237d",
+  "IsCustomNode": false,
+  "Description": "Phase 2 compiled Forward Vertical Slice real-machine proof of concept.",
+  "Name": "DynamoShadow_Forward_PoC",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "35.6812",
+      "Id": "d59edab037454b94be82e62c0f312f36",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "3ea9618b71d24fabbf04c932e9b0d3af",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "latitudeDeg"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "-23.439",
+      "Id": "7cff6e5b6f564cba904c23c0c6f71e0d",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "8838c8042c1f482680605034601eaf35",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "solarDeclinationDeg"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "0.0",
+      "Id": "7d4f483754a64088a8bc3a5790c327f7",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "f0c7ea3336d54365b19d7eecb7c36dda",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "trueNorthDeg"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "600.0",
+      "Id": "3e26324c6a524fe6af972f4551e8c0ac",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "edf7dbc2ffb64ff79391dd8dbcd7fdea",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "trueSolarStartMinutes"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "840.0",
+      "Id": "3f651a2560a2433c92b2bce3d5d118cb",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "80b557fe1e024ee792d2fd6a3f883ffe",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "trueSolarEndMinutes"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "120.0",
+      "Id": "d3741eb18dd0455084db36702cfd2939",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "d39765369f3b4483a8cd1426140c3e26",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "sunTimeStepMinutes"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "4.0",
+      "Id": "192722ffdfbb4d3faafec7d3b9a14692",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "959a185738d1421cbfe31cb90399fe58",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "measurementPlaneElevationM"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "2.0",
+      "Id": "41549e48f6984e30abf5217b929cdc1a",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "f059323583664b1cb8e9f2c28652724a",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "gridResolutionM"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "2.0",
+      "Id": "8c1a9acdd1d44e7999a241e236118454",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "43650ff2314b499680002b63b99f6134",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "analysisMarginM"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Integer",
+      "InputValue": "10000",
+      "Id": "bf05256750e14626bae87f177b579b70",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c7caa4711a9f42aea199c590aa7c9a2e",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "maxGridPoints"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CodeBlockNodeModel, DynamoCore",
+      "Id": "d1ec74101080437084115db7d665c791",
+      "NodeType": "CodeBlockNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c770782df7e040009c3a124bb466d0d7",
+          "Name": "",
+          "Description": "Code Block output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "contourLevelsMinutes",
+      "Code": "[60.0,120.0];"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CodeBlockNodeModel, DynamoCore",
+      "Id": "abe89bc8291f4fd181110d5e532aca15",
+      "NodeType": "CodeBlockNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "ecd9b77b64ae4e05a3f0ae3b4aceed11",
+          "Name": "",
+          "Description": "Code Block output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "footprintXM",
+      "Code": "[-2.0,2.0,2.0,-2.0];"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CodeBlockNodeModel, DynamoCore",
+      "Id": "de423d8c816c41908ecf6d393cd129db",
+      "NodeType": "CodeBlockNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "1fe353800a2740438732bc400996cee3",
+          "Name": "",
+          "Description": "Code Block output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "footprintYM",
+      "Code": "[-1.0,-1.0,1.0,1.0];"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "0.0",
+      "Id": "5cc4679cdacb43ca8cf229fdd8222c28",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "7453f67c65704a648af4f211e60eece4",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "baseZM"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NumberType": "Double",
+      "InputValue": "12.0",
+      "Id": "7f9f9e4bcdba4c41a6c3badedad26066",
+      "NodeType": "NumberInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c7866154c0d04fbd8904ff8725efbe4c",
+          "Name": "",
+          "Description": "Number",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "topZM"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "NodeType": "FunctionNode",
+      "FunctionSignature": "DynamoShadow.ForwardVerticalSliceNodes.Run@double,double,double,double,double,double,double,double,double,int,double[],double[],double[],double,double",
+      "FunctionType": "GenericFunction",
+      "Id": "16175a05fc6b4cb88b7c7c916b83f880",
+      "Inputs": [
+        {
+          "Id": "d3119bfcd5c2468b9244dae65f5eb377",
+          "Name": "latitudeDeg",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "6b543221c199469999a1d7b2f5cf1e0e",
+          "Name": "solarDeclinationDeg",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "90fe7615747a40d2970a21b139e1ec51",
+          "Name": "trueNorthDeg",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "bada0ed315de49289c0c481784c3df21",
+          "Name": "trueSolarStartMinutes",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "e1208386f62b4a94b9de498887bdde9a",
+          "Name": "trueSolarEndMinutes",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "885e91f3dc3c4f4490ec605ec0708527",
+          "Name": "sunTimeStepMinutes",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "406627a1432445ed8945d2e825d4d613",
+          "Name": "measurementPlaneElevationM",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "39cc77cc147d49cf9417bca93ae61f03",
+          "Name": "gridResolutionM",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "3adf2bbd94e04b21ad73d8c4e8166b32",
+          "Name": "analysisMarginM",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "41492e77b31747b3b0eb3463b0419742",
+          "Name": "maxGridPoints",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "271709c313784e42bd6e9133a25db973",
+          "Name": "contourLevelsMinutes",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "19223bfc91974b458231efa9376ed30e",
+          "Name": "footprintXM",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "742dbbdbe23949a7be448a6202d12a07",
+          "Name": "footprintYM",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "338ef63354ae4329a509c28fee04d77e",
+          "Name": "baseZM",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "ec190cfe02014ac58fe56a0bcdcdccd6",
+          "Name": "topZM",
+          "Description": "Primitive Forward Vertical Slice v0 input.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "42aca784a4b742c9a679ff2d03550ce8",
+          "Name": "IDictionary<string,object>",
+          "Description": "Primitive result dictionary.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs compiled Forward Vertical Slice v0 through ShadowCore."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "WatchWidth": 240.0,
+      "WatchHeight": 300.0,
+      "Id": "7f6a4ca6f3be4b03853207ea8aa78b3e",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "957c476f2e6f432197f6cba82f0ac463",
+          "Name": "",
+          "Description": "Displays the output.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "91610d5ca2f2480a85f68124c9e427d7",
+          "Name": "",
+          "Description": "Watch output.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Displays the compiled Forward result dictionary."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "3ea9618b71d24fabbf04c932e9b0d3af",
+      "End": "d3119bfcd5c2468b9244dae65f5eb377",
+      "Id": "d1a256fb46e54c2c9d4136e61cfeabf4",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "8838c8042c1f482680605034601eaf35",
+      "End": "6b543221c199469999a1d7b2f5cf1e0e",
+      "Id": "979899dcfac04ecb81c03d294ea3e4c7",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "f0c7ea3336d54365b19d7eecb7c36dda",
+      "End": "90fe7615747a40d2970a21b139e1ec51",
+      "Id": "5aba627f57114b7084e65962d297463a",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "edf7dbc2ffb64ff79391dd8dbcd7fdea",
+      "End": "bada0ed315de49289c0c481784c3df21",
+      "Id": "d86758a6c1384cba8b72ccced6608869",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "80b557fe1e024ee792d2fd6a3f883ffe",
+      "End": "e1208386f62b4a94b9de498887bdde9a",
+      "Id": "6e15aaa69728426b8b5ad62af088b0a4",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "d39765369f3b4483a8cd1426140c3e26",
+      "End": "885e91f3dc3c4f4490ec605ec0708527",
+      "Id": "f9cf2bab2486475d921d3f2bc07fbf1e",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "959a185738d1421cbfe31cb90399fe58",
+      "End": "406627a1432445ed8945d2e825d4d613",
+      "Id": "bead3062de4e4b45b0d814eb95fe0c95",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "f059323583664b1cb8e9f2c28652724a",
+      "End": "39cc77cc147d49cf9417bca93ae61f03",
+      "Id": "43728440db5044eda954b91183df7aad",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "43650ff2314b499680002b63b99f6134",
+      "End": "3adf2bbd94e04b21ad73d8c4e8166b32",
+      "Id": "59ec3060f2964def82efdc567bb6887e",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "c7caa4711a9f42aea199c590aa7c9a2e",
+      "End": "41492e77b31747b3b0eb3463b0419742",
+      "Id": "9f874d2b1ec54af8ba63025ed6133ed9",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "c770782df7e040009c3a124bb466d0d7",
+      "End": "271709c313784e42bd6e9133a25db973",
+      "Id": "285ff50c3e8643598dc7958f1e9631d7",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "ecd9b77b64ae4e05a3f0ae3b4aceed11",
+      "End": "19223bfc91974b458231efa9376ed30e",
+      "Id": "60cf3f5c68bf4b5db5294682438506b8",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "1fe353800a2740438732bc400996cee3",
+      "End": "742dbbdbe23949a7be448a6202d12a07",
+      "Id": "9598ac2bce614d6eab09b8c77e3b0ed1",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "7453f67c65704a648af4f211e60eece4",
+      "End": "338ef63354ae4329a509c28fee04d77e",
+      "Id": "29bcaa3cbfed47d9ade8e2ca30c60179",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "c7866154c0d04fbd8904ff8725efbe4c",
+      "End": "ec190cfe02014ac58fe56a0bcdcdccd6",
+      "Id": "7e333bd210824987a3288780af6b5719",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "42aca784a4b742c9a679ff2d03550ce8",
+      "End": "957c476f2e6f432197f6cba82f0ac463",
+      "Id": "67f5a245270548a4b67aeb84ba0f941d",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [
+    {
+      "Name": "DynamoShadow",
+      "Version": "1.0.0.0",
+      "ReferenceType": "ZeroTouch",
+      "Nodes": [
+        "16175a05fc6b4cb88b7c7c916b83f880"
+      ]
+    }
+  ],
+  "EnableLegacyPolyCurveBehavior": true,
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": false,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "3.3.0.6316",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "d59edab037454b94be82e62c0f312f36",
+        "Name": "latitudeDeg",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0.0,
+        "Y": 0.0
+      },
+      {
+        "Id": "7cff6e5b6f564cba904c23c0c6f71e0d",
+        "Name": "solarDeclinationDeg",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0.0,
+        "Y": 110.0
+      },
+      {
+        "Id": "7d4f483754a64088a8bc3a5790c327f7",
+        "Name": "trueNorthDeg",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0.0,
+        "Y": 220.0
+      },
+      {
+        "Id": "3e26324c6a524fe6af972f4551e8c0ac",
+        "Name": "trueSolarStartMinutes",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0.0,
+        "Y": 330.0
+      },
+      {
+        "Id": "3f651a2560a2433c92b2bce3d5d118cb",
+        "Name": "trueSolarEndMinutes",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0.0,
+        "Y": 440.0
+      },
+      {
+        "Id": "d3741eb18dd0455084db36702cfd2939",
+        "Name": "sunTimeStepMinutes",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 260.0,
+        "Y": 0.0
+      },
+      {
+        "Id": "192722ffdfbb4d3faafec7d3b9a14692",
+        "Name": "measurementPlaneElevationM",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 260.0,
+        "Y": 110.0
+      },
+      {
+        "Id": "41549e48f6984e30abf5217b929cdc1a",
+        "Name": "gridResolutionM",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 260.0,
+        "Y": 220.0
+      },
+      {
+        "Id": "8c1a9acdd1d44e7999a241e236118454",
+        "Name": "analysisMarginM",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 260.0,
+        "Y": 330.0
+      },
+      {
+        "Id": "bf05256750e14626bae87f177b579b70",
+        "Name": "maxGridPoints",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 260.0,
+        "Y": 440.0
+      },
+      {
+        "Id": "d1ec74101080437084115db7d665c791",
+        "Name": "contourLevelsMinutes",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 520.0,
+        "Y": 0.0
+      },
+      {
+        "Id": "abe89bc8291f4fd181110d5e532aca15",
+        "Name": "footprintXM",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 520.0,
+        "Y": 150.0
+      },
+      {
+        "Id": "de423d8c816c41908ecf6d393cd129db",
+        "Name": "footprintYM",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 520.0,
+        "Y": 300.0
+      },
+      {
+        "Id": "5cc4679cdacb43ca8cf229fdd8222c28",
+        "Name": "baseZM",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 520.0,
+        "Y": 450.0
+      },
+      {
+        "Id": "7f9f9e4bcdba4c41a6c3badedad26066",
+        "Name": "topZM",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 520.0,
+        "Y": 560.0
+      },
+      {
+        "Id": "16175a05fc6b4cb88b7c7c916b83f880",
+        "Name": "ForwardVerticalSliceNodes.Run",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 850.0,
+        "Y": 100.0
+      },
+      {
+        "Id": "7f6a4ca6f3be4b03853207ea8aa78b3e",
+        "Name": "Watch",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 1250.0,
+        "Y": 100.0
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 0.7
+  }
+}

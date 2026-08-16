@@ -47,3 +47,24 @@ This is not the final product graph or a public Dynamo package. A final
 still required, so public release packaging remains blocked. Revit 2026 is the
 next validation target for this .NET 8 assembly; Revit 2027 requires a later
 .NET 10 host target and validation.
+
+## Phase 2 compiled Forward PoC
+
+`DynamoShadow_Forward_PoC.dyn` is a minimal Phase 2 graph for real-machine
+validation of the compiled Forward Vertical Slice v0 only. It is not a final
+product graph, and it does not establish permit readiness or certification.
+
+To run it manually:
+
+1. Build `product/dynamo/DynamoShadow.csproj` in Release configuration.
+2. Keep the resulting `DynamoShadow.dll` and `ShadowCore.dll` together, then
+   import `DynamoShadow.dll` with Dynamo's **File > Import Library** command.
+3. Open `product/dynamo/DynamoShadow_Forward_PoC.dyn` and run it manually.
+4. Inspect the result dictionary in Watch. A successful future real-machine run
+   is expected to show `available = true`, `complete = true`, and the `solar`,
+   `shadow_slices`, `duration`, and `contours` fields. This has not yet been
+   validated on a real machine.
+
+The graph uses the repository's existing Forward Vertical Slice v0 parity
+fixture values without adding another calculation convention. Its returned
+`permit_ready_certified` field remains `false`.
