@@ -1,0 +1,137 @@
+{
+  "contract_version": "forward_solar_true_north_v0",
+  "input": {
+    "latitude_deg": 35.6812,
+    "solar_declination_deg": -23.439,
+    "true_solar_minutes": [
+      600.0,
+      720.0,
+      840.0
+    ]
+  },
+  "cases": [
+    {
+      "true_north_deg": 0.0,
+      "samples": [
+        {
+          "true_solar_minutes": 600.0,
+          "solar_altitude_deg": 24.418234,
+          "solar_azimuth_deg": 149.747846,
+          "shadow_azimuth_true_north_deg": 329.747846,
+          "shadow_azimuth_model_deg": 329.747846,
+          "shadow_direction_model": {
+            "x": -0.5038064455515727,
+            "y": 0.8638165693135842
+          },
+          "shadow_length_factor": 2.202624265090143
+        },
+        {
+          "true_solar_minutes": 720.0,
+          "solar_altitude_deg": 30.8798,
+          "solar_azimuth_deg": 180.0,
+          "shadow_azimuth_true_north_deg": 0.0,
+          "shadow_azimuth_model_deg": 0.0,
+          "shadow_direction_model": {
+            "x": 0.0,
+            "y": 1.0
+          },
+          "shadow_length_factor": 1.6722158683293502
+        },
+        {
+          "true_solar_minutes": 840.0,
+          "solar_altitude_deg": 24.418234,
+          "solar_azimuth_deg": 210.252154,
+          "shadow_azimuth_true_north_deg": 30.252154,
+          "shadow_azimuth_model_deg": 30.252154,
+          "shadow_direction_model": {
+            "x": 0.5038064455515727,
+            "y": 0.8638165693135842
+          },
+          "shadow_length_factor": 2.202624265090143
+        }
+      ]
+    },
+    {
+      "true_north_deg": 30.0,
+      "samples": [
+        {
+          "true_solar_minutes": 600.0,
+          "solar_altitude_deg": 24.418234,
+          "solar_azimuth_deg": 149.747846,
+          "shadow_azimuth_true_north_deg": 329.747846,
+          "shadow_azimuth_model_deg": 359.747846,
+          "shadow_direction_model": {
+            "x": -0.004400895781212053,
+            "y": 0.9999903160112716
+          },
+          "shadow_length_factor": 2.202624265090143
+        },
+        {
+          "true_solar_minutes": 720.0,
+          "solar_altitude_deg": 30.8798,
+          "solar_azimuth_deg": 180.0,
+          "shadow_azimuth_true_north_deg": 0.0,
+          "shadow_azimuth_model_deg": 30.0,
+          "shadow_direction_model": {
+            "x": 0.49999999999999994,
+            "y": 0.8660254037844387
+          },
+          "shadow_length_factor": 1.6722158683293502
+        },
+        {
+          "true_solar_minutes": 840.0,
+          "solar_altitude_deg": 24.418234,
+          "solar_azimuth_deg": 210.252154,
+          "shadow_azimuth_true_north_deg": 30.252154,
+          "shadow_azimuth_model_deg": 60.252154,
+          "shadow_direction_model": {
+            "x": 0.8682174650947957,
+            "y": 0.4961838704596989
+          },
+          "shadow_length_factor": 2.202624265090143
+        }
+      ]
+    },
+    {
+      "true_north_deg": -30.0,
+      "samples": [
+        {
+          "true_solar_minutes": 600.0,
+          "solar_altitude_deg": 24.418234,
+          "solar_azimuth_deg": 149.747846,
+          "shadow_azimuth_true_north_deg": 329.747846,
+          "shadow_azimuth_model_deg": 299.747846,
+          "shadow_direction_model": {
+            "x": -0.8682174650947958,
+            "y": 0.4961838704596987
+          },
+          "shadow_length_factor": 2.202624265090143
+        },
+        {
+          "true_solar_minutes": 720.0,
+          "solar_altitude_deg": 30.8798,
+          "solar_azimuth_deg": 180.0,
+          "shadow_azimuth_true_north_deg": 0.0,
+          "shadow_azimuth_model_deg": 330.0,
+          "shadow_direction_model": {
+            "x": -0.5000000000000004,
+            "y": 0.8660254037844384
+          },
+          "shadow_length_factor": 1.6722158683293502
+        },
+        {
+          "true_solar_minutes": 840.0,
+          "solar_altitude_deg": 24.418234,
+          "solar_azimuth_deg": 210.252154,
+          "shadow_azimuth_true_north_deg": 30.252154,
+          "shadow_azimuth_model_deg": 0.252154,
+          "shadow_direction_model": {
+            "x": 0.00440089578121153,
+            "y": 0.9999903160112716
+          },
+          "shadow_length_factor": 2.202624265090143
+        }
+      ]
+    }
+  ]
+}

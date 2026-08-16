@@ -24,6 +24,43 @@ public sealed class ForwardVerticalSliceV0Tests
     }
 
     [Fact]
+    public void SolarTrueNorthMatchesSharedPythonReferenceAndCanonicalRotationSign()
+    {
+        using var fixture=JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"fixtures","parity","forward_solar_true_north_v0.json")));
+        var root=fixture.RootElement;var fixtureInput=root.GetProperty("input");var results=new Dictionary<double,SolarResultV0>();
+        foreach(var expectedCase in root.GetProperty("cases").EnumerateArray())
+        {
+            var trueNorth=expectedCase.GetProperty("true_north_deg").GetDouble();var input=Valid();
+            input.LatitudeDeg=fixtureInput.GetProperty("latitude_deg").GetDouble();input.SolarDeclinationDeg=fixtureInput.GetProperty("solar_declination_deg").GetDouble();input.TrueNorthDeg=trueNorth;
+            var times=fixtureInput.GetProperty("true_solar_minutes").EnumerateArray().Select(x=>x.GetDouble()).ToArray();input.TrueSolarStartMinutes=times[0];input.TrueSolarEndMinutes=times[^1];input.SunTimeStepMinutes=times[1]-times[0];
+            var actual=ForwardVerticalSliceV0.Run(input);Assert.True(actual.Complete);results[trueNorth]=actual.Solar;
+            var expectedSamples=expectedCase.GetProperty("samples").EnumerateArray().ToArray();Assert.Equal(expectedSamples.Length,actual.Solar.Samples.Count);
+            for(var index=0;index<expectedSamples.Length;index++)
+            {
+                var expected=expectedSamples[index];var sample=actual.Solar.Samples[index];var direction=expected.GetProperty("shadow_direction_model");
+                Assert.Equal(expected.GetProperty("true_solar_minutes").GetDouble(),sample.TrueSolarMinutes,8);
+                Assert.Equal(expected.GetProperty("solar_altitude_deg").GetDouble(),sample.SolarAltitudeDeg,5);
+                Assert.Equal(expected.GetProperty("solar_azimuth_deg").GetDouble(),sample.SolarAzimuthDeg,5);
+                Assert.Equal(expected.GetProperty("shadow_azimuth_true_north_deg").GetDouble(),sample.ShadowAzimuthTrueNorthDeg,5);
+                Assert.Equal(expected.GetProperty("shadow_azimuth_model_deg").GetDouble(),sample.ShadowAzimuthModelDeg,5);
+                Assert.Equal(direction.GetProperty("x").GetDouble(),sample.ShadowDirectionModel.X,10);Assert.Equal(direction.GetProperty("y").GetDouble(),sample.ShadowDirectionModel.Y,10);
+                Assert.Equal(expected.GetProperty("shadow_length_factor").GetDouble(),sample.ShadowLengthFactor,10);
+            }
+        }
+        for(var index=0;index<results[0].Samples.Count;index++)
+        {
+            var baseline=results[0].Samples[index];
+            foreach(var trueNorth in new[]{30.0,-30.0})
+            {
+                var rotated=results[trueNorth].Samples[index];
+                Assert.Equal(Normalize(baseline.ShadowAzimuthModelDeg+trueNorth),rotated.ShadowAzimuthModelDeg,10);
+                Assert.Equal(baseline.SolarAltitudeDeg,rotated.SolarAltitudeDeg,10);Assert.Equal(baseline.SolarAzimuthDeg,rotated.SolarAzimuthDeg,10);
+                Assert.Equal(baseline.ShadowAzimuthTrueNorthDeg,rotated.ShadowAzimuthTrueNorthDeg,10);Assert.Equal(baseline.ShadowLengthFactor,rotated.ShadowLengthFactor,10);
+            }
+        }
+    }
+
+    [Fact]
     public void BlocksUnsupportedAndUnsafeInputs()
     {
         var input=Valid();input.Caster.FootprintPointsM=new List<Point2M>{new(0,0),new(2,0),new(1,1),new(2,2),new(0,2)};Assert.Contains("non_convex_footprint",ForwardVerticalSliceV0.Run(input).Blockers);
@@ -78,4 +115,5 @@ public sealed class ForwardVerticalSliceV0Tests
 
     private static ForwardVerticalSliceInputV0 Build(JsonElement x){var caster=x.GetProperty("caster");return new ForwardVerticalSliceInputV0{LatitudeDeg=x.GetProperty("latitude_deg").GetDouble(),SolarDeclinationDeg=x.GetProperty("solar_declination_deg").GetDouble(),TrueNorthDeg=x.GetProperty("true_north_deg").GetDouble(),TrueSolarStartMinutes=x.GetProperty("true_solar_start_minutes").GetDouble(),TrueSolarEndMinutes=x.GetProperty("true_solar_end_minutes").GetDouble(),SunTimeStepMinutes=x.GetProperty("sun_time_step_minutes").GetDouble(),MeasurementPlaneElevationM=x.GetProperty("measurement_plane_elevation_m").GetDouble(),GridResolutionM=x.GetProperty("grid_resolution_m").GetDouble(),AnalysisMarginM=x.GetProperty("analysis_margin_m").GetDouble(),MaxGridPoints=x.GetProperty("max_grid_points").GetInt32(),ContourLevelsMinutes=x.GetProperty("contour_levels_minutes").EnumerateArray().Select(v=>v.GetDouble()).ToList(),Caster=new ConvexPrismCasterV0{BaseZM=caster.GetProperty("base_z_m").GetDouble(),TopZM=caster.GetProperty("top_z_m").GetDouble(),FootprintPointsM=caster.GetProperty("footprint_points_m").EnumerateArray().Select(p=>new Point2M(p.GetProperty("x").GetDouble(),p.GetProperty("y").GetDouble())).ToList()}};}
     private static ForwardVerticalSliceInputV0 Valid()=>new(){LatitudeDeg=35.6812,SolarDeclinationDeg=-23.439,TrueSolarStartMinutes=600,TrueSolarEndMinutes=840,SunTimeStepMinutes=120,MeasurementPlaneElevationM=4,GridResolutionM=2,AnalysisMarginM=2,MaxGridPoints=10000,ContourLevelsMinutes=new List<double>{60},Caster=new ConvexPrismCasterV0{BaseZM=0,TopZM=12,FootprintPointsM=new List<Point2M>{new(-2,-1),new(2,-1),new(2,1),new(-2,1)}}};
+    private static double Normalize(double degrees)=>(degrees%360+360)%360;
 }
