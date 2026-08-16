@@ -25,6 +25,9 @@
     <None Include="../../tests/fixtures/parity/forward_vertical_slice_v0.json"
           Link="fixtures/parity/forward_vertical_slice_v0.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../tests/fixtures/parity/forward_projection_v0.json"
+          Link="fixtures/parity/forward_projection_v0.json"
+          CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../tests/fixtures/parity/forward_solar_true_north_v0.json"
           Link="fixtures/parity/forward_solar_true_north_v0.json"
           CopyToOutputDirectory="PreserveNewest" />
