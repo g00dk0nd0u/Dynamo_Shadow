@@ -39,13 +39,20 @@ def _reference(data):
         solar = _sun_position_for_true_solar_minutes(
             minute, data["latitude_deg"], data["solar_declination_deg"], data["true_north_deg"]
         )
+        model_direction = solar.get("shadow_direction_model")
+        assert model_direction is not None
+        assert model_direction.get("basis") == "unit_horizontal_vector_model_xy_axes"
+        projection_direction = {
+            "x_east": model_direction["x"],
+            "y_north": model_direction["y"],
+        }
         projected = []
         for point in data["caster"]["footprint_points_m"]:
             projected.append({"x_m": point["x"], "y_m": point["y"],
                               "z_m": data["measurement_plane_elevation_m"]})
             projected.append(_project_point(
                 {"x_m": point["x"], "y_m": point["y"], "z_m": data["caster"]["top_z_m"]},
-                data["measurement_plane_elevation_m"], solar["shadow_direction_vector"],
+                data["measurement_plane_elevation_m"], projection_direction,
                 solar["shadow_length_factor"],
             )["projected_point_m"])
         hull = _build_convex_shadow_envelope_v0(

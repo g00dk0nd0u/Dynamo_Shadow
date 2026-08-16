@@ -114,8 +114,8 @@ public sealed class ForwardPortableParityV0Tests
 
         var actual = ForwardVerticalSliceV0.Run(input);
         Assert.True(actual.Complete);
-        var boundary = Assert.Single(actual.Duration.DurationValues.Where(point =>
-            Math.Abs(point.X-100.0) <= DurationTolerance && Math.Abs(point.Y+50.0) <= DurationTolerance));
+        var boundary = Assert.Single(actual.Duration.DurationValues, point =>
+            Math.Abs(point.X-100.0) <= DurationTolerance && Math.Abs(point.Y+50.0) <= DurationTolerance);
         Assert.Equal(2.0, boundary.ShadowDurationMinutes, DurationTolerance);
     }
 
@@ -193,9 +193,9 @@ public sealed class ForwardPortableParityV0Tests
         var independent = 70*(states[0]+states[1])/2.0 + 70*(states[1]+states[2])/2.0
             + 60*(states[2]+states[3])/2.0;
         Assert.Equal(point.GetProperty("duration_minutes").GetDouble(), independent, DurationTolerance);
-        var actualPoint = Assert.Single(actual.DurationValues.Where(value =>
+        var actualPoint = Assert.Single(actual.DurationValues, value =>
             Math.Abs(value.X-point.GetProperty("x").GetDouble()) <= CoordinateTolerance &&
-            Math.Abs(value.Y-point.GetProperty("y").GetDouble()) <= CoordinateTolerance));
+            Math.Abs(value.Y-point.GetProperty("y").GetDouble()) <= CoordinateTolerance);
         Assert.Equal(independent, actualPoint.ShadowDurationMinutes, DurationTolerance);
     }
 

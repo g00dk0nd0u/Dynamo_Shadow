@@ -58,12 +58,12 @@
         "sample_index": 0,
         "points_m": [
           {
-            "x": 90.675043,
-            "y": -31.204916
+            "x": 95.554812,
+            "y": -28.810253
           },
           {
-            "x": 92.675043,
-            "y": -36.204916
+            "x": 99.0,
+            "y": -42.0
           },
           {
             "x": 101.0,
@@ -78,16 +78,16 @@
             "y": -44.0
           },
           {
-            "x": 107.0,
-            "y": -39.0
+            "x": 105.554812,
+            "y": -30.810253
           },
           {
-            "x": 98.675043,
-            "y": -28.204916
+            "x": 103.554812,
+            "y": -25.810253
           },
           {
-            "x": 93.675043,
-            "y": -27.204916
+            "x": 98.554812,
+            "y": -24.810253
           }
         ]
       },
@@ -107,24 +107,24 @@
             "y": -48.0
           },
           {
-            "x": 109.0,
-            "y": -44.0
+            "x": 114.857002,
+            "y": -40.387973
           },
           {
-            "x": 114.178658,
-            "y": -33.532385
+            "x": 117.857002,
+            "y": -36.387973
           },
           {
-            "x": 112.178658,
-            "y": -28.532385
+            "x": 115.857002,
+            "y": -31.387973
           },
           {
-            "x": 107.178658,
-            "y": -27.532385
+            "x": 110.857002,
+            "y": -30.387973
           },
           {
-            "x": 104.178658,
-            "y": -31.532385
+            "x": 102.0,
+            "y": -38.0
           }
         ]
       }
@@ -132,1462 +132,1552 @@
     "duration": {
       "temporal_step_minutes": null,
       "spatial_resolution_m": 1.5,
-      "grid_point_count": 288,
+      "grid_point_count": 306,
       "maximum_shadow_duration_minutes": 200.0,
-      "shadowed_point_count": 145,
+      "shadowed_point_count": 143,
       "grid_spec": {
-        "x_count": 18,
-        "y_count": 16,
-        "origin_x_m": 89.925043,
+        "x_count": 17,
+        "y_count": 18,
+        "origin_x_m": 94.804812,
         "origin_y_m": -48.75,
         "resolution_m": 1.5,
         "ordering": "row_major_y_then_x"
       },
       "duration_grid": [
         {
-          "x_m": 89.925043,
+          "x_m": 94.804812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 94.425043,
+          "x_m": 99.304812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 95.925043,
+          "x_m": 100.804812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 97.425043,
+          "x_m": 102.304812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 98.925043,
+          "x_m": 103.804812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 100.425043,
+          "x_m": 105.304812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 106.804812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 108.304812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 109.804812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 111.304812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 112.804812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 109.425043,
+          "x_m": 114.304812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 115.804812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 117.304812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 118.804812,
           "y_m": -48.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
-          "y_m": -48.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 89.925043,
+          "x_m": 94.804812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 94.425043,
+          "x_m": 99.304812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 95.925043,
+          "x_m": 100.804812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 97.425043,
-          "y_m": -47.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 98.925043,
-          "y_m": -47.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 100.425043,
-          "y_m": -47.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 101.925043,
-          "y_m": -47.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 103.425043,
+          "x_m": 102.304812,
           "y_m": -47.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 103.804812,
           "y_m": -47.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 105.304812,
           "y_m": -47.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 106.804812,
+          "y_m": -47.25,
+          "shadow_duration_minutes": 30.0
+        },
+        {
+          "x_m": 108.304812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 109.425043,
+          "x_m": 109.804812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 111.304812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 112.804812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 114.304812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
+          "x_m": 115.804812,
           "y_m": -47.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 89.925043,
+          "x_m": 117.304812,
+          "y_m": -47.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 118.804812,
+          "y_m": -47.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 94.804812,
           "y_m": -45.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -45.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -45.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 94.425043,
+          "x_m": 99.304812,
           "y_m": -45.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 95.925043,
-          "y_m": -45.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 97.425043,
-          "y_m": -45.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 98.925043,
-          "y_m": -45.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 100.425043,
-          "y_m": -45.75,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 101.925043,
+          "x_m": 100.804812,
           "y_m": -45.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 102.304812,
           "y_m": -45.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 103.804812,
           "y_m": -45.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 105.304812,
           "y_m": -45.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 106.804812,
+          "y_m": -45.75,
+          "shadow_duration_minutes": 200.0
+        },
+        {
+          "x_m": 108.304812,
+          "y_m": -45.75,
+          "shadow_duration_minutes": 30.0
+        },
+        {
+          "x_m": 109.804812,
           "y_m": -45.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 109.425043,
+          "x_m": 111.304812,
           "y_m": -45.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 112.804812,
           "y_m": -45.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 114.304812,
           "y_m": -45.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 115.804812,
           "y_m": -45.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
+          "x_m": 117.304812,
           "y_m": -45.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 89.925043,
+          "x_m": 118.804812,
+          "y_m": -45.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 94.804812,
           "y_m": -44.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -44.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -44.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 94.425043,
+          "x_m": 99.304812,
           "y_m": -44.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 95.925043,
-          "y_m": -44.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 97.425043,
-          "y_m": -44.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 98.925043,
-          "y_m": -44.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 100.425043,
+          "x_m": 100.804812,
           "y_m": -44.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 102.304812,
           "y_m": -44.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 103.804812,
           "y_m": -44.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 105.304812,
           "y_m": -44.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 106.804812,
           "y_m": -44.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 108.304812,
           "y_m": -44.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 109.425043,
+          "x_m": 109.804812,
+          "y_m": -44.25,
+          "shadow_duration_minutes": 30.0
+        },
+        {
+          "x_m": 111.304812,
           "y_m": -44.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 112.804812,
           "y_m": -44.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 114.304812,
           "y_m": -44.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 115.804812,
           "y_m": -44.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
+          "x_m": 117.304812,
           "y_m": -44.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 89.925043,
+          "x_m": 118.804812,
+          "y_m": -44.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 94.804812,
           "y_m": -42.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -42.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -42.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 94.425043,
-          "y_m": -42.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 95.925043,
-          "y_m": -42.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 97.425043,
-          "y_m": -42.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 98.925043,
-          "y_m": -42.75,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 100.425043,
+          "x_m": 99.304812,
           "y_m": -42.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 100.804812,
           "y_m": -42.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 102.304812,
           "y_m": -42.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 103.804812,
           "y_m": -42.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 105.304812,
           "y_m": -42.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 106.804812,
           "y_m": -42.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 109.425043,
+          "x_m": 108.304812,
+          "y_m": -42.75,
+          "shadow_duration_minutes": 200.0
+        },
+        {
+          "x_m": 109.804812,
           "y_m": -42.75,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 111.304812,
+          "y_m": -42.75,
+          "shadow_duration_minutes": 30.0
+        },
+        {
+          "x_m": 112.804812,
           "y_m": -42.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 114.304812,
           "y_m": -42.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 115.804812,
           "y_m": -42.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
+          "x_m": 117.304812,
           "y_m": -42.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 89.925043,
+          "x_m": 118.804812,
+          "y_m": -42.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 94.804812,
           "y_m": -41.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -41.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -41.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 94.425043,
-          "y_m": -41.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 95.925043,
-          "y_m": -41.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 97.425043,
-          "y_m": -41.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 98.925043,
+          "x_m": 99.304812,
           "y_m": -41.25,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 100.425043,
+          "x_m": 100.804812,
           "y_m": -41.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 102.304812,
           "y_m": -41.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 103.804812,
           "y_m": -41.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 105.304812,
           "y_m": -41.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 106.804812,
           "y_m": -41.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 108.304812,
           "y_m": -41.25,
           "shadow_duration_minutes": 165.0
         },
         {
-          "x_m": 109.425043,
+          "x_m": 109.804812,
+          "y_m": -41.25,
+          "shadow_duration_minutes": 95.0
+        },
+        {
+          "x_m": 111.304812,
           "y_m": -41.25,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 112.804812,
+          "y_m": -41.25,
+          "shadow_duration_minutes": 30.0
+        },
+        {
+          "x_m": 114.304812,
           "y_m": -41.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 115.804812,
           "y_m": -41.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 117.304812,
           "y_m": -41.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
+          "x_m": 118.804812,
           "y_m": -41.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 89.925043,
+          "x_m": 94.804812,
           "y_m": -39.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -39.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -39.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 94.425043,
-          "y_m": -39.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 95.925043,
-          "y_m": -39.75,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 97.425043,
-          "y_m": -39.75,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 98.925043,
+          "x_m": 99.304812,
           "y_m": -39.75,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 100.425043,
+          "x_m": 100.804812,
           "y_m": -39.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 102.304812,
           "y_m": -39.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 103.804812,
           "y_m": -39.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 105.304812,
           "y_m": -39.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 106.804812,
           "y_m": -39.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 108.304812,
+          "y_m": -39.75,
+          "shadow_duration_minutes": 165.0
+        },
+        {
+          "x_m": 109.804812,
           "y_m": -39.75,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 109.425043,
+          "x_m": 111.304812,
           "y_m": -39.75,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 112.804812,
           "y_m": -39.75,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 114.304812,
+          "y_m": -39.75,
+          "shadow_duration_minutes": 30.0
+        },
+        {
+          "x_m": 115.804812,
           "y_m": -39.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 117.304812,
           "y_m": -39.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
+          "x_m": 118.804812,
           "y_m": -39.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 89.925043,
+          "x_m": 94.804812,
           "y_m": -38.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -38.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -38.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 94.425043,
+          "x_m": 99.304812,
           "y_m": -38.25,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 95.925043,
-          "y_m": -38.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 97.425043,
-          "y_m": -38.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 98.925043,
+          "x_m": 100.804812,
           "y_m": -38.25,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 100.425043,
-          "y_m": -38.25,
-          "shadow_duration_minutes": 170.0
-        },
-        {
-          "x_m": 101.925043,
+          "x_m": 102.304812,
           "y_m": -38.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 103.804812,
           "y_m": -38.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 105.304812,
           "y_m": -38.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 106.804812,
+          "y_m": -38.25,
+          "shadow_duration_minutes": 200.0
+        },
+        {
+          "x_m": 108.304812,
           "y_m": -38.25,
           "shadow_duration_minutes": 165.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 109.804812,
           "y_m": -38.25,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 109.425043,
+          "x_m": 111.304812,
           "y_m": -38.25,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 112.804812,
           "y_m": -38.25,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 114.304812,
+          "y_m": -38.25,
+          "shadow_duration_minutes": 30.0
+        },
+        {
+          "x_m": 115.804812,
+          "y_m": -38.25,
+          "shadow_duration_minutes": 30.0
+        },
+        {
+          "x_m": 117.304812,
           "y_m": -38.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 118.804812,
           "y_m": -38.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
-          "y_m": -38.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 89.925043,
+          "x_m": 94.804812,
           "y_m": -36.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -36.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
-          "y_m": -36.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 94.425043,
+          "x_m": 97.804812,
           "y_m": -36.75,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 95.925043,
+          "x_m": 99.304812,
           "y_m": -36.75,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 97.425043,
+          "x_m": 100.804812,
           "y_m": -36.75,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 98.925043,
-          "y_m": -36.75,
-          "shadow_duration_minutes": 105.0
-        },
-        {
-          "x_m": 100.425043,
+          "x_m": 102.304812,
           "y_m": -36.75,
           "shadow_duration_minutes": 170.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 103.804812,
           "y_m": -36.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 105.304812,
           "y_m": -36.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 106.804812,
           "y_m": -36.75,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 108.304812,
           "y_m": -36.75,
           "shadow_duration_minutes": 165.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 109.804812,
           "y_m": -36.75,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 109.425043,
+          "x_m": 111.304812,
           "y_m": -36.75,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 112.804812,
+          "y_m": -36.75,
+          "shadow_duration_minutes": 95.0
+        },
+        {
+          "x_m": 114.304812,
           "y_m": -36.75,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 115.804812,
           "y_m": -36.75,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 117.304812,
+          "y_m": -36.75,
+          "shadow_duration_minutes": 30.0
+        },
+        {
+          "x_m": 118.804812,
           "y_m": -36.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
-          "y_m": -36.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 89.925043,
+          "x_m": 94.804812,
           "y_m": -35.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -35.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -35.25,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 94.425043,
+          "x_m": 99.304812,
           "y_m": -35.25,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 95.925043,
-          "y_m": -35.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 97.425043,
+          "x_m": 100.804812,
           "y_m": -35.25,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 98.925043,
+          "x_m": 102.304812,
           "y_m": -35.25,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 100.425043,
+          "x_m": 103.804812,
           "y_m": -35.25,
           "shadow_duration_minutes": 170.0
         },
         {
-          "x_m": 101.925043,
-          "y_m": -35.25,
-          "shadow_duration_minutes": 170.0
-        },
-        {
-          "x_m": 103.425043,
+          "x_m": 105.304812,
           "y_m": -35.25,
           "shadow_duration_minutes": 200.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 106.804812,
           "y_m": -35.25,
           "shadow_duration_minutes": 165.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 108.304812,
+          "y_m": -35.25,
+          "shadow_duration_minutes": 165.0
+        },
+        {
+          "x_m": 109.804812,
+          "y_m": -35.25,
+          "shadow_duration_minutes": 165.0
+        },
+        {
+          "x_m": 111.304812,
           "y_m": -35.25,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 112.804812,
           "y_m": -35.25,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 109.425043,
-          "y_m": -35.25,
-          "shadow_duration_minutes": 95.0
-        },
-        {
-          "x_m": 110.925043,
+          "x_m": 114.304812,
           "y_m": -35.25,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 115.804812,
           "y_m": -35.25,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 117.304812,
+          "y_m": -35.25,
+          "shadow_duration_minutes": 30.0
+        },
+        {
+          "x_m": 118.804812,
           "y_m": -35.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
-          "y_m": -35.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 89.925043,
+          "x_m": 94.804812,
           "y_m": -33.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -33.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -33.75,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 94.425043,
+          "x_m": 99.304812,
           "y_m": -33.75,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 95.925043,
-          "y_m": -33.75,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 97.425043,
+          "x_m": 100.804812,
           "y_m": -33.75,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 98.925043,
+          "x_m": 102.304812,
           "y_m": -33.75,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 100.425043,
+          "x_m": 103.804812,
           "y_m": -33.75,
           "shadow_duration_minutes": 170.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 105.304812,
           "y_m": -33.75,
           "shadow_duration_minutes": 170.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 106.804812,
+          "y_m": -33.75,
+          "shadow_duration_minutes": 135.0
+        },
+        {
+          "x_m": 108.304812,
           "y_m": -33.75,
           "shadow_duration_minutes": 165.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 109.804812,
           "y_m": -33.75,
           "shadow_duration_minutes": 165.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 111.304812,
           "y_m": -33.75,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 112.804812,
           "y_m": -33.75,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 109.425043,
-          "y_m": -33.75,
-          "shadow_duration_minutes": 95.0
-        },
-        {
-          "x_m": 110.925043,
+          "x_m": 114.304812,
           "y_m": -33.75,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 115.804812,
           "y_m": -33.75,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 113.925043,
-          "y_m": -33.75,
-          "shadow_duration_minutes": 30.0
-        },
-        {
-          "x_m": 115.425043,
+          "x_m": 117.304812,
           "y_m": -33.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 89.925043,
+          "x_m": 118.804812,
+          "y_m": -33.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 94.804812,
           "y_m": -32.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
+          "y_m": -32.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 97.804812,
           "y_m": -32.25,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 99.304812,
           "y_m": -32.25,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 94.425043,
-          "y_m": -32.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 95.925043,
-          "y_m": -32.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 97.425043,
+          "x_m": 100.804812,
           "y_m": -32.25,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 98.925043,
+          "x_m": 102.304812,
           "y_m": -32.25,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 100.425043,
+          "x_m": 103.804812,
+          "y_m": -32.25,
+          "shadow_duration_minutes": 105.0
+        },
+        {
+          "x_m": 105.304812,
           "y_m": -32.25,
           "shadow_duration_minutes": 170.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 106.804812,
           "y_m": -32.25,
           "shadow_duration_minutes": 135.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 108.304812,
           "y_m": -32.25,
           "shadow_duration_minutes": 135.0
         },
         {
-          "x_m": 104.925043,
-          "y_m": -32.25,
-          "shadow_duration_minutes": 165.0
-        },
-        {
-          "x_m": 106.425043,
+          "x_m": 109.804812,
           "y_m": -32.25,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 111.304812,
           "y_m": -32.25,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 109.425043,
+          "x_m": 112.804812,
           "y_m": -32.25,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 114.304812,
           "y_m": -32.25,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 115.804812,
           "y_m": -32.25,
           "shadow_duration_minutes": 30.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 117.304812,
           "y_m": -32.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
+          "x_m": 118.804812,
           "y_m": -32.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 89.925043,
+          "x_m": 94.804812,
           "y_m": -30.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -30.75,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
           "y_m": -30.75,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 94.425043,
+          "x_m": 99.304812,
           "y_m": -30.75,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 95.925043,
-          "y_m": -30.75,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 97.425043,
+          "x_m": 100.804812,
           "y_m": -30.75,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 98.925043,
+          "x_m": 102.304812,
           "y_m": -30.75,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 100.425043,
+          "x_m": 103.804812,
           "y_m": -30.75,
           "shadow_duration_minutes": 105.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 105.304812,
+          "y_m": -30.75,
+          "shadow_duration_minutes": 105.0
+        },
+        {
+          "x_m": 106.804812,
           "y_m": -30.75,
           "shadow_duration_minutes": 135.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 108.304812,
           "y_m": -30.75,
           "shadow_duration_minutes": 135.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 109.804812,
           "y_m": -30.75,
-          "shadow_duration_minutes": 95.0
-        },
-        {
-          "x_m": 106.425043,
-          "y_m": -30.75,
-          "shadow_duration_minutes": 95.0
-        },
-        {
-          "x_m": 107.925043,
-          "y_m": -30.75,
-          "shadow_duration_minutes": 95.0
-        },
-        {
-          "x_m": 109.425043,
-          "y_m": -30.75,
-          "shadow_duration_minutes": 30.0
-        },
-        {
-          "x_m": 110.925043,
-          "y_m": -30.75,
-          "shadow_duration_minutes": 30.0
-        },
-        {
-          "x_m": 112.425043,
-          "y_m": -30.75,
-          "shadow_duration_minutes": 30.0
-        },
-        {
-          "x_m": 113.925043,
-          "y_m": -30.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 115.425043,
-          "y_m": -30.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 89.925043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 91.425043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 92.925043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 94.425043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 95.925043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 97.425043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 35.0
-        },
-        {
-          "x_m": 98.925043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 105.0
-        },
-        {
-          "x_m": 100.425043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 70.0
-        },
-        {
-          "x_m": 101.925043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 70.0
-        },
-        {
-          "x_m": 103.425043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 135.0
-        },
-        {
-          "x_m": 104.925043,
-          "y_m": -29.25,
           "shadow_duration_minutes": 65.0
         },
         {
-          "x_m": 106.425043,
-          "y_m": -29.25,
+          "x_m": 111.304812,
+          "y_m": -30.75,
           "shadow_duration_minutes": 95.0
         },
         {
-          "x_m": 107.925043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 95.0
+          "x_m": 112.804812,
+          "y_m": -30.75,
+          "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 109.425043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 30.0
+          "x_m": 114.304812,
+          "y_m": -30.75,
+          "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 110.925043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 30.0
+          "x_m": 115.804812,
+          "y_m": -30.75,
+          "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 112.425043,
-          "y_m": -29.25,
-          "shadow_duration_minutes": 30.0
+          "x_m": 117.304812,
+          "y_m": -30.75,
+          "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 118.804812,
+          "y_m": -30.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 94.804812,
           "y_m": -29.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
+          "x_m": 96.304812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 35.0
+        },
+        {
+          "x_m": 97.804812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 35.0
+        },
+        {
+          "x_m": 99.304812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 35.0
+        },
+        {
+          "x_m": 100.804812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 35.0
+        },
+        {
+          "x_m": 102.304812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 105.0
+        },
+        {
+          "x_m": 103.804812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 105.0
+        },
+        {
+          "x_m": 105.304812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 70.0
+        },
+        {
+          "x_m": 106.804812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 70.0
+        },
+        {
+          "x_m": 108.304812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 70.0
+        },
+        {
+          "x_m": 109.804812,
           "y_m": -29.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 89.925043,
+          "x_m": 111.304812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 112.804812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 114.304812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 115.804812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 117.304812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 118.804812,
+          "y_m": -29.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 94.804812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
-          "y_m": -27.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 94.425043,
+          "x_m": 97.804812,
           "y_m": -27.75,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 95.925043,
+          "x_m": 99.304812,
           "y_m": -27.75,
           "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 97.425043,
+          "x_m": 100.804812,
           "y_m": -27.75,
-          "shadow_duration_minutes": 0.0
+          "shadow_duration_minutes": 35.0
         },
         {
-          "x_m": 98.925043,
+          "x_m": 102.304812,
+          "y_m": -27.75,
+          "shadow_duration_minutes": 35.0
+        },
+        {
+          "x_m": 103.804812,
+          "y_m": -27.75,
+          "shadow_duration_minutes": 105.0
+        },
+        {
+          "x_m": 105.304812,
           "y_m": -27.75,
           "shadow_duration_minutes": 70.0
         },
         {
-          "x_m": 100.425043,
+          "x_m": 106.804812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 108.304812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 109.804812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 111.304812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 112.804812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 107.925043,
-          "y_m": -27.75,
-          "shadow_duration_minutes": 30.0
-        },
-        {
-          "x_m": 109.425043,
+          "x_m": 114.304812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 110.925043,
+          "x_m": 115.804812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 112.425043,
+          "x_m": 117.304812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
+          "x_m": 118.804812,
           "y_m": -27.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
-          "y_m": -27.75,
-          "shadow_duration_minutes": 0.0
-        },
-        {
-          "x_m": 89.925043,
+          "x_m": 94.804812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 91.425043,
+          "x_m": 96.304812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 92.925043,
+          "x_m": 97.804812,
+          "y_m": -26.25,
+          "shadow_duration_minutes": 35.0
+        },
+        {
+          "x_m": 99.304812,
+          "y_m": -26.25,
+          "shadow_duration_minutes": 35.0
+        },
+        {
+          "x_m": 100.804812,
+          "y_m": -26.25,
+          "shadow_duration_minutes": 35.0
+        },
+        {
+          "x_m": 102.304812,
+          "y_m": -26.25,
+          "shadow_duration_minutes": 35.0
+        },
+        {
+          "x_m": 103.804812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 94.425043,
+          "x_m": 105.304812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 95.925043,
+          "x_m": 106.804812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 97.425043,
+          "x_m": 108.304812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 98.925043,
+          "x_m": 109.804812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 100.425043,
+          "x_m": 111.304812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 101.925043,
+          "x_m": 112.804812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 103.425043,
+          "x_m": 114.304812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 104.925043,
+          "x_m": 115.804812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 106.425043,
+          "x_m": 117.304812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 107.925043,
+          "x_m": 118.804812,
           "y_m": -26.25,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 109.425043,
-          "y_m": -26.25,
+          "x_m": 94.804812,
+          "y_m": -24.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 110.925043,
-          "y_m": -26.25,
+          "x_m": 96.304812,
+          "y_m": -24.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 112.425043,
-          "y_m": -26.25,
+          "x_m": 97.804812,
+          "y_m": -24.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 113.925043,
-          "y_m": -26.25,
+          "x_m": 99.304812,
+          "y_m": -24.75,
           "shadow_duration_minutes": 0.0
         },
         {
-          "x_m": 115.425043,
-          "y_m": -26.25,
+          "x_m": 100.804812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 102.304812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 103.804812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 105.304812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 106.804812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 108.304812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 109.804812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 111.304812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 112.804812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 114.304812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 115.804812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 117.304812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 118.804812,
+          "y_m": -24.75,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 94.804812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 96.304812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 97.804812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 99.304812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 100.804812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 102.304812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 103.804812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 105.304812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 106.804812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 108.304812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 109.804812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 111.304812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 112.804812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 114.304812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 115.804812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 117.304812,
+          "y_m": -23.25,
+          "shadow_duration_minutes": 0.0
+        },
+        {
+          "x_m": 118.804812,
+          "y_m": -23.25,
           "shadow_duration_minutes": 0.0
         }
       ],
       "changing_state_point": {
-        "x": 109.425043,
-        "y": -42.75,
+        "x": 106.804812,
+        "y": -47.25,
         "states": [
           false,
           false,
@@ -1611,268 +1701,252 @@
           "level_minutes": 25.0,
           "contour_index": 0,
           "closed": true,
-          "point_count": 65,
-          "length_m": 75.63152296090985,
+          "point_count": 61,
+          "length_m": 72.63307284335602,
           "points_m": [
             {
-              "x": 90.9964715714,
-              "y": -32.25
-            },
-            {
-              "x": 90.9964715714,
+              "x": 95.8762405714,
               "y": -30.75
             },
             {
-              "x": 91.425043,
-              "y": -30.3214285714
-            },
-            {
-              "x": 92.4964715714,
+              "x": 95.8762405714,
               "y": -29.25
             },
             {
-              "x": 92.925043,
+              "x": 96.304812,
               "y": -28.8214285714
             },
             {
-              "x": 93.9964715714,
+              "x": 97.3762405714,
               "y": -27.75
             },
             {
-              "x": 94.425043,
-              "y": -27.3214285714
+              "x": 97.3762405714,
+              "y": -26.25
             },
             {
-              "x": 95.925043,
-              "y": -27.3214285714
+              "x": 97.804812,
+              "y": -25.8214285714
             },
             {
-              "x": 96.3536144286,
-              "y": -27.75
+              "x": 99.304812,
+              "y": -25.8214285714
             },
             {
-              "x": 97.425043,
-              "y": -28.8214285714
+              "x": 100.804812,
+              "y": -25.8214285714
             },
             {
-              "x": 97.9607572857,
-              "y": -27.75
+              "x": 102.304812,
+              "y": -25.8214285714
             },
             {
-              "x": 98.925043,
+              "x": 102.7333834286,
+              "y": -26.25
+            },
+            {
+              "x": 103.804812,
+              "y": -26.6071428571
+            },
+            {
+              "x": 105.304812,
               "y": -26.7857142857
             },
             {
-              "x": 99.8893287143,
+              "x": 106.2690977143,
               "y": -27.75
             },
             {
-              "x": 100.425043,
+              "x": 106.804812,
               "y": -28.2857142857
             },
             {
-              "x": 101.925043,
+              "x": 108.304812,
               "y": -28.2857142857
             },
             {
-              "x": 103.425043,
-              "y": -28.0277777778
-            },
-            {
-              "x": 104.925043,
-              "y": -28.3269230769
-            },
-            {
-              "x": 106.425043,
-              "y": -28.1447368421
-            },
-            {
-              "x": 107.675043,
-              "y": -27.75
-            },
-            {
-              "x": 107.925043,
-              "y": -27.5
-            },
-            {
-              "x": 108.175043,
-              "y": -27.75
-            },
-            {
-              "x": 109.425043,
-              "y": -29.0
-            },
-            {
-              "x": 110.925043,
-              "y": -29.0
-            },
-            {
-              "x": 112.425043,
-              "y": -29.0
-            },
-            {
-              "x": 112.675043,
+              "x": 109.2690977143,
               "y": -29.25
             },
             {
-              "x": 112.675043,
+              "x": 109.804812,
+              "y": -29.8269230769
+            },
+            {
+              "x": 111.304812,
+              "y": -29.6447368421
+            },
+            {
+              "x": 112.4100751579,
               "y": -30.75
             },
             {
-              "x": 112.675043,
+              "x": 112.804812,
+              "y": -31.1447368421
+            },
+            {
+              "x": 114.304812,
+              "y": -32.0
+            },
+            {
+              "x": 115.804812,
+              "y": -32.0
+            },
+            {
+              "x": 116.054812,
               "y": -32.25
             },
             {
-              "x": 113.925043,
-              "y": -33.5
-            },
-            {
-              "x": 114.175043,
+              "x": 116.054812,
               "y": -33.75
             },
             {
-              "x": 113.925043,
-              "y": -34.0
+              "x": 117.304812,
+              "y": -35.0
             },
             {
-              "x": 112.675043,
+              "x": 117.554812,
               "y": -35.25
             },
             {
-              "x": 112.675043,
+              "x": 117.554812,
               "y": -36.75
             },
             {
-              "x": 112.425043,
+              "x": 117.304812,
               "y": -37.0
             },
             {
-              "x": 111.175043,
+              "x": 116.054812,
               "y": -38.25
             },
             {
-              "x": 111.175043,
+              "x": 115.804812,
+              "y": -38.5
+            },
+            {
+              "x": 114.554812,
               "y": -39.75
             },
             {
-              "x": 110.925043,
+              "x": 114.304812,
               "y": -40.0
             },
             {
-              "x": 109.675043,
+              "x": 113.054812,
               "y": -41.25
             },
             {
-              "x": 109.675043,
+              "x": 112.804812,
+              "y": -41.5
+            },
+            {
+              "x": 111.554812,
               "y": -42.75
             },
             {
-              "x": 109.425043,
+              "x": 111.304812,
               "y": -43.0
             },
             {
-              "x": 109.237543,
+              "x": 110.054812,
               "y": -44.25
             },
             {
-              "x": 107.925043,
-              "y": -45.5625
+              "x": 109.804812,
+              "y": -44.5
             },
             {
-              "x": 107.737543,
+              "x": 108.554812,
               "y": -45.75
             },
             {
-              "x": 107.737543,
+              "x": 108.304812,
+              "y": -46.0
+            },
+            {
+              "x": 107.054812,
               "y": -47.25
             },
             {
-              "x": 106.425043,
+              "x": 106.804812,
+              "y": -47.5
+            },
+            {
+              "x": 105.304812,
               "y": -48.5625
             },
             {
-              "x": 104.925043,
+              "x": 103.804812,
               "y": -48.5625
             },
             {
-              "x": 103.425043,
+              "x": 102.304812,
               "y": -48.5625
             },
             {
-              "x": 102.112543,
+              "x": 100.992312,
               "y": -47.25
             },
             {
-              "x": 101.925043,
+              "x": 100.804812,
               "y": -47.0625
             },
             {
-              "x": 100.425043,
-              "y": -46.1785714286
-            },
-            {
-              "x": 99.9964715714,
+              "x": 99.492312,
               "y": -45.75
             },
             {
-              "x": 98.925043,
-              "y": -44.6785714286
-            },
-            {
-              "x": 98.4964715714,
+              "x": 99.492312,
               "y": -44.25
             },
             {
-              "x": 98.4964715714,
+              "x": 99.304812,
+              "y": -44.0625
+            },
+            {
+              "x": 97.992312,
               "y": -42.75
             },
             {
-              "x": 97.425043,
-              "y": -41.6785714286
-            },
-            {
-              "x": 96.9964715714,
+              "x": 98.1619548571,
               "y": -41.25
             },
             {
-              "x": 95.925043,
-              "y": -40.1785714286
-            },
-            {
-              "x": 95.4964715714,
+              "x": 98.1619548571,
               "y": -39.75
             },
             {
-              "x": 94.425043,
-              "y": -38.6785714286
-            },
-            {
-              "x": 93.9964715714,
+              "x": 98.8762405714,
               "y": -38.25
             },
             {
-              "x": 93.9964715714,
+              "x": 97.804812,
+              "y": -37.1785714286
+            },
+            {
+              "x": 97.3762405714,
               "y": -36.75
             },
             {
-              "x": 92.925043,
-              "y": -35.6785714286
-            },
-            {
-              "x": 92.4964715714,
+              "x": 97.3762405714,
               "y": -35.25
             },
             {
-              "x": 92.4964715714,
+              "x": 97.3762405714,
               "y": -33.75
             },
             {
-              "x": 91.425043,
-              "y": -32.6785714286
+              "x": 97.3762405714,
+              "y": -32.25
             },
             {
-              "x": 90.9964715714,
-              "y": -32.25
+              "x": 96.304812,
+              "y": -31.1785714286
+            },
+            {
+              "x": 95.8762405714,
+              "y": -30.75
             }
           ]
         },
@@ -1880,204 +1954,212 @@
           "level_minutes": 80.0,
           "contour_index": 0,
           "closed": true,
-          "point_count": 49,
-          "length_m": 58.55443544577299,
+          "point_count": 51,
+          "length_m": 59.78885289500507,
           "points_m": [
             {
-              "x": 96.8893287143,
+              "x": 98.404812,
+              "y": -42.75
+            },
+            {
+              "x": 98.9476691429,
+              "y": -41.25
+            },
+            {
+              "x": 98.9476691429,
+              "y": -39.75
+            },
+            {
+              "x": 99.304812,
+              "y": -39.2142857143
+            },
+            {
+              "x": 100.2690977143,
+              "y": -38.25
+            },
+            {
+              "x": 100.2690977143,
               "y": -36.75
             },
             {
-              "x": 96.8893287143,
+              "x": 100.2690977143,
               "y": -35.25
             },
             {
-              "x": 96.8893287143,
+              "x": 100.2690977143,
               "y": -33.75
             },
             {
-              "x": 96.8893287143,
+              "x": 100.2690977143,
               "y": -32.25
             },
             {
-              "x": 96.8893287143,
+              "x": 100.2690977143,
               "y": -30.75
             },
             {
-              "x": 97.425043,
+              "x": 100.804812,
               "y": -30.2142857143
             },
             {
-              "x": 98.3893287143,
+              "x": 101.7690977143,
               "y": -29.25
             },
             {
-              "x": 98.925043,
-              "y": -28.1785714286
+              "x": 102.304812,
+              "y": -28.7142857143
             },
             {
-              "x": 99.9964715714,
+              "x": 103.2690977143,
+              "y": -27.75
+            },
+            {
+              "x": 103.804812,
+              "y": -27.3928571429
+            },
+            {
+              "x": 104.8762405714,
+              "y": -27.75
+            },
+            {
+              "x": 104.8762405714,
               "y": -29.25
             },
             {
-              "x": 100.425043,
+              "x": 105.304812,
               "y": -29.6785714286
             },
             {
-              "x": 101.925043,
+              "x": 106.804812,
               "y": -29.4807692308
             },
             {
-              "x": 102.1558122308,
-              "y": -29.25
+              "x": 108.304812,
+              "y": -29.4807692308
             },
             {
-              "x": 103.425043,
-              "y": -28.6388888889
-            },
-            {
-              "x": 104.6036144286,
-              "y": -29.25
-            },
-            {
-              "x": 104.925043,
-              "y": -30.0
-            },
-            {
-              "x": 105.675043,
-              "y": -29.25
-            },
-            {
-              "x": 106.425043,
-              "y": -29.0131578947
-            },
-            {
-              "x": 107.925043,
-              "y": -28.9038461538
-            },
-            {
-              "x": 108.2711968462,
-              "y": -29.25
-            },
-            {
-              "x": 108.2711968462,
+              "x": 109.4833834286,
               "y": -30.75
             },
             {
-              "x": 109.425043,
-              "y": -31.9038461538
+              "x": 109.804812,
+              "y": -31.5
             },
             {
-              "x": 109.7711968462,
+              "x": 110.554812,
+              "y": -30.75
+            },
+            {
+              "x": 111.304812,
+              "y": -30.5131578947
+            },
+            {
+              "x": 111.5416541053,
+              "y": -30.75
+            },
+            {
+              "x": 112.804812,
+              "y": -32.0131578947
+            },
+            {
+              "x": 113.1509658462,
               "y": -32.25
             },
             {
-              "x": 109.7711968462,
+              "x": 113.1509658462,
               "y": -33.75
             },
             {
-              "x": 109.7711968462,
+              "x": 113.1509658462,
               "y": -35.25
             },
             {
-              "x": 109.7711968462,
+              "x": 113.1509658462,
               "y": -36.75
             },
             {
-              "x": 109.7711968462,
+              "x": 112.804812,
+              "y": -37.0961538462
+            },
+            {
+              "x": 111.6509658462,
               "y": -38.25
             },
             {
-              "x": 109.7711968462,
+              "x": 111.6509658462,
               "y": -39.75
             },
             {
-              "x": 109.425043,
+              "x": 111.304812,
               "y": -40.0961538462
             },
             {
-              "x": 108.8694874444,
+              "x": 110.1509658462,
               "y": -41.25
             },
             {
-              "x": 108.9838665294,
+              "x": 109.804812,
+              "y": -41.5961538462
+            },
+            {
+              "x": 109.3636355294,
               "y": -42.75
             },
             {
-              "x": 108.825043,
+              "x": 109.3636355294,
               "y": -44.25
             },
             {
-              "x": 107.925043,
-              "y": -45.15
+              "x": 108.304812,
+              "y": -45.3088235294
             },
             {
-              "x": 107.325043,
+              "x": 107.8636355294,
               "y": -45.75
             },
             {
-              "x": 107.325043,
+              "x": 106.804812,
+              "y": -46.8088235294
+            },
+            {
+              "x": 106.3636355294,
               "y": -47.25
             },
             {
-              "x": 106.425043,
+              "x": 105.304812,
               "y": -48.15
             },
             {
-              "x": 104.925043,
+              "x": 103.804812,
               "y": -48.15
             },
             {
-              "x": 103.425043,
+              "x": 102.304812,
               "y": -48.15
             },
             {
-              "x": 102.525043,
+              "x": 101.404812,
               "y": -47.25
             },
             {
-              "x": 101.925043,
+              "x": 100.804812,
               "y": -46.65
             },
             {
-              "x": 100.8341339091,
+              "x": 99.904812,
               "y": -45.75
             },
             {
-              "x": 100.425043,
-              "y": -45.3409090909
-            },
-            {
-              "x": 99.3341339091,
+              "x": 99.904812,
               "y": -44.25
             },
             {
-              "x": 99.3341339091,
+              "x": 99.304812,
+              "y": -43.65
+            },
+            {
+              "x": 98.404812,
               "y": -42.75
-            },
-            {
-              "x": 98.925043,
-              "y": -41.7857142857
-            },
-            {
-              "x": 98.3893287143,
-              "y": -41.25
-            },
-            {
-              "x": 98.3893287143,
-              "y": -39.75
-            },
-            {
-              "x": 98.3893287143,
-              "y": -38.25
-            },
-            {
-              "x": 97.425043,
-              "y": -37.2857142857
-            },
-            {
-              "x": 96.8893287143,
-              "y": -36.75
             }
           ]
         },
@@ -2085,156 +2167,172 @@
           "level_minutes": 145.0,
           "contour_index": 0,
           "closed": true,
-          "point_count": 37,
-          "length_m": 43.66825932539102,
+          "point_count": 41,
+          "length_m": 46.59845917801159,
           "points_m": [
             {
-              "x": 99.5566219474,
-              "y": -41.25
-            },
-            {
-              "x": 99.5566219474,
-              "y": -39.75
-            },
-            {
-              "x": 99.8481199231,
-              "y": -38.25
-            },
-            {
-              "x": 99.8481199231,
-              "y": -36.75
-            },
-            {
-              "x": 99.8481199231,
-              "y": -35.25
-            },
-            {
-              "x": 99.8481199231,
-              "y": -33.75
-            },
-            {
-              "x": 99.8481199231,
-              "y": -32.25
-            },
-            {
-              "x": 100.425043,
-              "y": -31.6730769231
-            },
-            {
-              "x": 101.4964715714,
-              "y": -32.25
-            },
-            {
-              "x": 101.925043,
-              "y": -32.6785714286
-            },
-            {
-              "x": 103.425043,
-              "y": -32.75
-            },
-            {
-              "x": 103.925043,
-              "y": -32.25
-            },
-            {
-              "x": 104.925043,
-              "y": -31.8214285714
-            },
-            {
-              "x": 105.3536144286,
-              "y": -32.25
-            },
-            {
-              "x": 105.3536144286,
-              "y": -33.75
-            },
-            {
-              "x": 105.3536144286,
-              "y": -35.25
-            },
-            {
-              "x": 106.425043,
-              "y": -36.3214285714
-            },
-            {
-              "x": 106.8536144286,
-              "y": -36.75
-            },
-            {
-              "x": 106.8536144286,
-              "y": -38.25
-            },
-            {
-              "x": 107.2107572857,
-              "y": -39.75
-            },
-            {
-              "x": 107.925043,
-              "y": -40.8214285714
-            },
-            {
-              "x": 108.1472652222,
-              "y": -41.25
-            },
-            {
-              "x": 108.4103371176,
+              "x": 98.892312,
               "y": -42.75
             },
             {
-              "x": 108.337543,
+              "x": 99.304812,
+              "y": -43.1625
+            },
+            {
+              "x": 100.392312,
               "y": -44.25
             },
             {
-              "x": 107.925043,
-              "y": -44.6625
-            },
-            {
-              "x": 106.837543,
+              "x": 100.392312,
               "y": -45.75
             },
             {
-              "x": 106.837543,
-              "y": -47.25
-            },
-            {
-              "x": 106.425043,
-              "y": -47.6625
-            },
-            {
-              "x": 104.925043,
-              "y": -47.6625
-            },
-            {
-              "x": 103.425043,
-              "y": -47.6625
-            },
-            {
-              "x": 103.012543,
-              "y": -47.25
-            },
-            {
-              "x": 101.925043,
+              "x": 100.804812,
               "y": -46.1625
             },
             {
-              "x": 101.425043,
+              "x": 101.892312,
+              "y": -47.25
+            },
+            {
+              "x": 102.304812,
+              "y": -47.6625
+            },
+            {
+              "x": 103.804812,
+              "y": -47.6625
+            },
+            {
+              "x": 105.304812,
+              "y": -47.6625
+            },
+            {
+              "x": 105.7901061176,
+              "y": -47.25
+            },
+            {
+              "x": 106.804812,
+              "y": -46.2352941176
+            },
+            {
+              "x": 107.2901061176,
               "y": -45.75
             },
             {
-              "x": 100.425043,
-              "y": -44.75
+              "x": 108.304812,
+              "y": -44.7352941176
             },
             {
-              "x": 99.925043,
+              "x": 108.7901061176,
               "y": -44.25
             },
             {
-              "x": 99.925043,
+              "x": 108.7901061176,
               "y": -42.75
             },
             {
-              "x": 99.5566219474,
+              "x": 108.7333834286,
               "y": -41.25
+            },
+            {
+              "x": 108.7333834286,
+              "y": -39.75
+            },
+            {
+              "x": 108.7333834286,
+              "y": -38.25
+            },
+            {
+              "x": 108.7333834286,
+              "y": -36.75
+            },
+            {
+              "x": 109.804812,
+              "y": -35.6785714286
+            },
+            {
+              "x": 110.2333834286,
+              "y": -35.25
+            },
+            {
+              "x": 110.2333834286,
+              "y": -33.75
+            },
+            {
+              "x": 109.804812,
+              "y": -33.3214285714
+            },
+            {
+              "x": 108.304812,
+              "y": -32.75
+            },
+            {
+              "x": 107.304812,
+              "y": -33.75
+            },
+            {
+              "x": 106.804812,
+              "y": -34.25
+            },
+            {
+              "x": 106.3762405714,
+              "y": -33.75
+            },
+            {
+              "x": 106.3762405714,
+              "y": -32.25
+            },
+            {
+              "x": 105.304812,
+              "y": -31.6730769231
+            },
+            {
+              "x": 104.7278889231,
+              "y": -32.25
+            },
+            {
+              "x": 103.804812,
+              "y": -33.1730769231
+            },
+            {
+              "x": 103.2278889231,
+              "y": -33.75
+            },
+            {
+              "x": 103.2278889231,
+              "y": -35.25
+            },
+            {
+              "x": 102.304812,
+              "y": -36.1730769231
+            },
+            {
+              "x": 101.7278889231,
+              "y": -36.75
+            },
+            {
+              "x": 101.4363909474,
+              "y": -38.25
+            },
+            {
+              "x": 100.804812,
+              "y": -38.8815789474
+            },
+            {
+              "x": 99.9363909474,
+              "y": -39.75
+            },
+            {
+              "x": 99.9363909474,
+              "y": -41.25
+            },
+            {
+              "x": 99.304812,
+              "y": -41.8815789474
+            },
+            {
+              "x": 98.892312,
+              "y": -42.75
             }
           ]
         }
