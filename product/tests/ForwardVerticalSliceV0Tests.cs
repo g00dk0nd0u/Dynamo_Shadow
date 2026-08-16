@@ -31,6 +31,17 @@ public sealed class ForwardVerticalSliceV0Tests
         input=Valid();input.MaxGridPoints=1;Assert.Contains("max_grid_points_exceeded",ForwardVerticalSliceV0.Run(input).Blockers);
     }
 
+    [Fact]
+    public void ContoursRetainWorldModelCoordinatesAndStartAtNumericMinimum()
+    {
+        using var fixture=JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"fixtures","parity","forward_vertical_slice_v0.json")));
+        var root=fixture.RootElement;var actual=ForwardVerticalSliceV0.Run(Build(root.GetProperty("input")));var first=actual.Contours.Contours[0].PointsM[0];
+        Assert.Equal(-12.87757,actual.Duration.GridSpec!.OriginXM,5);
+        Assert.Equal(actual.Duration.GridSpec.OriginXM+actual.Duration.GridSpec.ResolutionM,first.X,5);
+        Assert.Equal(-10.87757,first.X,5);
+        Assert.Equal(15.0,first.Y,5);
+    }
+
     private static ForwardVerticalSliceInputV0 Build(JsonElement x){var caster=x.GetProperty("caster");return new ForwardVerticalSliceInputV0{LatitudeDeg=x.GetProperty("latitude_deg").GetDouble(),SolarDeclinationDeg=x.GetProperty("solar_declination_deg").GetDouble(),TrueNorthDeg=x.GetProperty("true_north_deg").GetDouble(),TrueSolarStartMinutes=x.GetProperty("true_solar_start_minutes").GetDouble(),TrueSolarEndMinutes=x.GetProperty("true_solar_end_minutes").GetDouble(),SunTimeStepMinutes=x.GetProperty("sun_time_step_minutes").GetDouble(),MeasurementPlaneElevationM=x.GetProperty("measurement_plane_elevation_m").GetDouble(),GridResolutionM=x.GetProperty("grid_resolution_m").GetDouble(),AnalysisMarginM=x.GetProperty("analysis_margin_m").GetDouble(),MaxGridPoints=x.GetProperty("max_grid_points").GetInt32(),ContourLevelsMinutes=x.GetProperty("contour_levels_minutes").EnumerateArray().Select(v=>v.GetDouble()).ToList(),Caster=new ConvexPrismCasterV0{BaseZM=caster.GetProperty("base_z_m").GetDouble(),TopZM=caster.GetProperty("top_z_m").GetDouble(),FootprintPointsM=caster.GetProperty("footprint_points_m").EnumerateArray().Select(p=>new Point2M(p.GetProperty("x").GetDouble(),p.GetProperty("y").GetDouble())).ToList()}};}
     private static ForwardVerticalSliceInputV0 Valid()=>new(){LatitudeDeg=35.6812,SolarDeclinationDeg=-23.439,TrueSolarStartMinutes=600,TrueSolarEndMinutes=840,SunTimeStepMinutes=120,MeasurementPlaneElevationM=4,GridResolutionM=2,AnalysisMarginM=2,MaxGridPoints=10000,ContourLevelsMinutes=new List<double>{60},Caster=new ConvexPrismCasterV0{BaseZM=0,TopZM=12,FootprintPointsM=new List<Point2M>{new(-2,-1),new(2,-1),new(2,1),new(-2,1)}}};
 }
