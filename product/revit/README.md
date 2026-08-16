@@ -25,3 +25,17 @@ belong here. Exact Autodesk references are deferred until host implementation an
 must be supplied by the build environment, never committed or distributed. No
 working command, manifest, UI, installer, version-certified binary, or certified
 legal judgement exists yet.
+
+Phase 5A establishes only the host-neutral project-context boundary for future
+compiled Forward work. A readable selected Level is the authoritative Revit
+average-ground-level source; a settings value in meters is used only when no
+Level is selected. The Article 56-2 measurement-plane elevation is the resolved
+average-ground elevation plus the explicit measurement height in meters. The raw
+`ActiveProjectLocation` angle is converted from radians to signed degrees without
+sign inversion, while latitude remains an explicit Player/settings value.
+
+The adapter accepts an internal-length conversion operation so a future Revit
+host can use `UnitUtils.ConvertFromInternalUnits(value, UnitTypeId.Meters)`.
+UnitUtils-backed extraction, Autodesk Revit API references, and real-machine
+compiled-host validation remain Phase 5B work. Revit integration is not complete,
+and `permit_ready_certified` remains false.

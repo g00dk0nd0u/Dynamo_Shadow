@@ -32,6 +32,7 @@ jobs:
           python tools/check_debug_log_privacy.py
           python -m pytest -q tests/unit/test_forward_vertical_slice_v0_parity.py
           dotnet test product/tests/ShadowCore.Tests.csproj --configuration Release
+          dotnet test product/revit-tests/RevitShadow.Tests.csproj --configuration Release
           dotnet build product/dynamo/DynamoShadow.csproj --configuration Release
           dotnet build product/revit/RevitShadow.csproj --configuration Release
 

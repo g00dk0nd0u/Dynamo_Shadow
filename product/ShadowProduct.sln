@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitShadow", "revit\RevitS
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShadowCore.Tests", "tests\ShadowCore.Tests.csproj", "{E885BE75-BE23-4AD8-B9FA-8C15BED00D29}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitShadow.Tests", "revit-tests\RevitShadow.Tests.csproj", "{4349A3F8-F93E-4D75-B7BD-88796028EAD8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,5 +34,9 @@ Global
 		{E885BE75-BE23-4AD8-B9FA-8C15BED00D29}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E885BE75-BE23-4AD8-B9FA-8C15BED00D29}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E885BE75-BE23-4AD8-B9FA-8C15BED00D29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4349A3F8-F93E-4D75-B7BD-88796028EAD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4349A3F8-F93E-4D75-B7BD-88796028EAD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4349A3F8-F93E-4D75-B7BD-88796028EAD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4349A3F8-F93E-4D75-B7BD-88796028EAD8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
