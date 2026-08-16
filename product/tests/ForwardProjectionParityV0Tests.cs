@@ -74,19 +74,31 @@ public sealed class ForwardProjectionParityV0Tests
         };
     }
 
-    // Projection geometry ordering is not a public contract. Sorting rounded vertices
-    // gives a deterministic test-only representation independent of start and winding.
-    private static (double X, double Y)[] Canonical(IEnumerable<Point2M> points) => points
-        .Select(point => (Math.Round(point.X, 5), Math.Round(point.Y, 5)))
-        .OrderBy(point => point.Item1).ThenBy(point => point.Item2).ToArray();
+    private const double CoordinateTolerance = 1e-6;
+
+    // Projection geometry ordering is not a public contract. Raw-coordinate sorting
+    // gives a deterministic test-only vertex order independent of start and winding.
+    private static Point2M[] Ordered(IEnumerable<Point2M> points) => points
+        .OrderBy(point => point.X).ThenBy(point => point.Y).ToArray();
 
     private static void AssertPolygonEquivalent(JsonElement expected, IEnumerable<Point2M> actual)
     {
         var expectedPoints = expected.EnumerateArray()
             .Select(point => new Point2M(point.GetProperty("x").GetDouble(), point.GetProperty("y").GetDouble()));
-        Assert.Equal(Canonical(expectedPoints), Canonical(actual));
+        AssertEquivalent(expectedPoints, actual);
     }
 
-    private static void AssertEquivalent(IEnumerable<Point2M> first, IEnumerable<Point2M> second) =>
-        Assert.Equal(Canonical(first), Canonical(second));
+    private static void AssertEquivalent(IEnumerable<Point2M> first, IEnumerable<Point2M> second)
+    {
+        var expected = Ordered(first);
+        var actual = Ordered(second);
+        Assert.Equal(expected.Length, actual.Length);
+        for (var index = 0; index < expected.Length; index++)
+        {
+            Assert.True(Math.Abs(expected[index].X-actual[index].X) <= CoordinateTolerance,
+                $"Vertex {index} X differs: expected {expected[index].X:R}, actual {actual[index].X:R}");
+            Assert.True(Math.Abs(expected[index].Y-actual[index].Y) <= CoordinateTolerance,
+                $"Vertex {index} Y differs: expected {expected[index].Y:R}, actual {actual[index].Y:R}");
+        }
+    }
 }
