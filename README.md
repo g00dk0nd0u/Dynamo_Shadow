@@ -14,6 +14,34 @@ Forward Shadow（日影計算）と、低層建物向けの Reverse Shadow（初
 
 Dynamo Shadow is an open technical preview for exploring Japanese Building Standard Law Article 56-2 shadow-study workflows inside Autodesk Revit and Dynamo. It provides experimental Forward Shadow and low-rise Reverse Shadow workflows with transparent calculation logic and reproducible diagnostics. It is intended for research, design exploration, technical review, and validation, and is not a permit-ready certified calculation product.
 
+### Development-only compiled smoke package
+
+A minimal, read-only Revit 2025/2026 development command can now be packaged for
+later manual testing. This is not a production add-in and has not been validated
+on a real Revit machine. Host-neutral CI remains Autodesk-free:
+
+```powershell
+dotnet build product/revit/RevitShadow.csproj --configuration Release
+```
+
+The Revit-enabled build must explicitly target `net8.0-windows` and reference
+the Autodesk DLLs installed with the Revit version being tested:
+
+```powershell
+dotnet build product/revit/RevitShadow.csproj --configuration Release --framework net8.0-windows -p:EnableRevitApi=true -p:RevitApiDir="C:\path\to\Revit"
+```
+
+To create `RevitShadow.dll`, `ShadowCore.dll`, and a path-resolved
+`RevitShadow.addin` without installing them, run:
+
+```powershell
+product/revit/build-smoke-package.ps1 -RevitApiDir "C:\path\to\Revit" -RevitYear 2025
+```
+
+See [`product/revit/README.md`](product/revit/README.md) for package layout and
+later manual installation steps. `permit_ready_certified=false` remains
+unchanged.
+
 ## このプロジェクトの目的
 
 このリポジトリは、次のことを検証するために公開しています。
@@ -59,7 +87,7 @@ Dynamo Shadow is an open technical preview for exploring Japanese Building Stand
 - CPython3
 - Windows（Revit がサポートする環境）
 
-現時点では installer や Revit add-in はありません。
+現時点では installer や production Revit add-in はありません。開発用 smoke-test command のみ package 化できます。
 
 ### 実行方法
 
@@ -232,7 +260,7 @@ GPU acceleration は現在使用していません。
 - Reverse Shadow は unique / maximum legally buildable volume を求めるものではありません。
 - Reverse の結果には最終 Forward validation が必要です。
 - High accuracy はモデルによって計算負荷が大きくなります。
-- Product UI / installer / C# add-in は未提供です。
+- Product UI / installer / production C# add-in は未提供です。
 - Verification report output は未実装です。
 
 ## Preview 表示

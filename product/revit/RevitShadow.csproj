@@ -19,9 +19,14 @@
       <HintPath>$(RevitApiDir)/RevitAPI.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(RevitApiDir)/RevitAPIUI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
   <Target Name="ValidateRevitApiReference" BeforeTargets="ResolveAssemblyReferences" Condition="'$(EnableRevitApi)' == 'true'">
     <Error Condition="'$(RevitApiDir)' == ''" Text="EnableRevitApi=true requires RevitApiDir to name the directory containing RevitAPI.dll." />
     <Error Condition="'$(RevitApiDir)' != '' and !Exists('$(RevitApiDir)/RevitAPI.dll')" Text="EnableRevitApi=true, but RevitAPI.dll was not found under RevitApiDir='$(RevitApiDir)'." />
+    <Error Condition="'$(RevitApiDir)' != '' and !Exists('$(RevitApiDir)/RevitAPIUI.dll')" Text="EnableRevitApi=true, but RevitAPIUI.dll was not found under RevitApiDir='$(RevitApiDir)'." />
   </Target>
 </Project>

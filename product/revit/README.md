@@ -1,60 +1,71 @@
-# RevitShadow product project
+# RevitShadow development smoke add-in
 
-This directory is reserved for the future compiled Revit add-in. Compiled-product
-support begins at Revit 2025: Revit 2025 and 2026 use .NET 8, and Revit 2027 uses
-.NET 10. Revit 2024 and earlier are not compiled-product targets. The current
-Python/Dynamo reference implementation may continue to be validated in Revit
-2024.3 independently of this policy.
+This directory contains the first development-only compiled Revit host. It is a
+single read-only `IExternalCommand` that displays the Phase 5B project-context
+diagnostic. It is not the full Forward product, has no ribbon or installer, and
+has not yet been validated on a real Revit machine. `permit_ready_certified`
+always remains `false`.
 
-The intended dependency direction is `RevitShadow.dll` → `ShadowCore.dll`.
-Future host builds will be version-aware:
+Compiled-product support for this package is limited to Revit 2025 and 2026,
+which use `net8.0-windows`. Build separately against the Autodesk assemblies
+shipped with the Revit version that will load the package; matching target
+frameworks do not make version-specific builds interchangeable.
 
-| Revit | Framework | Future API reference |
-| --- | --- | --- |
-| 2025 | `net8.0-windows` | Revit 2025 `RevitAPI.dll` / `RevitAPIUI.dll` |
-| 2026 | `net8.0-windows` | Revit 2026 `RevitAPI.dll` / `RevitAPIUI.dll` |
-| 2027 | `net10.0-windows` | Revit 2027 `RevitAPI.dll` / `RevitAPIUI.dll` |
+## Host-neutral build and tests
 
-Even where frameworks match, host binaries are not considered interchangeable
-without version-specific builds and tests. The future distribution shape is
-`dist/RevitShadow/{2025,2026,2027}/`, with each version containing its tested
-`RevitShadow.dll`, `ShadowCore.dll`, and `RevitShadow.addin`.
+Normal CI does not require Autodesk binaries:
 
-Revit selection, native geometry, internal-unit conversion, UI, and output code
-belong here. Autodesk references must be supplied by the build environment and
-are never committed or distributed. No manifest, UI, installer,
-version-certified binary, or certified legal judgement exists yet.
-
-Phase 5A establishes only the host-neutral project-context boundary for future
-compiled Forward work. A readable selected Level is the authoritative Revit
-average-ground-level source; a settings value in meters is used only when no
-Level is selected. The Article 56-2 measurement-plane elevation is the resolved
-average-ground elevation plus the explicit measurement height in meters. The raw
-`ActiveProjectLocation` angle is converted from radians to signed degrees without
-sign inversion, while latitude remains an explicit Player/settings value.
-
-The default build remains host-neutral and requires no Autodesk installation:
-
-```text
+```powershell
 dotnet build product/revit/RevitShadow.csproj --configuration Release
+dotnet test product/revit-tests/RevitShadow.Tests.csproj --configuration Release
+dotnet test product/tests/ShadowCore.Tests.csproj --configuration Release
 ```
 
-To compile the live Revit extractor, explicitly provide the directory containing
-the Autodesk-supplied `RevitAPI.dll` (the build fails if it cannot be found):
+In this mode, code that directly uses the Revit API is excluded from compilation.
+
+## Revit-enabled smoke build
+
+Supply the directory containing both Autodesk-provided `RevitAPI.dll` and
+`RevitAPIUI.dll`. Neither binary is copied or committed.
+
+```powershell
+dotnet build product/revit/RevitShadow.csproj --configuration Release --framework net8.0-windows -p:EnableRevitApi=true -p:RevitApiDir="C:\path\to\Revit"
+```
+
+The development command is
+`RevitShadow.ForwardProjectContextSmokeCommand`. It obtains the active view's
+`GenLevel`; an unavailable level is an explicit blocker rather than a reason to
+select another Level. The command uses visibly test-only constants for the
+measurement height, latitude, and fallback AGL, then invokes
+`ForwardRevitProjectContextDiagnosticV0.Extract` without duplicating extraction
+logic.
+
+## Build a manual-install package
+
+From PowerShell, run:
+
+```powershell
+product/revit/build-smoke-package.ps1 -RevitApiDir "C:\path\to\Revit" -RevitYear 2025
+```
+
+Use `-RevitYear 2026` for a separate Revit 2026 build. `-OutputDirectory` is
+optional. The default output is:
 
 ```text
-dotnet build product/revit/RevitShadow.csproj --configuration Release \
-  -p:EnableRevitApi=true -p:RevitApiDir=<revit-api-directory>
+dist/RevitShadow/2025-test/
+  RevitShadow.dll
+  ShadowCore.dll
+  RevitShadow.addin
 ```
 
-`ForwardRevitProjectContextExtractorV0.Extract` accepts a live `Document`, an
-optional already-selected `Level`, fallback AGL, measurement height, and explicit
-latitude. It reads the raw Active Project Location angle without sign changes and
-uses `UnitUtils.ConvertFromInternalUnits(..., UnitTypeId.Meters)` for a selected
-Level. `ForwardRevitProjectContextDiagnosticV0.Extract` exposes the same call as a
-small dictionary-only diagnostic boundary suitable for Dynamo or another
-reflection/callable harness; it returns no Revit objects.
+The script substitutes the absolute packaged `RevitShadow.dll` path into
+`RevitShadow.addin.template`. It builds and packages only; it never writes to
+ProgramData. To install later, keep both DLLs at the generated package path and
+copy only `RevitShadow.addin` to
+`C:\ProgramData\Autodesk\Revit\Addins\<year>\`. After restarting Revit, the
+external command is expected under **Add-Ins > External Tools > Dynamo Shadow
+Project Context Smoke Test**.
 
-This path has not yet been validated on Revit 2025, 2026, or 2027. Revit
-integration remains incomplete, geometry extraction is out of scope, and
-`permit_ready_certified` remains false.
+The TaskDialog reports `available`, `complete`, AGL elevation/source,
+measurement height/plane, True North, latitude, blockers, warnings, and
+`permit_ready_certified`. No Revit API object is displayed or serialized.

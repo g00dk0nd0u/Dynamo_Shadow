@@ -158,6 +158,21 @@ public sealed class ForwardRevitProjectContextAdapterV0Tests
         Assert.Equal(false, data["permit_ready_certified"]);
     }
 
+    [Fact]
+    public void SmokeDiagnosticFormatterIncludesCompleteCompactContract()
+    {
+        var data = ForwardRevitProjectContextDiagnosticV0.ToData(
+            ForwardRevitProjectContextAdapterV0.Resolve(ValidInput(), value => value));
+
+        var text = ForwardProjectContextDiagnosticFormatterV0.Format(data);
+
+        Assert.Contains("available: true", text);
+        Assert.Contains("measurement_plane_elevation_m: 14", text);
+        Assert.Contains("blockers: (none)", text);
+        Assert.Contains("warnings: (none)", text);
+        Assert.EndsWith("permit_ready_certified: false", text);
+    }
+
     private static ForwardRevitProjectContextInputV0 ValidInput() => new()
     {
         LevelSelected = false,
