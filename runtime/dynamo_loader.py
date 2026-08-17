@@ -9,7 +9,7 @@ import traceback
 
 LOADER_NAME = "Shadow.dyn external loader"
 SCRIPT_NAME = "script.py"
-LOADER_BUILD_ID = "2026-07-28-loader-module-isolation-v1"
+LOADER_BUILD_ID = "2026-08-17-compact-player-output-v1"
 _RUNTIME_CHECKPOINT = globals().get("RUNTIME_CHECKPOINT")
 
 
@@ -104,6 +104,49 @@ def summarize_input(value):
     if value is None:
         return {"is_none": True, "type": None}
     return {"is_none": False, "type": type(value).__name__}
+
+
+def build_compact_player_output(result):
+    """Return the fixed, lightweight contract displayed by Dynamo Player.
+
+    The detailed result remains in ``_INTERNAL_RESULT`` and is passed to the
+    debug writer by script.py before this presentation boundary is reached.
+    """
+    source = result if isinstance(result, dict) else {}
+    success = source.get("success") is True
+    if "complete" in source:
+        complete = source.get("complete") is True
+    elif "shadow_calculation_completed" in source:
+        complete = source.get("shadow_calculation_completed") is True
+    else:
+        complete = success and source.get("partial_success") is not True
+
+    blockers = source.get("blockers")
+    blocker_count = len(blockers) if isinstance(blockers, (list, tuple)) else 0
+    if not success and blocker_count == 0:
+        blocker_count = 1
+    warnings = source.get("warnings")
+    warning_count = len(warnings) if isinstance(warnings, (list, tuple)) else 0
+
+    total_ms = None
+    performance = source.get("performance_diagnostics")
+    if isinstance(performance, dict):
+        stages = performance.get("stages")
+        if isinstance(stages, dict) and isinstance(stages.get("total"), dict):
+            candidate = stages["total"].get("elapsed_ms")
+            if isinstance(candidate, (int, float)) and not isinstance(candidate, bool):
+                total_ms = candidate
+
+    return {
+        "success": success,
+        "message": ("Dynamo_Shadow completed" if success else
+                    "Dynamo_Shadow did not complete"),
+        "complete": complete,
+        "permit_ready_certified": False,
+        "blocker_count": blocker_count,
+        "warning_count": warning_count,
+        "total_ms": total_ms,
+    }
 
 
 INPUTS = {
@@ -270,4 +313,5 @@ def run_script():
         )
 
 
-OUT = run_script()
+_INTERNAL_RESULT = run_script()
+OUT = build_compact_player_output(_INTERNAL_RESULT)

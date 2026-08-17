@@ -188,7 +188,7 @@ def _load_loader_definitions():
     sys.modules['clr'] = fake_clr
     try:
         with open(loader_path, 'r', encoding='utf-8') as stream:
-            code = stream.read().rsplit('\nOUT = run_script()', 1)[0]
+            code = stream.read().rsplit('\n_INTERNAL_RESULT = run_script()', 1)[0]
         exec(compile(code, loader_path, 'exec'), namespace)
     finally:
         if previous is None:
