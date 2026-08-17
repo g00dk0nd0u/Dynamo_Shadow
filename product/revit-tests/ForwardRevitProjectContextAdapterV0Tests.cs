@@ -142,6 +142,22 @@ public sealed class ForwardRevitProjectContextAdapterV0Tests
             result.Blockers);
     }
 
+    [Fact]
+    public void DiagnosticProjectionUsesJsonSafeContractAndNeverCertifiesPermitReadiness()
+    {
+        var result = ForwardRevitProjectContextAdapterV0.Resolve(ValidInput(), value => value);
+
+        var data = ForwardRevitProjectContextDiagnosticV0.ToData(result);
+
+        Assert.Equal(true, data["available"]);
+        Assert.Equal(10.0, data["average_ground_level_elevation_m"]);
+        Assert.Equal("settings_fallback", data["average_ground_level_source"]);
+        Assert.Equal(-30.0, (double)data["true_north_deg"]!, 10);
+        Assert.Empty((string[])data["blockers"]!);
+        Assert.Empty((string[])data["warnings"]!);
+        Assert.Equal(false, data["permit_ready_certified"]);
+    }
+
     private static ForwardRevitProjectContextInputV0 ValidInput() => new()
     {
         LevelSelected = false,
