@@ -24,11 +24,12 @@ on a real Revit machine. Host-neutral CI remains Autodesk-free:
 dotnet build product/revit/RevitShadow.csproj --configuration Release
 ```
 
-The Revit-enabled build must explicitly target `net8.0-windows` and reference
-the Autodesk DLLs installed with the Revit version being tested:
+With `EnableRevitApi=true`, `RevitShadow.csproj` selects `net8.0-windows` for
+the current Revit 2025/2026 smoke build. Reference the Autodesk DLLs installed
+with the Revit version being tested:
 
 ```powershell
-dotnet build product/revit/RevitShadow.csproj --configuration Release --framework net8.0-windows -p:EnableRevitApi=true -p:RevitApiDir="C:\path\to\Revit"
+dotnet build product/revit/RevitShadow.csproj --configuration Release -p:EnableRevitApi=true -p:RevitApiDir="C:\path\to\Revit"
 ```
 
 To create `RevitShadow.dll`, `ShadowCore.dll`, and a path-resolved
