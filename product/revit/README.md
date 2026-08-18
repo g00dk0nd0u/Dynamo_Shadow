@@ -29,7 +29,7 @@ Supply the directory containing both Autodesk-provided `RevitAPI.dll` and
 `RevitAPIUI.dll`. Neither binary is copied or committed.
 
 ```powershell
-dotnet build product/revit/RevitShadow.csproj --configuration Release --framework net8.0-windows -p:EnableRevitApi=true -p:RevitApiDir="C:\path\to\Revit"
+dotnet build product/revit/RevitShadow.csproj --configuration Release -p:EnableRevitApi=true -p:RevitApiDir="C:\path\to\Revit"
 ```
 
 The development command is
