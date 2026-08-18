@@ -16,5 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../revit/RevitShadow.csproj" />
+    <None Include="../revit/RevitShadow.addin.template" Link="RevitShadow.addin.template" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
