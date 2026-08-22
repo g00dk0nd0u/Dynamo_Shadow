@@ -6,6 +6,15 @@ diagnostic. It is not the full Forward product, has no ribbon or installer, and
 has not yet been validated on a real Revit machine. `permit_ready_certified`
 always remains `false`.
 
+Phase 5D adds a separate native shadow-caster geometry extraction boundary for
+already-resolved Revit **Mass** and **Generic Model** elements. It recursively
+reads `GeometryElement` and transformed instance geometry while retaining usable
+native `Solid` objects inside the Revit adapter. Bounding boxes are explicitly
+not used as shadow geometry, and meshes are not converted into caster geometry.
+Projection, Boolean operations, duration accumulation, contours, and preview
+remain future work. This Revit-enabled path has not been compiled or executed on
+a real Revit installation.
+
 Compiled-product support for this package is limited to Revit 2025 and 2026,
 which use `net8.0-windows`. Build separately against the Autodesk assemblies
 shipped with the Revit version that will load the package; matching target
