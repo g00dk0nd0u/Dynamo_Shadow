@@ -11,9 +11,17 @@ already-resolved Revit **Mass** and **Generic Model** elements. It recursively
 reads `GeometryElement` and transformed instance geometry while retaining usable
 native `Solid` objects inside the Revit adapter. Bounding boxes are explicitly
 not used as shadow geometry, and meshes are not converted into caster geometry.
-Projection, Boolean operations, duration accumulation, contours, and preview
-remain future work. This Revit-enabled path has not been compiled or executed on
-a real Revit installation.
+At the Phase 5D boundary, projection, Boolean operations, duration accumulation,
+contours, and preview remained future work. This Revit-enabled path has not been
+compiled or executed on a real Revit installation.
+
+Phase 5E-A adds a single-time-slice, read-only formal projection boundary. It
+splits native solids, clips them above the measurement plane, optionally splits
+the clipped result again, and uses `ExtrusionAnalyzer.Create`,
+`GetExtrusionBase`, and `Face.GetEdgesAsCurveLoops` without a convex-hull,
+bounding-box, mesh, or libG fallback. Native loops remain in the Revit-layer
+result while the companion summary is host-neutral. Shadow union is intentionally
+deferred to Phase 5E-B. This path also remains unvalidated on a real Revit host.
 
 Compiled-product support for this package is limited to Revit 2025 and 2026,
 which use `net8.0-windows`. Build separately against the Autodesk assemblies
