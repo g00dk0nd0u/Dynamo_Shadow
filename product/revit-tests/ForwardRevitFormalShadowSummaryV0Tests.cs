@@ -11,6 +11,7 @@ public sealed class ForwardRevitFormalShadowSummaryV0Tests
         var direction = ForwardFormalShadowDirectionV0.Create(0.6, 0.8, 2.0);
 
         Assert.True(direction.Valid);
+        Assert.True(direction.ContractPassed);
         Assert.True(direction.PhysicalZ < 0.0);
         Assert.True(direction.AnalyzerZ > 0.0);
         Assert.Equal(-direction.PhysicalX, direction.AnalyzerX, 12);
@@ -19,6 +20,21 @@ public sealed class ForwardRevitFormalShadowSummaryV0Tests
         Assert.Equal(2.0,
             Math.Sqrt(direction.PhysicalX * direction.PhysicalX
                 + direction.PhysicalY * direction.PhysicalY) / Math.Abs(direction.PhysicalZ), 12);
+    }
+
+    [Fact]
+    public void PureDirectionContractIsSeparateFromActualPolygonValidation()
+    {
+        var direction = ForwardFormalShadowDirectionV0.Create(0.0, 1.0, 2.0);
+        var summary = ForwardRevitFormalShadowSummaryV0.Create(1, 1, 1, 1,
+            direction, actualPolygonDirectionValidationPassed: false,
+            extentValidationAttempted: true, extentValidationPassed: true);
+
+        Assert.True(summary.DirectionVectorContractPassed);
+        Assert.False(summary.ActualPolygonDirectionValidationPassed);
+        Assert.False(summary.Complete);
+        Assert.Contains("runtime_projection_validation_failed", summary.Blockers);
+        Assert.DoesNotContain("direction_validation_failed", summary.Blockers);
     }
 
     [Theory]
@@ -62,5 +78,5 @@ public sealed class ForwardRevitFormalShadowSummaryV0Tests
         int projected, int loops, bool extentAttempted, bool extentPassed) =>
         ForwardRevitFormalShadowSummaryV0.Create(1, 1, projected, loops,
             ForwardFormalShadowDirectionV0.Create(0.0, 1.0, 2.0),
-            directionValidationPassed: true, extentAttempted, extentPassed);
+            actualPolygonDirectionValidationPassed: true, extentAttempted, extentPassed);
 }

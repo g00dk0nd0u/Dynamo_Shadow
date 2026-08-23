@@ -8,6 +8,7 @@ public sealed class ForwardFormalShadowDirectionV0
     private ForwardFormalShadowDirectionV0() { }
 
     public bool Valid { get; private set; }
+    public bool ContractPassed { get; private set; }
     public double PhysicalX { get; private set; }
     public double PhysicalY { get; private set; }
     public double PhysicalZ { get; private set; }
@@ -42,17 +43,28 @@ public sealed class ForwardFormalShadowDirectionV0
         x /= length;
         y /= length;
         var z = -1.0 / length;
+        var analyzerX = -x;
+        var analyzerY = -y;
+        var analyzerZ = -z;
+        var antiparallel = Math.Abs(x + analyzerX) <= 1e-9
+            && Math.Abs(y + analyzerY) <= 1e-9
+            && Math.Abs(z + analyzerZ) <= 1e-9;
+        var analyticalFactor = Math.Sqrt(x * x + y * y) / Math.Abs(z);
+        var contractPassed = z < 0.0 && analyzerZ > 0.0 && antiparallel
+            && Math.Abs(analyticalFactor - shadowLengthFactor)
+                <= Math.Max(1e-9, Math.Abs(shadowLengthFactor) * 1e-9);
         return new ForwardFormalShadowDirectionV0
         {
             Valid = true,
+            ContractPassed = contractPassed,
             PhysicalX = x,
             PhysicalY = y,
             PhysicalZ = z,
             // This is the sole sign conversion: ExtrusionAnalyzer grows from the
             // measurement plane toward the source, opposite the physical ray.
-            AnalyzerX = -x,
-            AnalyzerY = -y,
-            AnalyzerZ = -z,
+            AnalyzerX = analyzerX,
+            AnalyzerY = analyzerY,
+            AnalyzerZ = analyzerZ,
             ShadowLengthFactor = shadowLengthFactor,
         };
     }

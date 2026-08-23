@@ -12,7 +12,8 @@ public sealed class ForwardRevitFormalShadowSummaryV0
     public int ClippedComponentCount { get; private set; }
     public int ProjectedComponentCount { get; private set; }
     public int CurveLoopCount { get; private set; }
-    public bool DirectionValidationPassed { get; private set; }
+    public bool DirectionVectorContractPassed { get; private set; }
+    public bool ActualPolygonDirectionValidationPassed { get; private set; }
     public bool ExtentValidationPassed { get; private set; }
     public IReadOnlyList<string> Blockers { get; private set; } = Array.Empty<string>();
     public IReadOnlyList<string> Warnings { get; private set; } = Array.Empty<string>();
@@ -24,7 +25,7 @@ public sealed class ForwardRevitFormalShadowSummaryV0
         int projectedComponentCount,
         int curveLoopCount,
         ForwardFormalShadowDirectionV0 direction,
-        bool directionValidationPassed,
+        bool actualPolygonDirectionValidationPassed,
         bool extentValidationAttempted,
         bool extentValidationPassed,
         IEnumerable<string>? operationBlockers = null,
@@ -36,9 +37,13 @@ public sealed class ForwardRevitFormalShadowSummaryV0
         {
             blockers.Add(direction.FailureCode ?? "invalid_shadow_direction_vector");
         }
-        else if (!directionValidationPassed)
+        else if (!direction.ContractPassed)
         {
             blockers.Add("direction_validation_failed");
+        }
+        if (projectedComponentCount > 0 && !actualPolygonDirectionValidationPassed)
+        {
+            blockers.Add("runtime_projection_validation_failed");
         }
         if (projectedComponentCount == 0 || curveLoopCount == 0)
         {
@@ -59,7 +64,8 @@ public sealed class ForwardRevitFormalShadowSummaryV0
             ClippedComponentCount = clippedComponentCount,
             ProjectedComponentCount = projectedComponentCount,
             CurveLoopCount = curveLoopCount,
-            DirectionValidationPassed = directionValidationPassed,
+            DirectionVectorContractPassed = direction.Valid && direction.ContractPassed,
+            ActualPolygonDirectionValidationPassed = actualPolygonDirectionValidationPassed,
             ExtentValidationPassed = extentValidationAttempted && extentValidationPassed,
             Blockers = blockers,
             Warnings = warnings is null ? Array.Empty<string>() : new List<string>(warnings),

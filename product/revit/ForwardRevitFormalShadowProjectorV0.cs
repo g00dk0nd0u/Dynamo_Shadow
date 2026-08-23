@@ -31,7 +31,7 @@ public static class ForwardRevitFormalShadowProjectorV0
         var extentPassed = true;
         var runtimeDirectionPassed = true;
 
-        if (!direction.Valid || !double.IsFinite(measurementPlaneElevationInternal)
+        if (!direction.Valid || !direction.ContractPassed || !double.IsFinite(measurementPlaneElevationInternal)
             || !double.IsFinite(validationToleranceInternal) || validationToleranceInternal < 0.0)
         {
             if (!double.IsFinite(measurementPlaneElevationInternal))
@@ -109,39 +109,65 @@ public static class ForwardRevitFormalShadowProjectorV0
             // Physical-ray sign reversal occurs only here, at the Revit API boundary.
             var analyzerDirection = new XYZ(direction.AnalyzerX, direction.AnalyzerY, direction.AnalyzerZ);
             analyzer = ExtrusionAnalyzer.Create(component, plane, analyzerDirection);
+            var startParameter = analyzer.GetStartParameter();
+            if (double.IsFinite(startParameter) && startParameter < -tolerance)
+            {
+                blockers.Add("analyzer_start_parameter_below_measurement_plane");
+            }
             var face = analyzer.GetExtrusionBase();
             if (face is null) { blockers.Add("get_extrusion_base_failure"); return; }
-            var loops = new List<CurveLoop>(face.GetEdgesAsCurveLoops());
-            if (!ValidateLoops(loops, planeZ, tolerance))
+            var acquiredLoops = new List<CurveLoop>(face.GetEdgesAsCurveLoops());
+            var loops = new List<CurveLoop>();
+            try
+            {
+                if (!ValidateLoops(acquiredLoops, planeZ, tolerance))
+                {
+                    blockers.Add("native_curve_loop_acquisition_failure");
+                    return;
+                }
+                // Copies are independent of the analyzer-owned face. Only these
+                // return-owned loops may survive ExtrusionAnalyzer.Dispose().
+                foreach (var acquiredLoop in acquiredLoops)
+                    loops.Add(CurveLoop.CreateViaCopy(acquiredLoop));
+            }
+            catch
             {
                 DisposeLoops(loops);
-                blockers.Add("native_curve_loop_acquisition_failure");
-                return;
+                throw;
             }
+            finally { DisposeLoops(acquiredLoops); }
 
-            var axisLength = Math.Sqrt(direction.PhysicalX * direction.PhysicalX
-                + direction.PhysicalY * direction.PhysicalY);
-            if (!(axisLength > 0.0))
+            try
+            {
+                var axisLength = Math.Sqrt(direction.PhysicalX * direction.PhysicalX
+                    + direction.PhysicalY * direction.PhysicalY);
+                if (!(axisLength > 0.0))
+                {
+                    runtimeDirectionPassed = false;
+                    blockers.Add("runtime_projection_validation_unverified");
+                    DisposeLoops(loops);
+                    return;
+                }
+                var ax = direction.PhysicalX / axisLength;
+                var ay = direction.PhysicalY / axisLength;
+                var source = EdgePoints(component);
+                var actual = LoopPoints(loops);
+                var section = MeasurementSectionPoints(component, planeZ, tolerance);
+                extentAttempted = source.Count > 0 && actual.Count > 0;
+                var componentExtentPassed = extentAttempted && ExtentsAgree(
+                    source, actual, ax, ay, planeZ, direction.ShadowLengthFactor, tolerance);
+                extentPassed &= componentExtentPassed;
+                var componentDirectionPassed = DirectionAgrees(section, actual, ax, ay, tolerance);
+                runtimeDirectionPassed &= componentDirectionPassed;
+
+                output.Add(new ForwardRevitFormalShadowComponentV0(
+                    sourceIndex, splitIndex, componentIndex, loops));
+            }
+            catch
             {
                 DisposeLoops(loops);
-                runtimeDirectionPassed = false;
-                blockers.Add("runtime_projection_validation_unverified");
-                return;
+                throw;
             }
-            var ax = direction.PhysicalX / axisLength;
-            var ay = direction.PhysicalY / axisLength;
-            var source = EdgePoints(component);
-            var actual = LoopPoints(loops);
-            var section = MeasurementSectionPoints(component, planeZ, tolerance);
-            extentAttempted = source.Count > 0 && actual.Count > 0;
-            var componentExtentPassed = extentAttempted && ExtentsAgree(
-                source, actual, ax, ay, planeZ, direction.ShadowLengthFactor, tolerance);
-            extentPassed &= componentExtentPassed;
-            var componentDirectionPassed = DirectionAgrees(section, actual, ax, ay, tolerance);
-            runtimeDirectionPassed &= componentDirectionPassed;
-
-            output.Add(new ForwardRevitFormalShadowComponentV0(
-                sourceIndex, splitIndex, componentIndex, loops));
         }
         catch (Exception) { blockers.Add("extrusion_analyzer_exception"); }
         finally { analyzer?.Dispose(); }
@@ -235,7 +261,7 @@ public static class ForwardRevitFormalShadowProjectorV0
     {
         var loopCount = 0; foreach (var item in output) loopCount += item.Loops.Count;
         var summary = ForwardRevitFormalShadowSummaryV0.Create(inputCount, clippedCount,
-            output.Count, loopCount, direction, direction.Valid && directionPassed,
+            output.Count, loopCount, direction, directionPassed,
             extentAttempted, extentPassed, blockers, warnings);
         return new ForwardRevitFormalShadowResultV0(output, summary);
     }
