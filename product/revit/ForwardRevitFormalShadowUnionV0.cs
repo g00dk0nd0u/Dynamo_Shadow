@@ -11,8 +11,9 @@ public static class ForwardRevitFormalShadowUnionV0
   try{
    if(!double.IsFinite(planeZ)||!double.IsFinite(closureToleranceM)||closureToleranceM<0)throw new Failure("numeric_conversion_failed");
    double thickness=UnitUtils.ConvertToInternalUnits(ForwardRevitFormalShadowUnionSummaryV0.AdapterThicknessM,UnitTypeId.Meters);
+   double planeTolerance=UnitUtils.ConvertToInternalUnits(closureToleranceM,UnitTypeId.Meters);
    foreach(var component in source??Array.Empty<ForwardRevitFormalShadowComponentV0>()){
-    if(component.Loops.Count==0)throw new Failure("invalid_formal_shadow_component"); var profiles=new List<CurveLoop>();
+    ValidateInputComponent(component,planeZ,planeTolerance); var profiles=new List<CurveLoop>();
     try{
      // All loops came from the same 5E-A base face. Preserve that native grouping;
      // CreateExtrusionGeometry itself validates the profile collection and holes.
@@ -40,6 +41,19 @@ public static class ForwardRevitFormalShadowUnionV0
   throw new Failure("revit_boolean_union_failed",first);
  }
  static List<Solid> Split(Solid solid){var parts=new List<Solid>(SolidUtils.SplitVolumes(solid));if(parts.Count==0)throw new Failure("split_volume_invalid");foreach(var p in parts)if(!(p.Volume>0))throw new Failure("split_volume_invalid");return parts;}
+ static void ValidateInputComponent(ForwardRevitFormalShadowComponentV0? component,double planeZ,double tolerance){
+  try{
+   if(component is null||component.Loops is null||component.Loops.Count==0)throw new Failure("invalid_formal_shadow_component");
+   foreach(var loop in component.Loops){
+    if(loop is null||loop.IsOpen()||!loop.HasPlane())throw new Failure("invalid_formal_shadow_component");
+    var plane=loop.GetPlane();if(Math.Abs(Math.Abs(plane.Normal.Z)-1)>1e-7||Math.Abs(plane.Origin.Z-planeZ)>tolerance)throw new Failure("invalid_formal_shadow_component");
+    int count=0;foreach(var curve in loop){
+     if(curve is not Line||Math.Abs(curve.GetEndPoint(0).Z-planeZ)>tolerance||Math.Abs(curve.GetEndPoint(1).Z-planeZ)>tolerance)throw new Failure("invalid_formal_shadow_component");count++;
+    }
+    if(count<3)throw new Failure("invalid_formal_shadow_component");
+   }
+  }catch(Failure){throw;}catch(Exception e){throw new Failure("invalid_formal_shadow_component",e);}
+ }
  static IReadOnlyList<CurveLoop> CopyBaseLoops(Solid solid,double planeZ){PlanarFace? selected=null;double distance=double.PositiveInfinity;
   foreach(Face face in solid.Faces)if(face is PlanarFace p&&Math.Abs(Math.Abs(p.FaceNormal.Z)-1)<=1e-7){double d=Math.Abs(p.Origin.Z-planeZ);if(d<distance){selected=p;distance=d;}}
   if(selected is null)throw new Failure("union_base_planar_face_unavailable");var acquired=new List<CurveLoop>(selected.GetEdgesAsCurveLoops());var copies=new List<CurveLoop>();
