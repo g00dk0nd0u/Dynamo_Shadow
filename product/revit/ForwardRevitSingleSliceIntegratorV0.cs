@@ -39,13 +39,23 @@ public static class ForwardRevitSingleSliceIntegratorV0
             // The Phase 5A result is the sole source of the measurement-plane elevation.
             planeInternal = UnitUtils.ConvertToInternalUnits(
                 context.MeasurementPlaneElevationM!.Value, UnitTypeId.Meters);
-            validationToleranceInternal = UnitUtils.ConvertToInternalUnits(
-                validationToleranceM, UnitTypeId.Meters);
         }
         catch (Exception)
         {
             return Result(context, caster.Summary,
                 boundaryBlocker: "measurement_plane_unit_conversion_failed");
+        }
+
+        if (!double.IsFinite(validationToleranceM) || validationToleranceM < 0.0)
+            return Result(context, caster.Summary, boundaryBlocker: "numeric_conversion_failed");
+        try
+        {
+            validationToleranceInternal = UnitUtils.ConvertToInternalUnits(
+                validationToleranceM, UnitTypeId.Meters);
+        }
+        catch (Exception)
+        {
+            return Result(context, caster.Summary, boundaryBlocker: "numeric_conversion_failed");
         }
 
         using var projection = ForwardRevitFormalShadowProjectorV0.Project(caster.Solids,
