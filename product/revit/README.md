@@ -20,8 +20,13 @@ splits native solids, clips them above the measurement plane, optionally splits
 the clipped result again, and uses `ExtrusionAnalyzer.Create`,
 `GetExtrusionBase`, and `Face.GetEdgesAsCurveLoops` without a convex-hull,
 bounding-box, mesh, or libG fallback. Native loops remain in the Revit-layer
-result while the companion summary is host-neutral. Shadow union is intentionally
-deferred to Phase 5E-B. This path also remains unvalidated on a real Revit host.
+result while the companion summary is host-neutral. Phase 5E-B separately adds
+per-slice native union. It preserves each projected face loop collection, creates
+a temporary 0.1 m extrusion, performs Revit Boolean union with one
+reversed-operand retry, splits disconnected volumes, and returns owned
+base-face loop copies. There is no polygon fallback or silent Boolean-failure
+fallback; area checks use Revit metre/m² conversions. This path remains
+unvalidated on a real Revit host.
 
 Compiled-product support for this package is limited to Revit 2025 and 2026,
 which use `net8.0-windows`. Build separately against the Autodesk assemblies
