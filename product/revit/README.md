@@ -32,7 +32,9 @@ Phase 5F-B adds the compiled multi-time orchestration boundary through native
 per-slice union. It reuses the portable inclusive true-solar-time timeline and
 resolved ProjectContext True North rotation, extracts project/caster data once,
 and passes each model-coordinate direction to the unchanged native projection
-and union stages. The aggregate result owns every completed per-slice union;
+and union stages through the same resolved single-slice tail used by Phase 5F-A.
+Stage-tagged warnings remain available in the host-neutral summary. The
+aggregate result owns every completed per-slice result and its native union;
 any solar or native slice blocker stops processing with its sample index and
 keeps the aggregate incomplete. Duration, contours, DirectShape, and permit
 certification are not part of this boundary.

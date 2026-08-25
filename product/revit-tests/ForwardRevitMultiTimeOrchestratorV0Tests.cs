@@ -36,6 +36,7 @@ public sealed class ForwardRevitMultiTimeOrchestratorV0Tests
         Assert.False(actual.Available);
         Assert.False(actual.Complete);
         Assert.Equal(1, actual.BlockerSampleIndex);
+        Assert.Equal("union", actual.Slices[^1].BlockerStage);
         Assert.Contains("revit_boolean_union_failed", actual.Blockers);
         Assert.False(actual.PermitReadyCertified);
     }
@@ -52,10 +53,35 @@ public sealed class ForwardRevitMultiTimeOrchestratorV0Tests
         Assert.Contains("solar_sample_at_or_below_horizon", actual.Blockers);
     }
 
+    [Fact]
+    public void EveryStageWarningIsRetainedWithItsOrigin()
+    {
+        var solar = Solar(); solar.Warnings.Add("solar_warning");
+        var initial = new[] {
+            Warning("project_context", "context_warning"),
+            Warning("caster_extraction", "caster_warning")
+        };
+        var actual = ForwardRevitMultiTimeOrchestratorV0.Run(solar, sample => new() {
+            Complete = true,
+            Warnings = new[] { Warning("projection", "projection_warning", sample.SampleIndex),
+                Warning("union", "union_warning", sample.SampleIndex) }
+        }, initial);
+        Assert.Contains(actual.Warnings, x => x.Stage == "project_context" && x.Code == "context_warning");
+        Assert.Contains(actual.Warnings, x => x.Stage == "caster_extraction" && x.Code == "caster_warning");
+        Assert.Contains(actual.Warnings, x => x.Stage == "solar" && x.Code == "solar_warning");
+        Assert.Contains(actual.Warnings, x => x.Stage == "projection" && x.SampleIndex == 1);
+        Assert.Contains(actual.Warnings, x => x.Stage == "union" && x.SampleIndex == 2);
+        Assert.All(actual.Slices, slice => Assert.Equal(2, slice.Warnings.Count));
+    }
+
     private static SolarResultV0 Solar() => ForwardSolarTimelineV0.Build(new ForwardSolarTimelineInputV0 {
         LatitudeDeg = 35.6812, SolarDeclinationDeg = -23.439, TrueNorthDeg = 30,
         TrueSolarStartMinutes = 600, TrueSolarEndMinutes = 840, SunTimeStepMinutes = 120 });
 
     private static ForwardRevitTimeSliceOutcomeV0 Slice(SolarSampleV0 sample, bool complete,
-        params string[] blockers) => new() { Complete = complete, Blockers = blockers };
+        params string[] blockers) => new() { Complete = complete, Blockers = blockers,
+            BlockerStage = complete ? null : "union" };
+
+    private static ForwardRevitStageWarningV0 Warning(string stage, string code, int? sampleIndex = null) =>
+        new() { Stage = stage, Code = code, SampleIndex = sampleIndex };
 }

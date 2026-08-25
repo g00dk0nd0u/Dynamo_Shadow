@@ -32,43 +32,9 @@ public static class ForwardRevitSingleSliceIntegratorV0
         if (!caster.Summary.Complete)
             return Result(context, caster.Summary);
 
-        double planeInternal;
-        double validationToleranceInternal;
-        try
-        {
-            // The Phase 5A result is the sole source of the measurement-plane elevation.
-            planeInternal = UnitUtils.ConvertToInternalUnits(
-                context.MeasurementPlaneElevationM!.Value, UnitTypeId.Meters);
-        }
-        catch (Exception)
-        {
-            return Result(context, caster.Summary,
-                boundaryBlocker: "measurement_plane_unit_conversion_failed");
-        }
-
-        if (!double.IsFinite(validationToleranceM) || validationToleranceM < 0.0)
-            return Result(context, caster.Summary, boundaryBlocker: "numeric_conversion_failed");
-        try
-        {
-            validationToleranceInternal = UnitUtils.ConvertToInternalUnits(
-                validationToleranceM, UnitTypeId.Meters);
-        }
-        catch (Exception)
-        {
-            return Result(context, caster.Summary, boundaryBlocker: "numeric_conversion_failed");
-        }
-
-        using var projection = ForwardRevitFormalShadowProjectorV0.Project(caster.Solids,
-            planeInternal, shadowDirectionModelX, shadowDirectionModelY, shadowLengthFactor,
-            validationToleranceInternal);
-        if (!projection.Summary.Complete)
-            return Result(context, caster.Summary, projection.Summary);
-
-        var union = ForwardRevitFormalShadowUnionV0.Union(
-            projection.Components, planeInternal, closureToleranceM);
-        var summary = ForwardRevitSingleSliceIntegrationSummaryV0.Create(
-            context, caster.Summary, projection.Summary, union.Summary);
-        return new ForwardRevitSingleSliceIntegrationResultV0(union, summary);
+        return ForwardRevitResolvedSingleSliceTailV0.Run(context, caster,
+            shadowDirectionModelX, shadowDirectionModelY, shadowLengthFactor,
+            validationToleranceM, closureToleranceM, out _, out _);
     }
 
     private static ForwardRevitSingleSliceIntegrationResultV0 Result(

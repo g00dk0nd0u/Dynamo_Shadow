@@ -8,11 +8,11 @@ namespace RevitShadow;
 public sealed class ForwardRevitMultiTimeIntegrationResultV0 : IDisposable
 {
     public ForwardRevitMultiTimeIntegrationResultV0(
-        IReadOnlyList<ForwardRevitFormalShadowUnionResultV0> unionResults,
+        IReadOnlyList<ForwardRevitSingleSliceIntegrationResultV0> sliceResults,
         ForwardRevitMultiTimeSummaryV0 summary)
-    { UnionResults = unionResults; Summary = summary; }
-    public IReadOnlyList<ForwardRevitFormalShadowUnionResultV0> UnionResults { get; }
+    { SliceResults = sliceResults; Summary = summary; }
+    public IReadOnlyList<ForwardRevitSingleSliceIntegrationResultV0> SliceResults { get; }
     public ForwardRevitMultiTimeSummaryV0 Summary { get; }
-    public void Dispose() { foreach (var result in UnionResults) result.Dispose(); }
+    public void Dispose() { foreach (var result in SliceResults) result.Dispose(); }
 }
 #endif
