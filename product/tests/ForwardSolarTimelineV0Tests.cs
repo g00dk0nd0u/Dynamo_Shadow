@@ -41,11 +41,48 @@ public sealed class ForwardSolarTimelineV0Tests
     }
 
     [Fact]
-    public void NonDivisibleStepStillIncludesOrderedEndSample()
+    public void NonDivisibleStepDoesNotAppendEndSample()
     {
         var actual = ForwardSolarTimelineV0.Build(new ForwardSolarTimelineInputV0 {
             LatitudeDeg = 35.6812, SolarDeclinationDeg = -23.439, TrueNorthDeg = 0,
             TrueSolarStartMinutes = 600, TrueSolarEndMinutes = 800, SunTimeStepMinutes = 70 });
-        Assert.Equal(new[] { 600d, 670d, 740d, 800d }, actual.Samples.Select(x => x.TrueSolarMinutes));
+        Assert.Equal(new[] { 600d, 670d, 740d }, actual.Samples.Select(x => x.TrueSolarMinutes));
     }
+
+    [Fact]
+    public void DivisibleStepIncludesEndSample()
+    {
+        var actual = ForwardSolarTimelineV0.Build(new ForwardSolarTimelineInputV0 {
+            LatitudeDeg = 35.6812, SolarDeclinationDeg = -23.439, TrueNorthDeg = 0,
+            TrueSolarStartMinutes = 600, TrueSolarEndMinutes = 840, SunTimeStepMinutes = 120 });
+        Assert.Equal(new[] { 600d, 720d, 840d }, actual.Samples.Select(x => x.TrueSolarMinutes));
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(0.5)]
+    [InlineData(70.25)]
+    public void NonPositiveNonFiniteOrFractionalStepIsInvalid(double step)
+    {
+        var actual = BuildWithStep(600, 800, step);
+        Assert.False(actual.Complete);
+        Assert.Contains("invalid_sun_time_step", actual.Blockers);
+    }
+
+    [Fact]
+    public void NonAdvancingIntegerStepIsInvalid()
+    {
+        var start = 9007199254740992d;
+        var actual = BuildWithStep(start, start + 2, 1);
+        Assert.False(actual.Complete);
+        Assert.Contains("invalid_sun_time_step", actual.Blockers);
+    }
+
+    private static SolarResultV0 BuildWithStep(double start, double end, double step) =>
+        ForwardSolarTimelineV0.Build(new ForwardSolarTimelineInputV0 {
+            LatitudeDeg = 35.6812, SolarDeclinationDeg = -23.439, TrueNorthDeg = 0,
+            TrueSolarStartMinutes = start, TrueSolarEndMinutes = end, SunTimeStepMinutes = step });
 }

@@ -28,16 +28,20 @@ public static class ForwardSolarTimelineV0
         if (!ForwardGeometryV0.Finite(input.TrueSolarStartMinutes) ||
             !ForwardGeometryV0.Finite(input.TrueSolarEndMinutes) ||
             input.TrueSolarEndMinutes <= input.TrueSolarStartMinutes) result.Blockers.Add("invalid_time_range");
-        if (!ForwardGeometryV0.Finite(input.SunTimeStepMinutes) || input.SunTimeStepMinutes <= 0)
+        if (!ForwardGeometryV0.Finite(input.SunTimeStepMinutes) || input.SunTimeStepMinutes <= 0 ||
+            input.SunTimeStepMinutes != Math.Truncate(input.SunTimeStepMinutes) ||
+            input.TrueSolarStartMinutes + input.SunTimeStepMinutes <= input.TrueSolarStartMinutes)
             result.Blockers.Add("invalid_sun_time_step");
         if (result.Blockers.Count > 0) return result;
 
-        var times = new List<double> { input.TrueSolarStartMinutes };
-        for (var time = input.TrueSolarStartMinutes + input.SunTimeStepMinutes;
-             time < input.TrueSolarEndMinutes - 1e-9; time += input.SunTimeStepMinutes) times.Add(time);
-        if (Math.Abs(times[times.Count - 1] - input.TrueSolarEndMinutes) > 1e-9)
-            times.Add(input.TrueSolarEndMinutes);
-
+        var times = new List<double>();
+        for (var time = input.TrueSolarStartMinutes; time <= input.TrueSolarEndMinutes;)
+        {
+            times.Add(time);
+            var next = time + input.SunTimeStepMinutes;
+            if (next <= time) { result.Blockers.Add("invalid_sun_time_step"); return result; }
+            time = next;
+        }
         for (var index = 0; index < times.Count; index++)
         {
             var minute = times[index];
