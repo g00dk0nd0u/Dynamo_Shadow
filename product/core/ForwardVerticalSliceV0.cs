@@ -55,7 +55,7 @@ public static class ForwardVerticalSliceV0
  public static ForwardVerticalSliceResultV0 Run(ForwardVerticalSliceInputV0 input)
  {
   var r=new ForwardVerticalSliceResultV0(); Validate(input,r.Blockers); if(r.Blockers.Count>0)return r;
-  BuildSolar(input,r.Solar); if(!r.Solar.Complete){Copy(r.Solar.Blockers,r.Blockers);return r;}
+  r.Solar=ForwardSolarTimelineV0.Build(new ForwardSolarTimelineInputV0{LatitudeDeg=input.LatitudeDeg,SolarDeclinationDeg=input.SolarDeclinationDeg,TrueNorthDeg=input.TrueNorthDeg,TrueSolarStartMinutes=input.TrueSolarStartMinutes,TrueSolarEndMinutes=input.TrueSolarEndMinutes,SunTimeStepMinutes=input.SunTimeStepMinutes}); if(!r.Solar.Complete){Copy(r.Solar.Blockers,r.Blockers);return r;}
   foreach(var s in r.Solar.Samples){var dz=input.Caster.TopZM-input.MeasurementPlaneElevationM;var dx=dz*s.ShadowLengthFactor*s.ShadowDirectionModel.X;var dy=dz*s.ShadowLengthFactor*s.ShadowDirectionModel.Y;var points=input.Caster.FootprintPointsM.Select(p=>new Point2M(p.X,p.Y)).Concat(input.Caster.FootprintPointsM.Select(p=>new Point2M(p.X+dx,p.Y+dy)));var hull=ForwardGeometryV0.Hull(points);r.ShadowSlices.Slices.Add(new ShadowSliceV0{SliceIndex=s.SampleIndex,TrueSolarMinutes=s.TrueSolarMinutes,Polygons=new List<ShadowPolygonV0>{new ShadowPolygonV0{PointsM=hull}}});}
   r.ShadowSlices.Available=r.ShadowSlices.Complete=true;
   BuildDuration(input,r.ShadowSlices,r.Duration);if(!r.Duration.Complete){Copy(r.Duration.Blockers,r.Blockers);return r;}
@@ -70,13 +70,6 @@ public static class ForwardVerticalSliceV0
   for(var a=0;a<p.Count;a++)for(var z=a+1;z<p.Count;z++){if(z==a+1||(a==0&&z==p.Count-1))continue;if(Intersects(p[a],p[(a+1)%p.Count],p[z],p[(z+1)%p.Count])){b.Add("self_intersecting_footprint");return;}}
  }
  static bool Intersects(Point2M a,Point2M b,Point2M c,Point2M d){var ab1=ForwardGeometryV0.Cross(a,b,c);var ab2=ForwardGeometryV0.Cross(a,b,d);var cd1=ForwardGeometryV0.Cross(c,d,a);var cd2=ForwardGeometryV0.Cross(c,d,b);return ((ab1>0&&ab2<0)||(ab1<0&&ab2>0))&&((cd1>0&&cd2<0)||(cd1<0&&cd2>0));}
- static void BuildSolar(ForwardVerticalSliceInputV0 i,SolarResultV0 r)
- {
-  var times=new List<double>{i.TrueSolarStartMinutes};for(var t=i.TrueSolarStartMinutes+i.SunTimeStepMinutes;t<i.TrueSolarEndMinutes-1e-9;t+=i.SunTimeStepMinutes)times.Add(t);if(Math.Abs(times[times.Count-1]-i.TrueSolarEndMinutes)>1e-9)times.Add(i.TrueSolarEndMinutes);
-  for(var n=0;n<times.Count;n++){var minute=times[n];var ha=15*(minute/60-12);var lat=Rad(i.LatitudeDeg);var dec=Rad(i.SolarDeclinationDeg);var h=Rad(ha);var sin=Math.Sin(lat)*Math.Sin(dec)+Math.Cos(lat)*Math.Cos(dec)*Math.Cos(h);sin=Math.Max(-1,Math.Min(1,sin));var alt=Math.Asin(sin);var altDeg=Deg(alt);if(altDeg<=0){r.Blockers.Add("solar_sample_at_or_below_horizon");return;}var az=(Deg(Math.Atan2(Math.Sin(h),Math.Cos(h)*Math.Sin(lat)-Math.Tan(dec)*Math.Cos(lat))+Math.PI)+360)%360;var shadow=(az+180)%360;var model=(shadow+i.TrueNorthDeg)%360;if(model<0)model+=360;r.Samples.Add(new SolarSampleV0{SampleIndex=n,TrueSolarMinutes=minute,SolarAltitudeDeg=altDeg,SolarAzimuthDeg=az,ShadowAzimuthTrueNorthDeg=shadow,ShadowAzimuthModelDeg=model,ShadowLengthFactor=1/Math.Tan(alt),ShadowDirectionModel=new Point2M(Math.Sin(Rad(model)),Math.Cos(Rad(model)))});}
-  r.Available=r.Complete=true;
- }
- static double Rad(double d)=>d*Math.PI/180;static double Deg(double r)=>r*180/Math.PI;
  static void BuildDuration(ForwardVerticalSliceInputV0 i,ShadowSlicesResultV0 slices,DurationResultV0 r)
  {
   var pts=slices.Slices.SelectMany(s=>s.Polygons).SelectMany(p=>p.PointsM).ToList();var minx=pts.Min(p=>p.X)-i.AnalysisMarginM;var miny=pts.Min(p=>p.Y)-i.AnalysisMarginM;var maxx=pts.Max(p=>p.X)+i.AnalysisMarginM;var maxy=pts.Max(p=>p.Y)+i.AnalysisMarginM;var nx=(int)Math.Ceiling((maxx-minx)/i.GridResolutionM)+1;var ny=(int)Math.Ceiling((maxy-miny)/i.GridResolutionM)+1;var count=(long)nx*ny;r.GridPointCount=count>int.MaxValue?int.MaxValue:(int)count;if(count>i.MaxGridPoints){r.Blockers.Add("max_grid_points_exceeded");return;}r.SpatialResolutionM=i.GridResolutionM;r.TemporalStepMinutes=slices.Slices.Skip(1).Select((s,k)=>s.TrueSolarMinutes-slices.Slices[k].TrueSolarMinutes).Distinct().Count()==1?slices.Slices[1].TrueSolarMinutes-slices.Slices[0].TrueSolarMinutes:(double?)null;r.GridSpec=new GridSpecV0{OriginXM=minx,OriginYM=miny,ResolutionM=i.GridResolutionM,XCount=nx,YCount=ny,MaxXM=minx+(nx-1)*i.GridResolutionM,MaxYM=miny+(ny-1)*i.GridResolutionM};

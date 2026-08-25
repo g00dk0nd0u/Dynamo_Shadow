@@ -28,6 +28,15 @@ base-face loop copies. There is no polygon fallback or silent Boolean-failure
 fallback; area checks use Revit metre/m² conversions. This path remains
 unvalidated on a real Revit host.
 
+Phase 5F-B adds the compiled multi-time orchestration boundary through native
+per-slice union. It reuses the portable inclusive true-solar-time timeline and
+resolved ProjectContext True North rotation, extracts project/caster data once,
+and passes each model-coordinate direction to the unchanged native projection
+and union stages. The aggregate result owns every completed per-slice union;
+any solar or native slice blocker stops processing with its sample index and
+keeps the aggregate incomplete. Duration, contours, DirectShape, and permit
+certification are not part of this boundary.
+
 Compiled-product support for this package is limited to Revit 2025 and 2026,
 which use `net8.0-windows`. Build separately against the Autodesk assemblies
 shipped with the Revit version that will load the package; matching target
