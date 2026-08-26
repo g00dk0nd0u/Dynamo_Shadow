@@ -50,11 +50,22 @@ public sealed class ForwardUnifiedShadowSliceSnapshotV0
         var sliceValues = slices ?? Array.Empty<ForwardUnifiedShadowTimeSliceSnapshotV0>();
         var blockerValues = blockers is null ? new List<string>() : new List<string>(blockers);
         foreach (var slice in sliceValues) if (!slice.Complete) blockerValues.AddRange(slice.Blockers);
+        var timesValid = true;
+        for (var index = 0; index < sliceValues.Count; index++)
+        {
+            var time = sliceValues[index].TrueSolarMinutes;
+            if (!ForwardGeometryV0.Finite(time) || (index > 0 && time <= sliceValues[index-1].TrueSolarMinutes))
+            {
+                timesValid = false;
+                break;
+            }
+        }
+        if (!timesValid) blockerValues.Add("invalid_duration_input_or_settings");
         var complete = sliceValues.Count > 0 && blockerValues.Count == 0;
         if (complete) foreach (var slice in sliceValues) if (!slice.Complete) { complete = false; break; }
         return new ForwardUnifiedShadowSliceSnapshotV0 {
             Available = sliceValues.Count > 0, Complete = complete,
-            ReadyForDurationAccumulation = complete, Slices = sliceValues,
+            ReadyForDurationAccumulation = complete && sliceValues.Count >= 2, Slices = sliceValues,
             Blockers = blockerValues,
             Warnings = warnings is null ? Array.Empty<string>() : new List<string>(warnings)
         };

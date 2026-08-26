@@ -39,17 +39,43 @@ public sealed class ForwardUnifiedShadowSliceSnapshotV0Tests
         Assert.False(snapshot.Complete); Assert.False(snapshot.ReadyForDurationAccumulation); Assert.False(snapshot.PermitReadyCertified);
     }
 
-    [Fact] public void CompleteSnapshotIsDurationReadyButNeverPermitCertified()
+    [Fact] public void OneCompleteSliceIsCompleteButNotDurationReady()
     {
-        var snapshot = ForwardUnifiedShadowSliceSnapshotV0.Create(new[] { new ForwardUnifiedShadowTimeSliceSnapshotV0 {
-            SliceIndex = 0, SampleIndex = 0, TrueSolarMinutes = 480, Complete = true,
-            Polygons = Classify(Loop((0,0),(1,0),(1,1),(0,1))).Polygons } });
-        Assert.True(snapshot.Available); Assert.True(snapshot.Complete); Assert.True(snapshot.ReadyForDurationAccumulation);
+        var snapshot = Snapshot(480);
+        Assert.True(snapshot.Available); Assert.True(snapshot.Complete); Assert.False(snapshot.ReadyForDurationAccumulation);
         Assert.False(snapshot.PermitReadyCertified);
+    }
+
+    [Fact] public void TwoIncreasingSlicesAreDurationReady()
+    {
+        var snapshot = Snapshot(480, 510);
+        Assert.True(snapshot.Complete); Assert.True(snapshot.ReadyForDurationAccumulation);
+        Assert.False(snapshot.PermitReadyCertified);
+    }
+
+    [Theory]
+    [InlineData(480, 480)]
+    [InlineData(510, 480)]
+    public void DuplicateOrDecreasingTimeFailsSnapshot(double first, double second)
+    {
+        var snapshot = Snapshot(first, second);
+        Assert.False(snapshot.Complete); Assert.False(snapshot.ReadyForDurationAccumulation);
+        Assert.Contains("invalid_duration_input_or_settings", snapshot.Blockers);
+    }
+
+    [Fact] public void NonFiniteTimeFailsSnapshot()
+    {
+        var snapshot = Snapshot(480, double.NaN);
+        Assert.False(snapshot.Complete); Assert.False(snapshot.ReadyForDurationAccumulation);
+        Assert.Contains("invalid_duration_input_or_settings", snapshot.Blockers);
     }
 
     private static ForwardUnifiedShadowComponentSnapshotV0 Classify(params IReadOnlyList<Point2M>[] loops) =>
         ForwardUnifiedShadowComponentClassifierV0.Classify(loops, 0);
+    private static ForwardUnifiedShadowSliceSnapshotV0 Snapshot(params double[] times) =>
+        ForwardUnifiedShadowSliceSnapshotV0.Create(times.Select((time, index) => new ForwardUnifiedShadowTimeSliceSnapshotV0 {
+            SliceIndex = index, SampleIndex = index, TrueSolarMinutes = time, Complete = true,
+            Polygons = Classify(Loop((0,0),(1,0),(1,1),(0,1))).Polygons }).ToArray());
     private static IReadOnlyList<Point2M> Loop(params (double X,double Y)[] values) => values.Select(p => new Point2M(p.X,p.Y)).ToArray();
     private static double Signed(IReadOnlyList<Point2M> p) => p.Select((a,i) => a.X*p[(i+1)%p.Count].Y-p[(i+1)%p.Count].X*a.Y).Sum()/2;
 }

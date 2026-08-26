@@ -45,13 +45,18 @@ public static class ForwardRevitUnifiedShadowSliceSnapshotAdapterV0
                     try {
                         foreach (var curve in loop) {
                             if (curve is not Line) return Failed("union_output_non_line_loop", warnings);
-                            var point = curve.GetEndPoint(0);
-                            var x = UnitUtils.ConvertFromInternalUnits(point.X, UnitTypeId.Meters);
-                            var y = UnitUtils.ConvertFromInternalUnits(point.Y, UnitTypeId.Meters);
+                            XYZ point;
+                            try { point = curve.GetEndPoint(0); }
+                            catch (Exception) { return Failed("union_output_loop_invalid", warnings); }
+                            double x, y;
+                            try {
+                                x = UnitUtils.ConvertFromInternalUnits(point.X, UnitTypeId.Meters);
+                                y = UnitUtils.ConvertFromInternalUnits(point.Y, UnitTypeId.Meters);
+                            } catch (Exception) { return Failed("numeric_conversion_failed", warnings); }
                             if (!double.IsFinite(x) || !double.IsFinite(y)) return Failed("numeric_conversion_failed", warnings);
                             points.Add(new Point2M(x, y));
                         }
-                    } catch (Exception) { return Failed("unit_conversion_failed", warnings); }
+                    } catch (Exception) { return Failed("union_output_loop_invalid", warnings); }
                     loops.Add(points);
                 }
                 var classified = ForwardUnifiedShadowComponentClassifierV0.Classify(loops, componentIndex);
