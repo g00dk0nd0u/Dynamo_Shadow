@@ -84,7 +84,7 @@ public sealed class ForwardEqualTimeContourV0Tests
 
     [Fact] public void SegmentCapStopsCurrentLevel()
     {
-        var result=ForwardEqualTimeContourV0.Build(Duration(new[]{10d,0,10,0}),new(){EqualTimeContourLevelsMinutes=new[]{5d}},1);
+        var result=ForwardEqualTimeContourV0.Build(Duration(new[]{10d,0,0,10}),new(){EqualTimeContourLevelsMinutes=new[]{5d}},1);
         Assert.Equal("equal_time_contour_segment_budget_exceeded",Assert.Single(result.Blockers));
     }
 
