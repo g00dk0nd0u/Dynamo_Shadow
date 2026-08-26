@@ -69,6 +69,42 @@ public sealed class ForwardShadowDurationV0Tests
         Assert.Equal(1, result.SpatialResolutionM); Assert.Empty(result.DurationValues);
     }
 
+    [Fact] public void DenseHardCapPrecedesLargerConfiguredMaximumWithoutMaterialization()
+    {
+        var settings = Settings(1, 0); settings.MaxGridPoints = 3_000_000;
+        var result = ForwardShadowDurationV0.Build(Snapshot(new[] { 0.0, 30.0 },
+            Polygons((0,"outer",Loop((0,0),(666666,0),(666666,2),(0,2))))), settings);
+        Assert.False(result.Complete);
+        Assert.Contains("large_grid_hard_point_cap_exceeded", result.Blockers);
+        Assert.Equal(2_000_001L, result.RequestedGridPointCount!.Value);
+        Assert.Equal(3_000_000, result.ConfiguredMaxGridPoints!.Value);
+        Assert.Equal(2_000_000, result.DenseHardPointCap);
+        Assert.Empty(result.DurationValues);
+        Assert.Equal(1, result.SpatialResolutionM);
+    }
+
+    [Fact] public void ConfiguredMaximumBlocksBelowDenseHardCap()
+    {
+        var settings = Settings(1, 0); settings.MaxGridPoints = 1000;
+        var result = ForwardShadowDurationV0.Build(Snapshot(new[] { 0.0, 30.0 },
+            Polygons((0,"outer",Loop((0,0),(76,0),(76,12),(0,12))))), settings);
+        Assert.Contains("max_duration_grid_points_exceeded", result.Blockers);
+        Assert.Equal(1001L, result.RequestedGridPointCount!.Value);
+        Assert.Equal(1000, result.ConfiguredMaxGridPoints!.Value);
+        Assert.Equal(1, result.SpatialResolutionM);
+    }
+
+    [Fact] public void GridWithinBothLimitsCalculatesNormally()
+    {
+        var settings = Settings(1, 0); settings.MaxGridPoints = 4;
+        var result = ForwardShadowDurationV0.Build(Snapshot(new[] { 0.0, 30.0 },
+            Polygons((0,"outer",Loop((0,0),(1,0),(1,1),(0,1))))), settings);
+        Assert.True(result.Complete);
+        Assert.Equal(4L, result.RequestedGridPointCount!.Value);
+        Assert.Equal(4, result.DurationValues.Count);
+        Assert.Equal(1, result.SpatialResolutionM);
+    }
+
     [Fact] public void OneSliceCannotProduceDuration()
     {
         var result = ForwardShadowDurationV0.Build(Snapshot(new[] { 0.0 },

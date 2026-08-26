@@ -18,6 +18,9 @@ public sealed class ForwardShadowDurationResultV0
     public double? TemporalStepMinutes { get; set; }
     public double SpatialResolutionM { get; set; }
     public int GridPointCount { get; set; }
+    public long? RequestedGridPointCount { get; set; }
+    public int? ConfiguredMaxGridPoints { get; set; }
+    public int DenseHardPointCap { get; set; } = ForwardShadowDurationV0.DenseHardPointCap;
     public double MaximumShadowDurationMinutes { get; set; }
     public int ShadowedPointCount { get; set; }
     public GridSpecV0? GridSpec { get; set; }
@@ -34,6 +37,7 @@ public sealed class ForwardShadowDurationResultV0
 /// </summary>
 public static class ForwardShadowDurationV0
 {
+    public const int DenseHardPointCap = 2_000_000;
     public const string Method = "grid_trapezoidal_time_integration_v1";
     public const string NumericalApproximationWarning =
         "Duration values are a grid/trapezoidal numerical approximation at the configured temporal interval.";
@@ -128,11 +132,10 @@ public static class ForwardShadowDurationV0
             return Failed("invalid_duration_input_or_settings", warnings);
         var xCount = (int)xCountDouble; var yCount = (int)yCountDouble;
         var count = (long)xCount*yCount;
+        if (count > DenseHardPointCap)
+            return Failed("large_grid_hard_point_cap_exceeded", warnings, count, settings.MaxGridPoints, resolution);
         if (count > settings.MaxGridPoints)
-        {
-            var capped = count > int.MaxValue ? int.MaxValue : (int)count;
-            return Failed("max_duration_grid_points_exceeded", warnings, capped, resolution);
-        }
+            return Failed("max_duration_grid_points_exceeded", warnings, count, settings.MaxGridPoints, resolution);
 
         var values = new List<DurationPointV0>((int)count);
         double maximum = 0; var shadowed = 0;
@@ -156,6 +159,7 @@ public static class ForwardShadowDurationV0
         return new ForwardShadowDurationResultV0 {
             Available = true, Complete = true, TemporalStepMinutes = uniform ? intervals[0] : null,
             SpatialResolutionM = resolution, GridPointCount = (int)count,
+            RequestedGridPointCount = count, ConfiguredMaxGridPoints = settings.MaxGridPoints,
             MaximumShadowDurationMinutes = maximum, ShadowedPointCount = shadowed,
             GridSpec = new GridSpecV0 { OriginXM = minX, OriginYM = minY, ResolutionM = resolution,
                 XCount = xCount, YCount = yCount, MaxXM = minX+(xCount-1)*resolution,
@@ -240,8 +244,11 @@ public static class ForwardShadowDurationV0
     }
 
     private static ForwardShadowDurationResultV0 Failed(
-        string blocker, IReadOnlyList<string> warnings, int gridPointCount = 0, double resolution = 0) => new() {
+        string blocker, IReadOnlyList<string> warnings, long? requestedGridPointCount = null,
+        int? configuredMaxGridPoints = null, double resolution = 0) => new() {
             Blockers = new[] { blocker }, Warnings = warnings,
-            GridPointCount = gridPointCount, SpatialResolutionM = resolution
+            GridPointCount = requestedGridPointCount > int.MaxValue ? int.MaxValue :
+                (int)(requestedGridPointCount ?? 0), RequestedGridPointCount = requestedGridPointCount,
+            ConfiguredMaxGridPoints = configuredMaxGridPoints, SpatialResolutionM = resolution
         };
 }
