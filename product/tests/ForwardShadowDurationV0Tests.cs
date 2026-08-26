@@ -101,6 +101,41 @@ public sealed class ForwardShadowDurationV0Tests
         Assert.Contains(ForwardShadowDurationV0.NumericalApproximationWarning, result.Warnings);
     }
 
+    [Fact] public void UnknownPolygonRoleFailsDurationInput()
+    {
+        var polygon = ValidPolygon(); polygon.Role = "island";
+        AssertInvalidPolygon(polygon);
+    }
+
+    [Fact] public void PolygonWithFewerThanThreePointsFailsDurationInput()
+    {
+        var polygon = ValidPolygon(); polygon.PointsM = Loop((0,0),(1,0)); polygon.PointCount = 2;
+        AssertInvalidPolygon(polygon);
+    }
+
+    [Fact] public void PolygonWithNonFinitePointFailsDurationInput()
+    {
+        var polygon = ValidPolygon(); polygon.PointsM = Loop((0,0),(double.NaN,0),(0,1));
+        AssertInvalidPolygon(polygon);
+    }
+
+    [Fact] public void ZeroAreaPolygonFailsDurationInput()
+    {
+        var polygon = ValidPolygon(); polygon.PointsM = Loop((0,0),(1,0),(2,0));
+        AssertInvalidPolygon(polygon);
+    }
+
+    private static void AssertInvalidPolygon(ForwardUnifiedShadowPolygonSnapshotV0 polygon)
+    {
+        var result = ForwardShadowDurationV0.Build(Snapshot(new[] { 0.0, 30.0 }, new[] { polygon }), Settings());
+        Assert.False(result.Complete);
+        Assert.False(result.ReadyForEqualTimeContourGeneration);
+        Assert.Contains("invalid_duration_input_or_settings", result.Blockers);
+    }
+
+    private static ForwardUnifiedShadowPolygonSnapshotV0 ValidPolygon() =>
+        Assert.Single(Polygons((0,"outer",Loop((0,0),(1,0),(0,1)))));
+
     private static ForwardShadowDurationSettingsV0 Settings(double resolution=1,double margin=0) =>
         new() { GridResolutionM=resolution, AnalysisMarginM=margin, MaxGridPoints=1000 };
 

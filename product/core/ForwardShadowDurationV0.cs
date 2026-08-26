@@ -104,13 +104,8 @@ public static class ForwardShadowDurationV0
             if (slice.Polygons is null) return Failed("invalid_duration_input_or_settings", warnings);
             foreach (var polygon in slice.Polygons)
             {
-                if (polygon?.PointsM is null) return Failed("invalid_duration_input_or_settings", warnings);
-                foreach (var point in polygon.PointsM)
-                {
-                    if (point is null || !ForwardGeometryV0.Finite(point.X) || !ForwardGeometryV0.Finite(point.Y))
-                        return Failed("invalid_duration_input_or_settings", warnings);
-                    if (polygon.PointsM.Count >= 3) allPoints.Add(point);
-                }
+                if (!ValidPolygon(polygon)) return Failed("invalid_duration_input_or_settings", warnings);
+                allPoints.AddRange(polygon.PointsM);
             }
             compiled.Add(Compile(slice.Polygons));
         }
@@ -181,12 +176,31 @@ public static class ForwardShadowDurationV0
         return false;
     }
 
+    private static bool ValidPolygon(ForwardUnifiedShadowPolygonSnapshotV0? polygon)
+    {
+        if (polygon?.PointsM is null || polygon.PointsM.Count < 3 ||
+            (polygon.Role != "outer" && polygon.Role != "inner") || polygon.ComponentIndex < 0 ||
+            !polygon.Closed || polygon.PointCount != polygon.PointsM.Count)
+            return false;
+        double twiceArea = 0;
+        for (var index = 0; index < polygon.PointsM.Count; index++)
+        {
+            var point = polygon.PointsM[index];
+            if (point is null || !ForwardGeometryV0.Finite(point.X) || !ForwardGeometryV0.Finite(point.Y))
+                return false;
+            var next = polygon.PointsM[(index+1)%polygon.PointsM.Count];
+            if (next is null || !ForwardGeometryV0.Finite(next.X) || !ForwardGeometryV0.Finite(next.Y))
+                return false;
+            twiceArea += point.X*next.Y-next.X*point.Y;
+        }
+        return ForwardGeometryV0.Finite(twiceArea) && twiceArea != 0.0;
+    }
+
     private static Dictionary<int, Component> Compile(IReadOnlyList<ForwardUnifiedShadowPolygonSnapshotV0> polygons)
     {
         var result = new Dictionary<int, Component>();
         foreach (var polygon in polygons)
         {
-            if (polygon?.PointsM is null || polygon.PointsM.Count < 3) continue;
             if (!result.TryGetValue(polygon.ComponentIndex, out var component))
             {
                 component = new Component(); result.Add(polygon.ComponentIndex, component);
