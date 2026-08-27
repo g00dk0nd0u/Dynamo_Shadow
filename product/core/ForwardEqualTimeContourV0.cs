@@ -68,16 +68,26 @@ public static class ForwardEqualTimeContourV0
     }
 
     public static ForwardEqualTimeContourResultV0 Build(ForwardShadowDurationResultV0? duration,
-        ForwardEqualTimeContourSettingsV0? settings = null, int? maximumSegmentCount = null)
+        ForwardEqualTimeContourSettingsV0? settings = null, int? maximumSegmentCount = null,
+        ForwardShadowDurationFieldV0? durationField = null)
     {
         if (duration is null || !duration.Complete || !duration.ReadyForEqualTimeContourGeneration)
             return Failed("complete_shadow_duration_required");
         var grid = duration.GridSpec;
         if (!ValidGrid(grid)) return Failed("duration_grid_spec_missing_or_invalid");
         var expected = (long)grid!.XCount*grid.YCount;
-        if (duration.DurationValues is null || duration.DurationValues.Count != expected)
+        if (durationField is not null && !SameGrid(grid, durationField.GridSpec))
+            return Failed("duration_grid_spec_missing_or_invalid");
+        if (durationField is not null &&
+            (durationField.Values is null || durationField.Values.Count != expected ||
+             durationField.LogicalPointCount != expected))
             return Failed("duration_grid_size_mismatch");
-        if (duration.DurationValues.Any(x => x is null || !ForwardGeometryV0.Finite(x.ShadowDurationMinutes)))
+        if (durationField is null && (duration.DurationValues is null || duration.DurationValues.Count != expected))
+            return Failed("duration_grid_size_mismatch");
+        var scalarValues = durationField?.Values;
+        if (scalarValues is not null
+            ? scalarValues.Any(x => !ForwardGeometryV0.Finite(x))
+            : duration.DurationValues.Any(x => x is null || !ForwardGeometryV0.Finite(x.ShadowDurationMinutes)))
             return Failed("invalid_equal_time_contour_settings");
 
         IReadOnlyList<double> levels;
@@ -94,7 +104,7 @@ public static class ForwardEqualTimeContourV0
                 var ids = new[] { iy*grid.XCount+ix, iy*grid.XCount+ix+1, (iy+1)*grid.XCount+ix+1, (iy+1)*grid.XCount+ix };
                 var corners = ids.Select(id => new DurationPointV0 { X=grid.OriginXM+(id%grid.XCount)*grid.ResolutionM,
                     Y=grid.OriginYM+(id/grid.XCount)*grid.ResolutionM,
-                    ShadowDurationMinutes=duration.DurationValues[id].ShadowDurationMinutes }).ToArray();
+                    ShadowDurationMinutes=scalarValues is null ? duration.DurationValues[id].ShadowDurationMinutes : scalarValues[id] }).ToArray();
                 CellSegments(corners, level, segments);
                 if (segments.Count > cap) return Failed("equal_time_contour_segment_budget_exceeded");
             }
@@ -120,6 +130,11 @@ public static class ForwardEqualTimeContourV0
             !ForwardGeometryV0.Finite(g.ResolutionM) || g.ResolutionM<=0) return false;
         return ForwardGeometryV0.Finite(g.OriginXM+(g.XCount-1)*g.ResolutionM) && ForwardGeometryV0.Finite(g.OriginYM+(g.YCount-1)*g.ResolutionM);
     }
+    private static bool SameGrid(GridSpecV0 expected, GridSpecV0? actual) => actual is not null &&
+        expected.XCount==actual.XCount && expected.YCount==actual.YCount &&
+        expected.Ordering==actual.Ordering && expected.OriginXM.Equals(actual.OriginXM) &&
+        expected.OriginYM.Equals(actual.OriginYM) && expected.ResolutionM.Equals(actual.ResolutionM) &&
+        expected.MaxXM.Equals(actual.MaxXM) && expected.MaxYM.Equals(actual.MaxYM);
     private static IReadOnlyList<double> Levels(ForwardEqualTimeContourSettingsV0? s, double maximum)
     {
         var limit=s?.MaxEqualTimeContourLevels ?? 100;

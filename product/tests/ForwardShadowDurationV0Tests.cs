@@ -60,6 +60,18 @@ public sealed class ForwardShadowDurationV0Tests
             result.DurationValues.Take(5).Select(p => (p.X,p.Y)));
     }
 
+    [Fact] public void BuildWithFieldReturnsTheSameRowMajorTrapezoidalValues()
+    {
+        var built = ForwardShadowDurationV0.BuildWithField(Snapshot(new[] { 0.0, 30.0 },
+            Polygons((0,"outer",Loop((0,0),(2,0),(2,1),(0,1))))), Settings(1, .5));
+
+        Assert.True(built.Result.Complete);
+        var field = Assert.IsType<ForwardShadowDurationFieldV0>(built.Field);
+        Assert.Same(built.Result.GridSpec, field.GridSpec);
+        Assert.Equal(built.Result.GridPointCount, field.LogicalPointCount);
+        Assert.Equal(built.Result.DurationValues.Select(x => x.ShadowDurationMinutes), field.Values);
+    }
+
     [Fact] public void GridCapBlocksWithoutResolutionDegradation()
     {
         var settings = Settings(1, 0); settings.MaxGridPoints = 8;
