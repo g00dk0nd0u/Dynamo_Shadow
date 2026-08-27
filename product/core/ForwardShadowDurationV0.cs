@@ -206,7 +206,7 @@ public static class ForwardShadowDurationV0
             RequestedGridPointCount = count, ConfiguredMaxGridPoints = settings.MaxGridPoints,
             MaximumShadowDurationMinutes = maximum, ShadowedPointCount = shadowed,
             GridSpec = gridSpec,
-            DurationValues = values ?? Array.Empty<DurationPointV0>(), Warnings = warnings,
+            DurationValues = values is null ? Array.Empty<DurationPointV0>() : values, Warnings = warnings,
             ReadyForEqualTimeContourGeneration = true
         };
         return new ForwardShadowDurationBuildResultV0 { Result = result,
