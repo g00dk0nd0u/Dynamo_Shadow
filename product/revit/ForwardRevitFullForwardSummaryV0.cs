@@ -48,19 +48,19 @@ public static class ForwardRevitFullForwardOrchestratorV0
         var snapshot = createSnapshot();
         AddWarnings(warnings, "unified_snapshot", snapshot.Warnings);
         if (!snapshot.Complete)
-            return Failed(multiTime.Available, "multi_time_forward", "unified_snapshot",
+            return Failed(snapshot.Available, "multi_time_forward", "unified_snapshot",
                 snapshot.Blockers, warnings, multiTimeComplete: true);
 
         var duration = buildDuration();
         AddWarnings(warnings, "duration", duration.Warnings);
         if (!duration.Complete)
-            return Failed(multiTime.Available, "unified_snapshot", "duration", duration.Blockers,
+            return Failed(duration.Available, "unified_snapshot", "duration", duration.Blockers,
                 warnings, true, true, durationGridPointCount: duration.GridPointCount);
 
         var contours = buildContours();
         AddWarnings(warnings, "equal_time_contours", contours.Warnings);
         if (!contours.Complete)
-            return Failed(multiTime.Available, "duration", "equal_time_contours", contours.Blockers,
+            return Failed(contours.Available, "duration", "equal_time_contours", contours.Blockers,
                 warnings, true, true, true, duration.GridPointCount, contours.ContourCount);
 
         return new ForwardRevitFullForwardSummaryV0 {

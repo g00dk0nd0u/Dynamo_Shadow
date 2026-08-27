@@ -10,14 +10,16 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
     public void MultiTimeFailureStopsAllLaterStages()
     {
         var calls = new int[3];
+        var failedMultiTime = Multi(false, "solar_input_invalid", "multi warning");
         var summary = ForwardRevitFullForwardOrchestratorV0.Run(
-            () => Multi(false, "solar_input_invalid", "multi warning"),
+            () => failedMultiTime,
             () => { calls[0]++; return Snapshot(); },
             () => { calls[1]++; return Duration(); },
             () => { calls[2]++; return Contours(); });
 
         Assert.Equal(new[] { 0, 0, 0 }, calls);
         AssertStopped(summary, "none", "multi_time_forward", "solar_input_invalid");
+        Assert.Equal(failedMultiTime.Available, summary.Available);
         Assert.Contains(summary.Warnings, warning => warning.Code == "multi warning");
     }
 
@@ -25,14 +27,16 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
     public void SnapshotFailureStopsDurationAndContours()
     {
         var laterCalls = 0;
+        var failedSnapshot = Snapshot(false, "union_output_loop_invalid", "snapshot warning");
         var summary = ForwardRevitFullForwardOrchestratorV0.Run(
             () => Multi(),
-            () => Snapshot(false, "union_output_loop_invalid", "snapshot warning"),
+            () => failedSnapshot,
             () => { laterCalls++; return Duration(); },
             () => { laterCalls++; return Contours(); });
 
         Assert.Equal(0, laterCalls);
         AssertStopped(summary, "multi_time_forward", "unified_snapshot", "union_output_loop_invalid");
+        Assert.Equal(failedSnapshot.Available, summary.Available);
         Assert.True(summary.MultiTimeComplete);
         Assert.Contains(summary.Warnings, warning => warning.Code == "snapshot warning");
     }
@@ -41,13 +45,15 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
     public void DurationFailureStopsContours()
     {
         var contourCalls = 0;
+        var failedDuration = Duration(false, "max_duration_grid_points_exceeded", "duration warning");
         var summary = ForwardRevitFullForwardOrchestratorV0.Run(
             () => Multi(), () => Snapshot(),
-            () => Duration(false, "max_duration_grid_points_exceeded", "duration warning"),
+            () => failedDuration,
             () => { contourCalls++; return Contours(); });
 
         Assert.Equal(0, contourCalls);
         AssertStopped(summary, "unified_snapshot", "duration", "max_duration_grid_points_exceeded");
+        Assert.Equal(failedDuration.Available, summary.Available);
         Assert.True(summary.SnapshotComplete);
         Assert.Contains(summary.Warnings, warning => warning.Code == "duration warning");
     }
@@ -55,12 +61,15 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
     [Fact]
     public void ContourFailureLeavesIntegrationIncomplete()
     {
+        var failedContours = Contours(
+            false, "equal_time_contour_segment_budget_exceeded", "contour warning");
         var summary = ForwardRevitFullForwardOrchestratorV0.Run(
             () => Multi(), () => Snapshot(), () => Duration(),
-            () => Contours(false, "equal_time_contour_segment_budget_exceeded", "contour warning"));
+            () => failedContours);
 
         AssertStopped(summary, "duration", "equal_time_contours",
             "equal_time_contour_segment_budget_exceeded");
+        Assert.Equal(failedContours.Available, summary.Available);
         Assert.True(summary.DurationComplete);
         Assert.False(summary.ContoursComplete);
         Assert.Equal(12, summary.DurationGridPointCount);
