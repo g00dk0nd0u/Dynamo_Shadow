@@ -72,6 +72,20 @@ public sealed class ForwardShadowDurationV0Tests
         Assert.Equal(built.Result.DurationValues.Select(x => x.ShadowDurationMinutes), field.Values);
     }
 
+    [Fact] public void BuildKeepsTheSameMaterializedResultAsBuildWithField()
+    {
+        var snapshot = Snapshot(new[] { 0.0, 30.0 },
+            Polygons((0,"outer",Loop((0,0),(2,0),(2,1),(0,1)))));
+        var materialized = ForwardShadowDurationV0.Build(snapshot, Settings(1, .5));
+        var withField = ForwardShadowDurationV0.BuildWithField(snapshot, Settings(1, .5));
+
+        Assert.True(materialized.Complete);
+        Assert.Equal(withField.Result.GridPointCount, materialized.GridPointCount);
+        Assert.Equal(withField.Result.MaximumShadowDurationMinutes, materialized.MaximumShadowDurationMinutes);
+        Assert.Equal(withField.Result.DurationValues.Select(x => (x.X,x.Y,x.ShadowDurationMinutes)),
+            materialized.DurationValues.Select(x => (x.X,x.Y,x.ShadowDurationMinutes)));
+    }
+
     [Fact] public void GridCapBlocksWithoutResolutionDegradation()
     {
         var settings = Settings(1, 0); settings.MaxGridPoints = 8;

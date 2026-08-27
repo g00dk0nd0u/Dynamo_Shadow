@@ -101,10 +101,15 @@ public static class ForwardShadowDurationV0
 
     public static ForwardShadowDurationResultV0 Build(
         ForwardUnifiedShadowSliceSnapshotV0? snapshot, ForwardShadowDurationSettingsV0? settings)
-        => BuildWithField(snapshot, settings).Result;
+        => BuildCore(snapshot, settings, includeField: false).Result;
 
     public static ForwardShadowDurationBuildResultV0 BuildWithField(
         ForwardUnifiedShadowSliceSnapshotV0? snapshot, ForwardShadowDurationSettingsV0? settings)
+        => BuildCore(snapshot, settings, includeField: true);
+
+    private static ForwardShadowDurationBuildResultV0 BuildCore(
+        ForwardUnifiedShadowSliceSnapshotV0? snapshot, ForwardShadowDurationSettingsV0? settings,
+        bool includeField)
     {
         var warnings = new List<string>();
         if (snapshot?.Warnings is not null) warnings.AddRange(snapshot.Warnings);
@@ -157,7 +162,7 @@ public static class ForwardShadowDurationV0
             return FailedBuild("max_duration_grid_points_exceeded", warnings, count, settings.MaxGridPoints, resolution);
 
         var values = new List<DurationPointV0>((int)count);
-        var scalarValues = new List<double>((int)count);
+        var scalarValues = includeField ? new List<double>((int)count) : null;
         double maximum = 0; var shadowed = 0;
         var states = new int[times.Count];
         for (var yIndex = 0; yIndex < yCount; yIndex++)
@@ -168,7 +173,7 @@ public static class ForwardShadowDurationV0
                 states[sliceIndex] = Contains(compiled[sliceIndex], x, y) ? 1 : 0;
             var duration = IntegrateShadowStatesTrapezoidal(states, times);
             values.Add(new DurationPointV0 { X = x, Y = y, ShadowDurationMinutes = duration });
-            scalarValues.Add(duration);
+            scalarValues?.Add(duration);
             if (duration > 0) shadowed++;
             maximum = Math.Max(maximum, duration);
         }
@@ -190,8 +195,8 @@ public static class ForwardShadowDurationV0
             ReadyForEqualTimeContourGeneration = true
         };
         return new ForwardShadowDurationBuildResultV0 { Result = result,
-            Field = new ForwardShadowDurationFieldV0 { Values = scalarValues, GridSpec = gridSpec,
-                LogicalPointCount = (int)count } };
+            Field = scalarValues is null ? null : new ForwardShadowDurationFieldV0 {
+                Values = scalarValues, GridSpec = gridSpec, LogicalPointCount = (int)count } };
     }
 
     private static bool ValidSettings(ForwardShadowDurationSettingsV0? settings) =>
