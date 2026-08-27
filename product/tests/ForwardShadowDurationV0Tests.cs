@@ -72,6 +72,8 @@ public sealed class ForwardShadowDurationV0Tests
         Assert.Equal(built.Result.DurationValues.Select(x => x.ShadowDurationMinutes), field.Values);
         Assert.Equal(ForwardShadowDurationV0.MaterializedSmallStorageMode, built.StorageMode);
         Assert.True(built.DurationGridMaterialized);
+        Assert.Equal(built.StorageMode, built.Result.StorageMode);
+        Assert.Equal(built.DurationGridMaterialized, built.Result.DurationGridMaterialized);
         Assert.Equal(250_000, built.SmallGridMaterializationLimit);
     }
 
@@ -96,6 +98,8 @@ public sealed class ForwardShadowDurationV0Tests
         Assert.Empty(built.Result.DurationValues);
         Assert.Equal(ForwardShadowDurationV0.CompactLargeStorageMode, built.StorageMode);
         Assert.False(built.DurationGridMaterialized);
+        Assert.Equal(built.StorageMode, built.Result.StorageMode);
+        Assert.Equal(built.DurationGridMaterialized, built.Result.DurationGridMaterialized);
         var field = Assert.IsType<ForwardShadowDurationFieldV0>(built.Field);
         Assert.Equal(built.Result.GridPointCount, field.Values.Count);
         Assert.Equal(built.Result.GridPointCount, field.LogicalPointCount);
@@ -105,7 +109,10 @@ public sealed class ForwardShadowDurationV0Tests
         Assert.All(field.Values, value => Assert.Equal(30, value));
 
         Assert.True(legacy.Complete);
+        Assert.Equal(string.Empty, legacy.StorageMode);
+        Assert.True(legacy.DurationGridMaterialized);
         Assert.Equal(250_001, legacy.DurationValues.Count);
+        Assert.Equal(legacy.GridPointCount, legacy.DurationValues.Count);
         Assert.Equal(field.Values, legacy.DurationValues.Select(value => value.ShadowDurationMinutes));
     }
 

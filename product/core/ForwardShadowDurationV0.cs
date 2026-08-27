@@ -25,6 +25,8 @@ public sealed class ForwardShadowDurationResultV0
     public int ShadowedPointCount { get; set; }
     public GridSpecV0? GridSpec { get; set; }
     public IReadOnlyList<DurationPointV0> DurationValues { get; set; } = Array.Empty<DurationPointV0>();
+    public string StorageMode { get; set; } = string.Empty;
+    public bool DurationGridMaterialized { get; set; }
     public IReadOnlyList<string> Blockers { get; set; } = Array.Empty<string>();
     public IReadOnlyList<string> Warnings { get; set; } = Array.Empty<string>();
     public bool ReadyForEqualTimeContourGeneration { get; set; }
@@ -200,6 +202,7 @@ public static class ForwardShadowDurationV0
         var gridSpec = new GridSpecV0 { OriginXM = minX, OriginYM = minY, ResolutionM = resolution,
             XCount = xCount, YCount = yCount, MaxXM = minX+(xCount-1)*resolution,
             MaxYM = minY+(yCount-1)*resolution };
+        var storageMode = includeField ? SelectFieldStorageMode(count) : string.Empty;
         var result = new ForwardShadowDurationResultV0 {
             Available = true, Complete = true, TemporalStepMinutes = uniform ? intervals[0] : null,
             SpatialResolutionM = resolution, GridPointCount = (int)count,
@@ -207,13 +210,14 @@ public static class ForwardShadowDurationV0
             MaximumShadowDurationMinutes = maximum, ShadowedPointCount = shadowed,
             GridSpec = gridSpec,
             DurationValues = values is null ? Array.Empty<DurationPointV0>() : values, Warnings = warnings,
+            StorageMode = storageMode, DurationGridMaterialized = materializeDurationValues,
             ReadyForEqualTimeContourGeneration = true
         };
         return new ForwardShadowDurationBuildResultV0 { Result = result,
             Field = scalarValues is null ? null : new ForwardShadowDurationFieldV0 {
                 Values = scalarValues, GridSpec = gridSpec, LogicalPointCount = (int)count },
-            StorageMode = includeField ? SelectFieldStorageMode(count) : string.Empty,
-            DurationGridMaterialized = materializeDurationValues };
+            StorageMode = result.StorageMode,
+            DurationGridMaterialized = result.DurationGridMaterialized };
     }
 
     private static bool ValidSettings(ForwardShadowDurationSettingsV0? settings) =>
