@@ -31,6 +31,21 @@ public sealed class ForwardShadowDurationResultV0
     public bool PermitReadyCertified => false;
 }
 
+/// <summary>Compact row-major scalar boundary for contour generation.</summary>
+public sealed class ForwardShadowDurationFieldV0
+{
+    public IReadOnlyList<double> Values { get; set; } = Array.Empty<double>();
+    public GridSpecV0 GridSpec { get; set; } = new();
+    public int LogicalPointCount { get; set; }
+}
+
+/// <summary>Materialized duration result paired with its compact scalar field.</summary>
+public sealed class ForwardShadowDurationBuildResultV0
+{
+    public ForwardShadowDurationResultV0 Result { get; set; } = new();
+    public ForwardShadowDurationFieldV0? Field { get; set; }
+}
+
 /// <summary>
 /// Autodesk-free duration accumulation over complete, already-unified shadow slices.
 /// Polygon roles and component indices are consumed exactly as supplied by the snapshot.
@@ -86,15 +101,24 @@ public static class ForwardShadowDurationV0
 
     public static ForwardShadowDurationResultV0 Build(
         ForwardUnifiedShadowSliceSnapshotV0? snapshot, ForwardShadowDurationSettingsV0? settings)
+        => BuildCore(snapshot, settings, includeField: false).Result;
+
+    public static ForwardShadowDurationBuildResultV0 BuildWithField(
+        ForwardUnifiedShadowSliceSnapshotV0? snapshot, ForwardShadowDurationSettingsV0? settings)
+        => BuildCore(snapshot, settings, includeField: true);
+
+    private static ForwardShadowDurationBuildResultV0 BuildCore(
+        ForwardUnifiedShadowSliceSnapshotV0? snapshot, ForwardShadowDurationSettingsV0? settings,
+        bool includeField)
     {
         var warnings = new List<string>();
         if (snapshot?.Warnings is not null) warnings.AddRange(snapshot.Warnings);
         if (!warnings.Contains(NumericalApproximationWarning)) warnings.Add(NumericalApproximationWarning);
         if (snapshot is null || !snapshot.Complete || snapshot.Slices is null || snapshot.Slices.Count == 0 ||
             HasIncompleteSlice(snapshot.Slices))
-            return Failed("complete_unified_shadow_slices_required", warnings);
+            return FailedBuild("complete_unified_shadow_slices_required", warnings);
         if (snapshot.Slices.Count < 2 || !ValidSettings(settings))
-            return Failed("invalid_duration_input_or_settings", warnings);
+            return FailedBuild("invalid_duration_input_or_settings", warnings);
 
         var times = new List<double>(snapshot.Slices.Count);
         var compiled = new List<Dictionary<int, Component>>(snapshot.Slices.Count);
@@ -103,17 +127,17 @@ public static class ForwardShadowDurationV0
         {
             if (!ForwardGeometryV0.Finite(slice.TrueSolarMinutes) ||
                 (times.Count > 0 && slice.TrueSolarMinutes <= times[times.Count-1]))
-                return Failed("invalid_duration_input_or_settings", warnings);
+                return FailedBuild("invalid_duration_input_or_settings", warnings);
             times.Add(slice.TrueSolarMinutes);
-            if (slice.Polygons is null) return Failed("invalid_duration_input_or_settings", warnings);
+            if (slice.Polygons is null) return FailedBuild("invalid_duration_input_or_settings", warnings);
             foreach (var polygon in slice.Polygons)
             {
-                if (!ValidPolygon(polygon)) return Failed("invalid_duration_input_or_settings", warnings);
+                if (!ValidPolygon(polygon)) return FailedBuild("invalid_duration_input_or_settings", warnings);
                 allPoints.AddRange(polygon.PointsM);
             }
             compiled.Add(Compile(slice.Polygons));
         }
-        if (allPoints.Count == 0) return Failed("invalid_duration_input_or_settings", warnings);
+        if (allPoints.Count == 0) return FailedBuild("invalid_duration_input_or_settings", warnings);
 
         var resolution = settings!.GridResolutionM;
         var minX = double.PositiveInfinity; var minY = double.PositiveInfinity;
@@ -129,15 +153,16 @@ public static class ForwardShadowDurationV0
         var yCountDouble = Math.Ceiling((maxY-minY)/resolution)+1;
         if (!ForwardGeometryV0.Finite(xCountDouble) || !ForwardGeometryV0.Finite(yCountDouble) ||
             xCountDouble < 1 || yCountDouble < 1 || xCountDouble > int.MaxValue || yCountDouble > int.MaxValue)
-            return Failed("invalid_duration_input_or_settings", warnings);
+            return FailedBuild("invalid_duration_input_or_settings", warnings);
         var xCount = (int)xCountDouble; var yCount = (int)yCountDouble;
         var count = (long)xCount*yCount;
         if (count > DenseHardPointCap)
-            return Failed("large_grid_hard_point_cap_exceeded", warnings, count, settings.MaxGridPoints, resolution);
+            return FailedBuild("large_grid_hard_point_cap_exceeded", warnings, count, settings.MaxGridPoints, resolution);
         if (count > settings.MaxGridPoints)
-            return Failed("max_duration_grid_points_exceeded", warnings, count, settings.MaxGridPoints, resolution);
+            return FailedBuild("max_duration_grid_points_exceeded", warnings, count, settings.MaxGridPoints, resolution);
 
         var values = new List<DurationPointV0>((int)count);
+        var scalarValues = includeField ? new List<double>((int)count) : null;
         double maximum = 0; var shadowed = 0;
         var states = new int[times.Count];
         for (var yIndex = 0; yIndex < yCount; yIndex++)
@@ -148,6 +173,7 @@ public static class ForwardShadowDurationV0
                 states[sliceIndex] = Contains(compiled[sliceIndex], x, y) ? 1 : 0;
             var duration = IntegrateShadowStatesTrapezoidal(states, times);
             values.Add(new DurationPointV0 { X = x, Y = y, ShadowDurationMinutes = duration });
+            scalarValues?.Add(duration);
             if (duration > 0) shadowed++;
             maximum = Math.Max(maximum, duration);
         }
@@ -156,17 +182,21 @@ public static class ForwardShadowDurationV0
         var uniform = true;
         for (var index = 1; index < intervals.Length; index++)
             if (Math.Abs(intervals[index]-intervals[0]) > 1e-9) { uniform = false; break; }
-        return new ForwardShadowDurationResultV0 {
+        var gridSpec = new GridSpecV0 { OriginXM = minX, OriginYM = minY, ResolutionM = resolution,
+            XCount = xCount, YCount = yCount, MaxXM = minX+(xCount-1)*resolution,
+            MaxYM = minY+(yCount-1)*resolution };
+        var result = new ForwardShadowDurationResultV0 {
             Available = true, Complete = true, TemporalStepMinutes = uniform ? intervals[0] : null,
             SpatialResolutionM = resolution, GridPointCount = (int)count,
             RequestedGridPointCount = count, ConfiguredMaxGridPoints = settings.MaxGridPoints,
             MaximumShadowDurationMinutes = maximum, ShadowedPointCount = shadowed,
-            GridSpec = new GridSpecV0 { OriginXM = minX, OriginYM = minY, ResolutionM = resolution,
-                XCount = xCount, YCount = yCount, MaxXM = minX+(xCount-1)*resolution,
-                MaxYM = minY+(yCount-1)*resolution },
+            GridSpec = gridSpec,
             DurationValues = values, Warnings = warnings,
             ReadyForEqualTimeContourGeneration = true
         };
+        return new ForwardShadowDurationBuildResultV0 { Result = result,
+            Field = scalarValues is null ? null : new ForwardShadowDurationFieldV0 {
+                Values = scalarValues, GridSpec = gridSpec, LogicalPointCount = (int)count } };
     }
 
     private static bool ValidSettings(ForwardShadowDurationSettingsV0? settings) =>
@@ -250,5 +280,11 @@ public static class ForwardShadowDurationV0
             GridPointCount = requestedGridPointCount > int.MaxValue ? int.MaxValue :
                 (int)(requestedGridPointCount ?? 0), RequestedGridPointCount = requestedGridPointCount,
             ConfiguredMaxGridPoints = configuredMaxGridPoints, SpatialResolutionM = resolution
+        };
+
+    private static ForwardShadowDurationBuildResultV0 FailedBuild(
+        string blocker, IReadOnlyList<string> warnings, long? requestedGridPointCount = null,
+        int? configuredMaxGridPoints = null, double resolution = 0) => new() {
+            Result = Failed(blocker, warnings, requestedGridPointCount, configuredMaxGridPoints, resolution)
         };
 }

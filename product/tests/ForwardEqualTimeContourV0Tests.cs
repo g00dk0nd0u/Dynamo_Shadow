@@ -107,6 +107,93 @@ public sealed class ForwardEqualTimeContourV0Tests
         Assert.Equal(ForwardEqualTimeContourV0.FixedHardSegmentCap,ForwardEqualTimeContourV0.Build(Duration(new[]{0d,1,0,1}),maximumSegmentCount:int.MaxValue).EffectiveSegmentCap);
     }
 
+    [Fact] public void CompactTwoByTwoFieldMatchesMaterializedPathAndIgnoresPointCoordinates()
+    {
+        var duration=Duration(new[]{0d,10,0,10},originX:10,originY:20,pointOffset:1000);
+        var settings=new ForwardEqualTimeContourSettingsV0{EqualTimeContourLevelsMinutes=new[]{5d}};
+        AssertEquivalent(ForwardEqualTimeContourV0.Build(duration,settings),
+            ForwardEqualTimeContourV0.Build(duration,settings,durationField:Field(duration,new[]{0d,10,0,10})));
+    }
+
+    [Fact] public void CompactMultipleLevelsMatchMaterializedPath()
+    {
+        var duration=Duration(new[]{10d,0,0,10});
+        var settings=new ForwardEqualTimeContourSettingsV0{EqualTimeContourLevelsMinutes=new[]{7d,3}};
+        AssertEquivalent(ForwardEqualTimeContourV0.Build(duration,settings),
+            ForwardEqualTimeContourV0.Build(duration,settings,durationField:Field(duration,new[]{10d,0,0,10})));
+    }
+
+    [Theory]
+    [InlineData(new double[]{10,0,0,10})]
+    [InlineData(new double[]{0,10,10,0})]
+    public void CompactAmbiguousCasesMatchMaterializedPath(double[] values)
+    {
+        var duration=Duration(values);
+        var settings=new ForwardEqualTimeContourSettingsV0{EqualTimeContourLevelsMinutes=new[]{5d}};
+        AssertEquivalent(ForwardEqualTimeContourV0.Build(duration,settings),
+            ForwardEqualTimeContourV0.Build(duration,settings,durationField:Field(duration,values)));
+    }
+
+    [Fact] public void CompactValueCountMismatchIsBlocked()
+    {
+        var duration=Duration(new[]{0d,1,0,1});
+        Assert.Equal("duration_grid_size_mismatch",Assert.Single(ForwardEqualTimeContourV0.Build(
+            duration,durationField:Field(duration,new[]{0d,1,0})).Blockers));
+    }
+
+    [Fact] public void CompactGridMismatchIsExplicitlyBlocked()
+    {
+        var duration=Duration(new[]{0d,1,0,1}); var field=Field(duration,new[]{0d,1,0,1});
+        field.GridSpec=new GridSpecV0{OriginXM=99,OriginYM=0,ResolutionM=1,XCount=2,YCount=2,MaxXM=100,MaxYM=1};
+        Assert.Equal("duration_grid_spec_missing_or_invalid",Assert.Single(
+            ForwardEqualTimeContourV0.Build(duration,durationField:field).Blockers));
+    }
+
+    [Theory] [InlineData(double.NaN)] [InlineData(double.PositiveInfinity)]
+    public void InvalidCompactScalarIsBlocked(double invalid)
+    {
+        var duration=Duration(new[]{0d,1,0,1});
+        Assert.Equal("invalid_equal_time_contour_settings",Assert.Single(ForwardEqualTimeContourV0.Build(
+            duration,durationField:Field(duration,new[]{0d,invalid,0,1})).Blockers));
+    }
+
+    [Fact] public void DurationToCompactFieldToContourPipelineIsAutodeskFree()
+    {
+        var built=ForwardShadowDurationV0.BuildWithField(
+            new ForwardUnifiedShadowSliceSnapshotV0{Available=true,Complete=true,ReadyForDurationAccumulation=true,
+                Slices=new[]{0d,30}.Select((time,index)=>new ForwardUnifiedShadowTimeSliceSnapshotV0{
+                    SliceIndex=index,SampleIndex=index,TrueSolarMinutes=time,Complete=true,
+                    Polygons=new[]{new ForwardUnifiedShadowPolygonSnapshotV0{PolygonIndex=0,ComponentIndex=0,
+                        Role="outer",Closed=true,PointCount=4,PointsM=new[]{new Point2M(0,0),new Point2M(1,0),
+                            new Point2M(1,1),new Point2M(0,1)}}}}).ToArray()},
+            new ForwardShadowDurationSettingsV0{GridResolutionM=1,AnalysisMarginM=0,MaxGridPoints=100});
+        var contours=ForwardEqualTimeContourV0.Build(built.Result,
+            new(){EqualTimeContourLevelsMinutes=new[]{15d}},durationField:built.Field);
+        Assert.True(built.Result.Complete); Assert.NotNull(built.Field); Assert.True(contours.Complete);
+    }
+
+    private static ForwardShadowDurationFieldV0 Field(ForwardShadowDurationResultV0 duration,double[] values) => new()
+    {
+        Values=values,GridSpec=duration.GridSpec,LogicalPointCount=values.Length
+    };
+
+    private static void AssertEquivalent(ForwardEqualTimeContourResultV0 expected,ForwardEqualTimeContourResultV0 actual)
+    {
+        Assert.Equal(expected.RequestedLevelsMinutes,actual.RequestedLevelsMinutes);
+        Assert.Equal(expected.GeneratedLevelsMinutes,actual.GeneratedLevelsMinutes);
+        Assert.Equal(expected.ContourCount,actual.ContourCount); Assert.Equal(expected.ClosedContourCount,actual.ClosedContourCount);
+        Assert.Equal(expected.OpenContourCount,actual.OpenContourCount); Assert.Equal(expected.Blockers,actual.Blockers);
+        Assert.Equal(expected.PermitReadyCertified,actual.PermitReadyCertified);
+        Assert.Equal(expected.Contours.Count,actual.Contours.Count);
+        for(var i=0;i<expected.Contours.Count;i++)
+        {
+            var a=expected.Contours[i];var b=actual.Contours[i];
+            Assert.Equal(a.LevelMinutes,b.LevelMinutes);Assert.Equal(a.ContourIndex,b.ContourIndex);
+            Assert.Equal(a.Closed,b.Closed);Assert.Equal(a.LengthM,b.LengthM,10);
+            Assert.Equal(a.PointsM.Select(p=>(p.X,p.Y)),b.PointsM.Select(p=>(p.X,p.Y)));
+        }
+    }
+
     private static ForwardEqualTimeContourResultV0 Build(double[] values,double[] levels,int xCount=2,int yCount=2,double originX=0,double originY=0,double pointOffset=0) =>
         ForwardEqualTimeContourV0.Build(Duration(values,xCount,yCount,originX,originY,pointOffset),new(){EqualTimeContourLevelsMinutes=levels});
 

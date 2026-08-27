@@ -13,16 +13,18 @@ public sealed class ForwardRevitFullForwardIntegrationResultV0 : IDisposable
         ForwardRevitMultiTimeIntegrationResultV0 multiTimeResult,
         ForwardUnifiedShadowSliceSnapshotV0? snapshot,
         ForwardShadowDurationResultV0? duration,
+        ForwardShadowDurationFieldV0? durationField,
         ForwardEqualTimeContourResultV0? contours,
         ForwardRevitFullForwardSummaryV0 summary)
     {
-        MultiTimeResult = multiTimeResult; Snapshot = snapshot; Duration = duration;
+        MultiTimeResult = multiTimeResult; Snapshot = snapshot; Duration = duration; DurationField = durationField;
         Contours = contours; Summary = summary;
     }
 
     public ForwardRevitMultiTimeIntegrationResultV0 MultiTimeResult { get; }
     public ForwardUnifiedShadowSliceSnapshotV0? Snapshot { get; }
     public ForwardShadowDurationResultV0? Duration { get; }
+    public ForwardShadowDurationFieldV0? DurationField { get; }
     public ForwardEqualTimeContourResultV0? Contours { get; }
     public ForwardRevitFullForwardSummaryV0 Summary { get; }
     public void Dispose() => MultiTimeResult.Dispose();
@@ -46,16 +48,22 @@ public static class ForwardRevitFullForwardIntegratorV0
             sunTimeStepMinutes, validationToleranceM, closureToleranceM);
         ForwardUnifiedShadowSliceSnapshotV0? snapshot = null;
         ForwardShadowDurationResultV0? duration = null;
+        ForwardShadowDurationFieldV0? durationField = null;
         ForwardEqualTimeContourResultV0? contours = null;
         try
         {
             var summary = ForwardRevitFullForwardOrchestratorV0.Run(
                 () => multiTime.Summary,
                 () => snapshot = ForwardRevitUnifiedShadowSliceSnapshotAdapterV0.Create(multiTime),
-                () => duration = ForwardShadowDurationV0.Build(snapshot, durationSettings),
-                () => contours = ForwardEqualTimeContourV0.Build(duration, contourSettings, maximumContourSegmentCount));
+                () => {
+                    var built = ForwardShadowDurationV0.BuildWithField(snapshot, durationSettings);
+                    durationField = built.Field;
+                    return duration = built.Result;
+                },
+                () => contours = ForwardEqualTimeContourV0.Build(duration, contourSettings,
+                    maximumContourSegmentCount, durationField));
             return new ForwardRevitFullForwardIntegrationResultV0(
-                multiTime, snapshot, duration, contours, summary);
+                multiTime, snapshot, duration, durationField, contours, summary);
         }
         catch
         {
