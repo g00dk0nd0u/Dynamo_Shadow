@@ -18,7 +18,8 @@ public sealed class ForwardRevitFullForwardSummaryV0
     public int DurationGridPointCount { get; internal set; }
     public int ContourCount { get; internal set; }
     public IReadOnlyList<string> Blockers { get; internal set; } = Array.Empty<string>();
-    public IReadOnlyList<string> Warnings { get; internal set; } = Array.Empty<string>();
+    public IReadOnlyList<ForwardRevitStageWarningV0> Warnings { get; internal set; } =
+        Array.Empty<ForwardRevitStageWarningV0>();
     public bool PermitReadyCertified => false;
 }
 
@@ -38,26 +39,26 @@ public static class ForwardRevitFullForwardOrchestratorV0
         if (buildDuration is null) throw new ArgumentNullException(nameof(buildDuration));
         if (buildContours is null) throw new ArgumentNullException(nameof(buildContours));
 
-        var warnings = new List<string>();
+        var warnings = new List<ForwardRevitStageWarningV0>();
         var multiTime = runMultiTime();
-        foreach (var warning in multiTime.Warnings) AddWarning(warnings, warning.Code);
+        warnings.AddRange(multiTime.Warnings);
         if (!multiTime.Complete)
             return Failed(multiTime.Available, "none", "multi_time_forward", multiTime.Blockers, warnings);
 
         var snapshot = createSnapshot();
-        AddWarnings(warnings, snapshot.Warnings);
+        AddWarnings(warnings, "unified_snapshot", snapshot.Warnings);
         if (!snapshot.Complete)
             return Failed(multiTime.Available, "multi_time_forward", "unified_snapshot",
                 snapshot.Blockers, warnings, multiTimeComplete: true);
 
         var duration = buildDuration();
-        AddWarnings(warnings, duration.Warnings);
+        AddWarnings(warnings, "duration", duration.Warnings);
         if (!duration.Complete)
             return Failed(multiTime.Available, "unified_snapshot", "duration", duration.Blockers,
                 warnings, true, true, durationGridPointCount: duration.GridPointCount);
 
         var contours = buildContours();
-        AddWarnings(warnings, contours.Warnings);
+        AddWarnings(warnings, "equal_time_contours", contours.Warnings);
         if (!contours.Complete)
             return Failed(multiTime.Available, "duration", "equal_time_contours", contours.Blockers,
                 warnings, true, true, true, duration.GridPointCount, contours.ContourCount);
@@ -70,18 +71,16 @@ public static class ForwardRevitFullForwardOrchestratorV0
         };
     }
 
-    private static void AddWarnings(List<string> target, IEnumerable<string> values)
+    private static void AddWarnings(List<ForwardRevitStageWarningV0> target, string stage,
+        IEnumerable<string> values)
     {
-        foreach (var value in values) AddWarning(target, value);
-    }
-
-    private static void AddWarning(List<string> target, string value)
-    {
-        if (!target.Contains(value)) target.Add(value);
+        foreach (var value in values)
+            target.Add(new ForwardRevitStageWarningV0 { Stage = stage, Code = value });
     }
 
     private static ForwardRevitFullForwardSummaryV0 Failed(bool available, string completedStage,
-        string blockerStage, IReadOnlyList<string> blockers, IReadOnlyList<string> warnings,
+        string blockerStage, IReadOnlyList<string> blockers,
+        IReadOnlyList<ForwardRevitStageWarningV0> warnings,
         bool multiTimeComplete = false, bool snapshotComplete = false, bool durationComplete = false,
         int durationGridPointCount = 0, int contourCount = 0) => new() {
             Available = available, FinalCompletedStage = completedStage, BlockerStage = blockerStage,

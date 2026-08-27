@@ -18,7 +18,7 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
 
         Assert.Equal(new[] { 0, 0, 0 }, calls);
         AssertStopped(summary, "none", "multi_time_forward", "solar_input_invalid");
-        Assert.Contains("multi warning", summary.Warnings);
+        Assert.Contains(summary.Warnings, warning => warning.Code == "multi warning");
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
         Assert.Equal(0, laterCalls);
         AssertStopped(summary, "multi_time_forward", "unified_snapshot", "union_output_loop_invalid");
         Assert.True(summary.MultiTimeComplete);
-        Assert.Contains("snapshot warning", summary.Warnings);
+        Assert.Contains(summary.Warnings, warning => warning.Code == "snapshot warning");
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
         Assert.Equal(0, contourCalls);
         AssertStopped(summary, "unified_snapshot", "duration", "max_duration_grid_points_exceeded");
         Assert.True(summary.SnapshotComplete);
-        Assert.Contains("duration warning", summary.Warnings);
+        Assert.Contains(summary.Warnings, warning => warning.Code == "duration warning");
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
         Assert.True(summary.DurationComplete);
         Assert.False(summary.ContoursComplete);
         Assert.Equal(12, summary.DurationGridPointCount);
-        Assert.Contains("contour warning", summary.Warnings);
+        Assert.Contains(summary.Warnings, warning => warning.Code == "contour warning");
     }
 
     [Fact]
@@ -87,9 +87,36 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
         Assert.Equal(12, summary.DurationGridPointCount);
         Assert.Equal(2, summary.ContourCount);
         Assert.Empty(summary.Blockers);
-        Assert.Equal(new[] { "multi warning", "snapshot warning", "duration warning", "contour warning" },
-            summary.Warnings);
+        Assert.Collection(summary.Warnings,
+            warning => AssertWarning(warning, "test", null, "multi warning"),
+            warning => AssertWarning(warning, "unified_snapshot", null, "snapshot warning"),
+            warning => AssertWarning(warning, "duration", null, "duration warning"),
+            warning => AssertWarning(warning, "equal_time_contours", null, "contour warning"));
         Assert.False(summary.PermitReadyCertified);
+    }
+
+    [Fact]
+    public void MultiTimeWarningsPreserveStageSampleIndexCodeAndDuplicates()
+    {
+        var warnings = new[] {
+            new ForwardRevitStageWarningV0 { Stage = "projection", SampleIndex = 0, Code = "same_warning" },
+            new ForwardRevitStageWarningV0 { Stage = "projection", SampleIndex = 1, Code = "same_warning" }
+        };
+
+        var summary = ForwardRevitFullForwardOrchestratorV0.Run(
+            () => Multi(warnings: warnings), () => Snapshot(), () => Duration(), () => Contours());
+
+        Assert.Collection(summary.Warnings,
+            warning => AssertWarning(warning, "projection", 0, "same_warning"),
+            warning => AssertWarning(warning, "projection", 1, "same_warning"));
+    }
+
+    private static void AssertWarning(ForwardRevitStageWarningV0 warning,
+        string stage, int? sampleIndex, string code)
+    {
+        Assert.Equal(stage, warning.Stage);
+        Assert.Equal(sampleIndex, warning.SampleIndex);
+        Assert.Equal(code, warning.Code);
     }
 
     private static void AssertStopped(ForwardRevitFullForwardSummaryV0 summary,
@@ -103,11 +130,12 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
     }
 
     private static ForwardRevitMultiTimeSummaryV0 Multi(bool complete = true,
-        string? blocker = null, string? warning = null) => new() {
+        string? blocker = null, string? warning = null,
+        System.Collections.Generic.IReadOnlyList<ForwardRevitStageWarningV0>? warnings = null) => new() {
             Available = complete, Complete = complete,
             Blockers = blocker is null ? System.Array.Empty<string>() : new[] { blocker },
-            Warnings = warning is null ? System.Array.Empty<ForwardRevitStageWarningV0>() :
-                new[] { new ForwardRevitStageWarningV0 { Stage = "test", Code = warning } }
+            Warnings = warnings ?? (warning is null ? System.Array.Empty<ForwardRevitStageWarningV0>() :
+                new[] { new ForwardRevitStageWarningV0 { Stage = "test", Code = warning } })
         };
 
     private static ForwardUnifiedShadowSliceSnapshotV0 Snapshot(bool complete = true,
