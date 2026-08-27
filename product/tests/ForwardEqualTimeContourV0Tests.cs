@@ -172,6 +172,17 @@ public sealed class ForwardEqualTimeContourV0Tests
         Assert.True(built.Result.Complete); Assert.NotNull(built.Field); Assert.True(contours.Complete);
     }
 
+    [Fact] public void CompactLargeContractGeneratesContoursWithoutMaterializedDurationPoints()
+    {
+        var duration=Duration(new[]{0d,30,0,30});
+        duration.DurationValues=Array.Empty<DurationPointV0>();
+        var contours=ForwardEqualTimeContourV0.Build(duration,
+            new(){EqualTimeContourLevelsMinutes=new[]{15d}},durationField:Field(duration,new[]{0d,30,0,30}));
+
+        Assert.True(contours.Complete);
+        Assert.NotEmpty(contours.Contours);
+    }
+
     private static ForwardShadowDurationFieldV0 Field(ForwardShadowDurationResultV0 duration,double[] values) => new()
     {
         Values=values,GridSpec=duration.GridSpec,LogicalPointCount=values.Length
