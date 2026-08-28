@@ -75,6 +75,79 @@ public sealed class ForwardShadowDurationV0Tests
         Assert.Equal(built.StorageMode, built.Result.StorageMode);
         Assert.Equal(built.DurationGridMaterialized, built.Result.DurationGridMaterialized);
         Assert.Equal(250_000, built.SmallGridMaterializationLimit);
+        Assert.Equal("not_required_small", built.Result.EngineDiagnostics!.LargeGridPreflightStatus);
+    }
+
+    [Fact] public void ActiveTilesAreSizeThirtyTwoAndOrderedByYThenX()
+    {
+        var built=ForwardShadowDurationV0.BuildWithField(Snapshot(new[]{0d,30},
+            Polygons((0,"outer",Loop((0,0),(70,0),(70,70),(0,70))))),Settings(1,0));
+        var metadata=Assert.IsType<ForwardShadowDurationActiveTileMetadataV0>(built.Field!.ActiveTileMetadata);
+        Assert.Equal(32,metadata.TileSizeCells);
+        Assert.Equal(metadata.ActiveTiles.OrderBy(t=>t.TileY).ThenBy(t=>t.TileX)
+            .Select(t=>(t.TileY,t.TileX)),metadata.ActiveTiles.Select(t=>(t.TileY,t.TileX)));
+        Assert.Equal(9,metadata.ActiveTiles.Count);
+    }
+
+    [Fact] public void SparseAndDenseTilesAndBboxModesHaveExactParityWithHole()
+    {
+        var snapshot=Snapshot(new[]{0d,30},Polygons(
+            (0,"outer",Loop((0,0),(6,0),(6,6),(0,6))),
+            (0,"inner",Loop((2,2),(4,2),(4,4),(2,4)))));
+        var settings=Settings(1,40);settings.MaxGridPoints=10000;
+        var sparse=ForwardShadowDurationV0.BuildWithField(snapshot,settings,new(){SparseTiles=true,BboxPruning=true});
+        var dense=ForwardShadowDurationV0.BuildWithField(snapshot,settings,new(){SparseTiles=false,BboxPruning=false});
+        var sparseNoBbox=ForwardShadowDurationV0.BuildWithField(snapshot,settings,new(){SparseTiles=true,BboxPruning=false});
+        Assert.Equal(dense.Field!.Values,sparse.Field!.Values);
+        Assert.Equal(sparse.Field.Values,sparseNoBbox.Field!.Values);
+        Assert.True(sparse.Result.EngineDiagnostics!.BboxRejectCount>0);
+        Assert.Equal(0,sparseNoBbox.Result.EngineDiagnostics!.BboxRejectCount);
+    }
+
+    [Fact] public void PointsOutsideActiveTilesRemainImplicitZeroAndCountsBalance()
+    {
+        var settings=Settings(1,100);settings.MaxGridPoints=100000;
+        var built=ForwardShadowDurationV0.BuildWithField(Snapshot(new[]{0d,30},
+            Polygons((0,"outer",Loop((0,0),(1,0),(1,1),(0,1))))),settings);
+        var d=built.Result.EngineDiagnostics!;
+        Assert.Equal(built.Result.GridPointCount,d.ActiveEvaluationPointCount+d.ImplicitZeroPointCount);
+        Assert.True(d.ImplicitZeroPointCount>0);
+        Assert.Equal(0,built.Field!.Values[0]);
+    }
+
+    [Fact] public void ResourcePlannerUsesFrozenBoundaryAndFallbackContracts()
+    {
+        var allowed=ForwardShadowDurationV0.PlanResourcePreflight(100_000_000,100_000_000,0,0,1,32,null,true);
+        var blocked=ForwardShadowDurationV0.PlanResourcePreflight(100_000_001,100_000_001,0,0,1,32,null,true);
+        Assert.Equal(100_000_000,allowed.EstimatedWork);
+        Assert.True(allowed.EstimatedWork<=ForwardShadowDurationV0.LargeGridHardWorkCap);
+        Assert.Equal(100_000_001,blocked.EstimatedWork);
+        Assert.True(blocked.EstimatedWork>ForwardShadowDurationV0.LargeGridHardWorkCap);
+        Assert.Equal(64L*1024*1024,allowed.MemoryBudgetBytes);
+        Assert.Equal(250,ForwardShadowDurationV0.PlanResourcePreflight(1,1,1,1,1,32,1000,true).MemoryBudgetBytes);
+    }
+
+    [Fact] public void LargeMemoryPreflightBlocksBeforeFieldAllocationAndContainment()
+    {
+        var settings=Settings(1,0);settings.MaxGridPoints=300000;
+        var built=ForwardShadowDurationV0.BuildWithField(Snapshot(new[]{0d,30},
+            Polygons((0,"outer",Loop((0,0),(52,0),(52,4716),(0,4716))))),settings,
+            new(){AvailablePhysicalMemoryBytes=1});
+        Assert.Equal("large_grid_memory_budget_exceeded",Assert.Single(built.Result.Blockers));
+        Assert.Null(built.Field);Assert.Equal("blocked_memory",built.Result.EngineDiagnostics!.LargeGridPreflightStatus);
+        Assert.Equal(0,built.Result.EngineDiagnostics.ContainmentEvaluationCount);
+    }
+
+    [Fact] public void LargeWorkPreflightBlocksWithoutExecutingContainment()
+    {
+        var polygons=Polygons((0,"outer",Loop((0,0),(1399,0),(1399,1400),(0,1400))));
+        var snapshot=Snapshot(Enumerable.Range(0,51).Select(x=>(double)x).ToArray(),polygons);
+        var settings=Settings(1,0);settings.MaxGridPoints=2_000_000;
+        var built=ForwardShadowDurationV0.BuildWithField(snapshot,settings);
+        Assert.Equal("large_grid_work_budget_exceeded",Assert.Single(built.Result.Blockers));
+        Assert.Null(built.Field);Assert.Equal("blocked_work",built.Result.EngineDiagnostics!.LargeGridPreflightStatus);
+        Assert.True(built.Result.EngineDiagnostics.EstimatedWork>ForwardShadowDurationV0.LargeGridHardWorkCap);
+        Assert.Equal(0,built.Result.EngineDiagnostics.ContainmentEvaluationCount);
     }
 
     [Theory]
@@ -107,6 +180,7 @@ public sealed class ForwardShadowDurationV0Tests
         Assert.Equal(30, built.Result.MaximumShadowDurationMinutes);
         Assert.Equal(250_001, built.Result.ShadowedPointCount);
         Assert.All(field.Values, value => Assert.Equal(30, value));
+        Assert.Equal("passed",built.Result.EngineDiagnostics!.LargeGridPreflightStatus);
 
         Assert.True(legacy.Complete);
         Assert.Equal(string.Empty, legacy.StorageMode);
