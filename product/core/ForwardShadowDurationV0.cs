@@ -25,6 +25,8 @@ public sealed class ForwardShadowDurationResultV0
     public int ShadowedPointCount { get; set; }
     public GridSpecV0? GridSpec { get; set; }
     public IReadOnlyList<DurationPointV0> DurationValues { get; set; } = Array.Empty<DurationPointV0>();
+    public string StorageMode { get; set; } = string.Empty;
+    public bool DurationGridMaterialized { get; set; }
     public IReadOnlyList<string> Blockers { get; set; } = Array.Empty<string>();
     public IReadOnlyList<string> Warnings { get; set; } = Array.Empty<string>();
     public bool ReadyForEqualTimeContourGeneration { get; set; }
@@ -44,6 +46,9 @@ public sealed class ForwardShadowDurationBuildResultV0
 {
     public ForwardShadowDurationResultV0 Result { get; set; } = new();
     public ForwardShadowDurationFieldV0? Field { get; set; }
+    public string StorageMode { get; set; } = string.Empty;
+    public bool DurationGridMaterialized { get; set; }
+    public int SmallGridMaterializationLimit { get; set; } = ForwardShadowDurationV0.SmallGridMaterializationLimit;
 }
 
 /// <summary>
@@ -53,6 +58,9 @@ public sealed class ForwardShadowDurationBuildResultV0
 public static class ForwardShadowDurationV0
 {
     public const int DenseHardPointCap = 2_000_000;
+    public const int SmallGridMaterializationLimit = 250_000;
+    public const string MaterializedSmallStorageMode = "materialized_small_v1";
+    public const string CompactLargeStorageMode = "compact_large_v1";
     public const string Method = "grid_trapezoidal_time_integration_v1";
     public const string NumericalApproximationWarning =
         "Duration values are a grid/trapezoidal numerical approximation at the configured temporal interval.";
@@ -106,6 +114,13 @@ public static class ForwardShadowDurationV0
     public static ForwardShadowDurationBuildResultV0 BuildWithField(
         ForwardUnifiedShadowSliceSnapshotV0? snapshot, ForwardShadowDurationSettingsV0? settings)
         => BuildCore(snapshot, settings, includeField: true);
+
+    public static string SelectFieldStorageMode(long gridPointCount)
+    {
+        if (gridPointCount < 0) throw new ArgumentOutOfRangeException(nameof(gridPointCount));
+        return gridPointCount <= SmallGridMaterializationLimit
+            ? MaterializedSmallStorageMode : CompactLargeStorageMode;
+    }
 
     private static ForwardShadowDurationBuildResultV0 BuildCore(
         ForwardUnifiedShadowSliceSnapshotV0? snapshot, ForwardShadowDurationSettingsV0? settings,
@@ -161,7 +176,9 @@ public static class ForwardShadowDurationV0
         if (count > settings.MaxGridPoints)
             return FailedBuild("max_duration_grid_points_exceeded", warnings, count, settings.MaxGridPoints, resolution);
 
-        var values = new List<DurationPointV0>((int)count);
+        var materializeDurationValues = !includeField || count <= SmallGridMaterializationLimit;
+        var values = materializeDurationValues
+            ? new List<DurationPointV0>((int)count) : null;
         var scalarValues = includeField ? new List<double>((int)count) : null;
         double maximum = 0; var shadowed = 0;
         var states = new int[times.Count];
@@ -172,7 +189,7 @@ public static class ForwardShadowDurationV0
             for (var sliceIndex = 0; sliceIndex < compiled.Count; sliceIndex++)
                 states[sliceIndex] = Contains(compiled[sliceIndex], x, y) ? 1 : 0;
             var duration = IntegrateShadowStatesTrapezoidal(states, times);
-            values.Add(new DurationPointV0 { X = x, Y = y, ShadowDurationMinutes = duration });
+            values?.Add(new DurationPointV0 { X = x, Y = y, ShadowDurationMinutes = duration });
             scalarValues?.Add(duration);
             if (duration > 0) shadowed++;
             maximum = Math.Max(maximum, duration);
@@ -185,18 +202,22 @@ public static class ForwardShadowDurationV0
         var gridSpec = new GridSpecV0 { OriginXM = minX, OriginYM = minY, ResolutionM = resolution,
             XCount = xCount, YCount = yCount, MaxXM = minX+(xCount-1)*resolution,
             MaxYM = minY+(yCount-1)*resolution };
+        var storageMode = includeField ? SelectFieldStorageMode(count) : string.Empty;
         var result = new ForwardShadowDurationResultV0 {
             Available = true, Complete = true, TemporalStepMinutes = uniform ? intervals[0] : null,
             SpatialResolutionM = resolution, GridPointCount = (int)count,
             RequestedGridPointCount = count, ConfiguredMaxGridPoints = settings.MaxGridPoints,
             MaximumShadowDurationMinutes = maximum, ShadowedPointCount = shadowed,
             GridSpec = gridSpec,
-            DurationValues = values, Warnings = warnings,
+            DurationValues = values is null ? Array.Empty<DurationPointV0>() : values, Warnings = warnings,
+            StorageMode = storageMode, DurationGridMaterialized = materializeDurationValues,
             ReadyForEqualTimeContourGeneration = true
         };
         return new ForwardShadowDurationBuildResultV0 { Result = result,
             Field = scalarValues is null ? null : new ForwardShadowDurationFieldV0 {
-                Values = scalarValues, GridSpec = gridSpec, LogicalPointCount = (int)count } };
+                Values = scalarValues, GridSpec = gridSpec, LogicalPointCount = (int)count },
+            StorageMode = result.StorageMode,
+            DurationGridMaterialized = result.DurationGridMaterialized };
     }
 
     private static bool ValidSettings(ForwardShadowDurationSettingsV0? settings) =>

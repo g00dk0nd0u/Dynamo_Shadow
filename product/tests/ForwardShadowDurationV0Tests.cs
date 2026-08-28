@@ -70,6 +70,50 @@ public sealed class ForwardShadowDurationV0Tests
         Assert.Same(built.Result.GridSpec, field.GridSpec);
         Assert.Equal(built.Result.GridPointCount, field.LogicalPointCount);
         Assert.Equal(built.Result.DurationValues.Select(x => x.ShadowDurationMinutes), field.Values);
+        Assert.Equal(ForwardShadowDurationV0.MaterializedSmallStorageMode, built.StorageMode);
+        Assert.True(built.DurationGridMaterialized);
+        Assert.Equal(built.StorageMode, built.Result.StorageMode);
+        Assert.Equal(built.DurationGridMaterialized, built.Result.DurationGridMaterialized);
+        Assert.Equal(250_000, built.SmallGridMaterializationLimit);
+    }
+
+    [Theory]
+    [InlineData(250_000, ForwardShadowDurationV0.MaterializedSmallStorageMode)]
+    [InlineData(250_001, ForwardShadowDurationV0.CompactLargeStorageMode)]
+    public void FieldStoragePlanUsesFrozenMaterializationBoundary(long count, string expected) =>
+        Assert.Equal(expected, ForwardShadowDurationV0.SelectFieldStorageMode(count));
+
+    [Fact] public void LargeBuildWithFieldKeepsOnlyCompactScalarsAndLegacyBuildStillMaterializes()
+    {
+        var snapshot = Snapshot(new[] { 0.0, 30.0 },
+            Polygons((0,"outer",Loop((0,0),(52,0),(52,4716),(0,4716)))));
+        var settings = Settings(1, 0); settings.MaxGridPoints = 300_000;
+
+        var built = ForwardShadowDurationV0.BuildWithField(snapshot, settings);
+        var legacy = ForwardShadowDurationV0.Build(snapshot, settings);
+
+        Assert.True(built.Result.Complete);
+        Assert.True(built.Result.ReadyForEqualTimeContourGeneration);
+        Assert.Equal(250_001, built.Result.GridPointCount);
+        Assert.Empty(built.Result.DurationValues);
+        Assert.Equal(ForwardShadowDurationV0.CompactLargeStorageMode, built.StorageMode);
+        Assert.False(built.DurationGridMaterialized);
+        Assert.Equal(built.StorageMode, built.Result.StorageMode);
+        Assert.Equal(built.DurationGridMaterialized, built.Result.DurationGridMaterialized);
+        var field = Assert.IsType<ForwardShadowDurationFieldV0>(built.Field);
+        Assert.Equal(built.Result.GridPointCount, field.Values.Count);
+        Assert.Equal(built.Result.GridPointCount, field.LogicalPointCount);
+        Assert.Same(built.Result.GridSpec, field.GridSpec);
+        Assert.Equal(30, built.Result.MaximumShadowDurationMinutes);
+        Assert.Equal(250_001, built.Result.ShadowedPointCount);
+        Assert.All(field.Values, value => Assert.Equal(30, value));
+
+        Assert.True(legacy.Complete);
+        Assert.Equal(string.Empty, legacy.StorageMode);
+        Assert.True(legacy.DurationGridMaterialized);
+        Assert.Equal(250_001, legacy.DurationValues.Count);
+        Assert.Equal(legacy.GridPointCount, legacy.DurationValues.Count);
+        Assert.Equal(field.Values, legacy.DurationValues.Select(value => value.ShadowDurationMinutes));
     }
 
     [Fact] public void BuildKeepsTheSameMaterializedResultAsBuildWithField()
