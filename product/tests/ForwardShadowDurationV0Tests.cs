@@ -80,8 +80,10 @@ public sealed class ForwardShadowDurationV0Tests
 
     [Fact] public void ActiveTilesAreSizeThirtyTwoAndOrderedByYThenX()
     {
+        var settings=Settings(1,0);settings.MaxGridPoints=10_000;
         var built=ForwardShadowDurationV0.BuildWithField(Snapshot(new[]{0d,30},
-            Polygons((0,"outer",Loop((0,0),(70,0),(70,70),(0,70))))),Settings(1,0));
+            Polygons((0,"outer",Loop((0,0),(70,0),(70,70),(0,70))))),settings);
+        Assert.True(built.Result.Complete);
         var metadata=Assert.IsType<ForwardShadowDurationActiveTileMetadataV0>(built.Field!.ActiveTileMetadata);
         Assert.Equal(32,metadata.TileSizeCells);
         Assert.Equal(metadata.ActiveTiles.OrderBy(t=>t.TileY).ThenBy(t=>t.TileX)
