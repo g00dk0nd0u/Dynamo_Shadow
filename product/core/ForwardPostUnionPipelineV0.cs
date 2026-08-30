@@ -45,24 +45,26 @@ public static class ForwardPostUnionPipelineV0
             input?.DurationExecutionOptions ?? new ForwardShadowDurationExecutionOptionsV0());
         var duration = durationBuild.Result;
         if (!duration.Complete || durationBuild.Field is null)
-            return Finish(duration, new ForwardEqualTimeContourResultV0(), durationBuild.Field);
+            return Finish(duration, new ForwardEqualTimeContourResultV0(), durationBuild.Field,
+                contourStageExecuted: false);
 
         var contours = ForwardEqualTimeContourV0.Build(
             duration, input?.ContourSettings, input?.MaximumContourSegmentCount,
             durationField: durationBuild.Field);
-        return Finish(duration, contours, durationBuild.Field);
+        return Finish(duration, contours, durationBuild.Field, contourStageExecuted: true);
     }
 
     private static ForwardPostUnionPipelineBuildResultV0 Finish(
         ForwardShadowDurationResultV0 duration, ForwardEqualTimeContourResultV0 contours,
-        ForwardShadowDurationFieldV0? field)
+        ForwardShadowDurationFieldV0? field, bool contourStageExecuted)
     {
         var blockers = Distinct(duration.Blockers, contours.Blockers);
-        var warnings = Distinct(duration.Warnings, contours.Warnings);
+        var warnings = Distinct(duration.Warnings,
+            contourStageExecuted ? contours.Warnings : Array.Empty<string>());
         return new ForwardPostUnionPipelineBuildResultV0 {
             DurationField = field,
             Result = new ForwardPostUnionPipelineResultV0 {
-                Available = duration.Available,
+                Available = contourStageExecuted ? contours.Available : duration.Available,
                 Complete = duration.Complete && contours.Complete && blockers.Count == 0,
                 Duration = duration,
                 EqualTimeContours = contours,
