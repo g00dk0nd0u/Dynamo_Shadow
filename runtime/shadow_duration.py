@@ -17,6 +17,42 @@ DEFAULT_TILE_SIZE_CELLS = 32
 DEFAULT_SMALL_GRID_MATERIALIZATION_LIMIT = 250000
 
 
+class _ActiveTilePlan(object):
+    """Compact preflight representation of row-major logical tile selection."""
+    def __init__(self, tx_count, ty_count, nx, ny, tile_size_cells, select_all=False):
+        self.tx_count = tx_count
+        self.ty_count = ty_count
+        self.total_tile_count = tx_count * ty_count
+        self.nx = nx
+        self.ny = ny
+        self.tile_size_cells = tile_size_cells
+        self.select_all = select_all
+        self.bits = None if select_all else bytearray((self.total_tile_count + 7) // 8)
+        self.selected_tile_count = self.total_tile_count if select_all else 0
+        self.active_evaluation_point_count = nx * ny if select_all else 0
+
+    def select(self, ty, tx):
+        index = ty * self.tx_count + tx
+        byte_index, bit_index = divmod(index, 8)
+        mask = 1 << bit_index
+        if self.bits[byte_index] & mask:
+            return
+        self.bits[byte_index] |= mask
+        self.selected_tile_count += 1
+        self.active_evaluation_point_count += (
+            min(self.ny, (ty + 1) * self.tile_size_cells) - ty * self.tile_size_cells
+        ) * (
+            min(self.nx, (tx + 1) * self.tile_size_cells) - tx * self.tile_size_cells
+        )
+
+    def materialize(self):
+        if self.select_all:
+            return [(ty, tx) for ty in range(self.ty_count) for tx in range(self.tx_count)]
+        return [(index // self.tx_count, index % self.tx_count)
+                for index in range(self.total_tile_count)
+                if self.bits[index // 8] & (1 << (index % 8))]
+
+
 class DurationField(object):
     """Internal-only row-major scalar field; never place this object in OUT."""
     def __init__(self, values, grid_spec, active_metadata):
@@ -243,10 +279,10 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
         "bounds_m": bounds})
 
     compiled_slices = [_compile_slice_polygons(s.get("polygons") or []) for s in slices]
-    tx_count = int(math.ceil(float(nx) / tile_size_cells))
-    ty_count = int(math.ceil(float(ny) / tile_size_cells))
-    all_tiles = [(ty, tx) for ty in range(ty_count) for tx in range(tx_count)]
-    active_tiles = set()
+    tx_count = (nx + tile_size_cells - 1) // tile_size_cells
+    ty_count = (ny + tile_size_cells - 1) // tile_size_cells
+    tile_plan = _ActiveTilePlan(
+        tx_count, ty_count, nx, ny, tile_size_cells, select_all=not sparse_tiles)
     if sparse_tiles:
         # A tile owns grid-point indices [tile*size, min((tile+1)*size, count)).
         # Expanded polygon bboxes are conservative candidate selectors only.
@@ -260,31 +296,38 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
                     if ix0 <= ix1 and iy0 <= iy1:
                         for ty in range(iy0 // tile_size_cells, iy1 // tile_size_cells + 1):
                             for tx in range(ix0 // tile_size_cells, ix1 // tile_size_cells + 1):
-                                active_tiles.add((ty, tx))
-    else:
-        active_tiles.update(all_tiles)
-    ordered_tiles = sorted(active_tiles)
-    active_count = sum((min(ny, (ty + 1) * tile_size_cells) - ty * tile_size_cells) *
-                       (min(nx, (tx + 1) * tile_size_cells) - tx * tile_size_cells)
-                       for ty, tx in ordered_tiles)
+                                tile_plan.select(ty, tx)
+    total_tiles = tile_plan.total_tile_count
+    selected_tiles = tile_plan.selected_tile_count
+    active_count = tile_plan.active_evaluation_point_count
     snapshot = memory_snapshot if isinstance(memory_snapshot, dict) else get_process_memory_snapshot()
     compact_bytes = count * array("d").itemsize
     available = snapshot.get("available_physical_memory_bytes")
     memory_budget = LARGE_GRID_FALLBACK_MEMORY_BUDGET_BYTES
     if isinstance(available, (int, float)) and available >= 0:
         memory_budget = min(LARGE_GRID_FALLBACK_MEMORY_BUDGET_BYTES, int(available * 0.25))
-    estimated_memory = compact_bytes + active_count // 8 + len(ordered_tiles) * 32
+    estimated_memory = compact_bytes + active_count // 8 + selected_tiles * 32
     estimated_work = active_count * len(slices)
+    planning_diagnostics = {
+        "active_evaluation_point_count": active_count,
+        "total_logical_tile_count": total_tiles,
+        "selected_active_tile_count": selected_tiles,
+        "skipped_tile_count": total_tiles - selected_tiles,
+        "containment_evaluation_count": 0,
+    }
     if large_grid_path and estimated_memory > memory_budget:
         result["blockers"].append({"failure_code": "large_grid_memory_budget_exceeded"})
         result["engine_diagnostics"] = {"large_grid_preflight_status": "blocked_memory",
             "estimated_working_memory_bytes": estimated_memory, "memory_budget_bytes": memory_budget}
+        result["engine_diagnostics"].update(planning_diagnostics)
         return (result, None) if return_internal else result
     if large_grid_path and estimated_work > LARGE_GRID_HARD_WORK_CAP:
         result["blockers"].append({"failure_code": "large_grid_work_budget_exceeded"})
         result["engine_diagnostics"] = {"large_grid_preflight_status": "blocked_work",
             "estimated_working_memory_bytes": estimated_memory, "memory_budget_bytes": memory_budget}
+        result["engine_diagnostics"].update(planning_diagnostics)
         return (result, None) if return_internal else result
+    ordered_tiles = tile_plan.materialize()
     chunk_policy = select_duration_chunk_size(snapshot, requested_chunk_size=chunk_size)
     selected_chunk = chunk_policy["selected_chunk_size"]
     durations = array("d", [0.0]) * count
@@ -335,7 +378,6 @@ def build_shadow_duration(unified_shadow_slices, settings=None, selected_accurac
                 "y_m": min_y + iy * resolution, "shadow_duration_minutes": duration})
     grid_spec = {"x_count": nx, "y_count": ny, "origin_x_m": min_x,
         "origin_y_m": min_y, "resolution_m": resolution, "ordering": "row_major_y_then_x"}
-    total_tiles = len(all_tiles); selected_tiles = len(ordered_tiles)
     active_metadata = {"tile_size_cells": tile_size_cells, "active_tiles": ordered_tiles,
         "active_evaluation_point_count": active_count}
     field = DurationField(durations, grid_spec, active_metadata)

@@ -60,6 +60,56 @@ def test_chunk_invariance_crosses_real_chunk_boundaries():
         assert result["grid_spec"] == results[0]["grid_spec"]
 
 
+def test_near_cap_tile_size_one_memory_block_occurs_before_materialization():
+    rectangle = _polygon([(0, 0), (1999, 0), (1999, 998), (0, 998)])
+    source = {"complete": True, "slices": [
+        {"complete": True, "true_solar_time": "08:00", "polygons": [rectangle]},
+        {"complete": True, "true_solar_time": "08:30", "polygons": [rectangle]}]}
+    settings = {"grid_resolution_m": 1, "analysis_margin_m": 0,
+        "max_duration_grid_points": 2000000}
+
+    result, field = duration.build_shadow_duration(source, settings, tile_size_cells=1,
+        memory_snapshot={"available_physical_memory_bytes": 1024}, return_internal=True)
+
+    assert result["blockers"][0]["failure_code"] == "large_grid_memory_budget_exceeded"
+    assert field is None
+    assert result["duration_grid"] == []
+    diagnostics = result["engine_diagnostics"]
+    assert diagnostics["large_grid_preflight_status"] == "blocked_memory"
+    assert diagnostics["containment_evaluation_count"] == 0
+    assert diagnostics["total_logical_tile_count"] == 1998000
+    assert diagnostics["selected_active_tile_count"] == 1998000
+    assert diagnostics["active_evaluation_point_count"] == 1998000
+    assert diagnostics["skipped_tile_count"] == 0
+
+
+def test_sparse_active_tile_metadata_preserves_order_and_implicit_zero_balance():
+    source = {"complete": True, "slices": [
+        {"complete": True, "true_solar_time": "08:00", "polygons": [
+            _polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
+            _polygon([(4, 4), (5, 4), (5, 5), (4, 5)], component=1)]},
+        {"complete": True, "true_solar_time": "08:30", "polygons": [
+            _polygon([(0, 0), (1, 0), (1, 1), (0, 1)]),
+            _polygon([(4, 4), (5, 4), (5, 5), (4, 5)], component=1)]}]}
+    result, field = duration.build_shadow_duration(source, SETTINGS, tile_size_cells=2,
+        return_internal=True)
+
+    assert result["grid_spec"]["ordering"] == "row_major_y_then_x"
+    assert field.active_tile_metadata["active_tiles"] == [
+        (0, 0), (0, 1), (1, 0), (1, 1), (1, 2), (2, 1), (2, 2)]
+    diagnostics = result["engine_diagnostics"]
+    assert diagnostics["active_evaluation_point_count"] == 28
+    assert diagnostics["implicit_zero_point_count"] == result["grid_point_count"] - 28
+    assert diagnostics["selected_active_tile_count"] == 7
+    assert [point["shadow_duration_minutes"] for point in result["duration_grid"]] == [
+        30.0, 30.0, 0.0, 0.0, 0.0, 0.0,
+        30.0, 30.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 30.0, 30.0,
+        0.0, 0.0, 0.0, 0.0, 30.0, 30.0]
+
+
 def test_legacy_states_reference_parity_for_irregular_intervals():
     source = _unified()
     result = duration.build_shadow_duration(source, SETTINGS, chunk_size=8192)
