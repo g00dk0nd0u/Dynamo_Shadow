@@ -137,6 +137,19 @@ public static class ForwardShadowDurationV0
         internal readonly List<CompiledLoop> Outers = new();
         internal readonly List<CompiledLoop> Inners = new();
     }
+    private sealed class ActiveTilePlan
+    {
+        internal ActiveTilePlan(int xCount, int yCount, long totalCount, bool allSelected, ulong[]? selected)
+        { XCount=xCount; YCount=yCount; TotalCount=totalCount; AllSelected=allSelected; Selected=selected; }
+        internal int XCount { get; }
+        internal int YCount { get; }
+        internal long TotalCount { get; }
+        internal bool AllSelected { get; }
+        internal ulong[]? Selected { get; }
+        internal int SelectedCount { get; set; }
+        internal long ActivePointCount { get; set; }
+        internal bool IsSelected(long id) => AllSelected || (Selected![(int)(id >> 6)] & (1UL << (int)(id & 63))) != 0;
+    }
 
     public static double IntegrateShadowStatesTrapezoidal(
         IReadOnlyList<int> states, IReadOnlyList<double> sampleMinutes)
@@ -243,10 +256,10 @@ public static class ForwardShadowDurationV0
         var gridSpec = new GridSpecV0 { OriginXM = minX, OriginYM = minY, ResolutionM = resolution,
             XCount = xCount, YCount = yCount, MaxXM = minX+(xCount-1)*resolution,
             MaxYM = minY+(yCount-1)*resolution };
-        var activeTiles = includeField ? PlanActiveTiles(compiled, gridSpec, executionOptions!) : null;
-        var activeCount = includeField ? CountActivePoints(activeTiles!, gridSpec, executionOptions!.TileSizeCells) : count;
-        var diagnostics = includeField ? CreateDiagnostics(count, activeCount, activeTiles!.Count,
-            gridSpec, snapshot.Slices.Count, executionOptions!) : null;
+        var activeTilePlan = includeField ? PlanActiveTiles(compiled, gridSpec, executionOptions!) : null;
+        var activeCount = includeField ? activeTilePlan!.ActivePointCount : count;
+        var diagnostics = includeField ? CreateDiagnostics(count, activeCount, activeTilePlan!,
+            snapshot.Slices.Count, executionOptions!) : null;
         if (includeField && count > SmallGridMaterializationLimit)
         {
             if (diagnostics!.EstimatedWorkingMemoryBytes > diagnostics.MemoryBudgetBytes)
@@ -262,6 +275,7 @@ public static class ForwardShadowDurationV0
                     settings.MaxGridPoints, resolution, diagnostics);
             }
         }
+        var activeTiles = includeField ? MaterializeActiveTiles(activeTilePlan!) : null;
         var materializeDurationValues = !includeField || count <= SmallGridMaterializationLimit;
         var values = materializeDurationValues
             ? new List<DurationPointV0>((int)count) : null;
@@ -272,8 +286,8 @@ public static class ForwardShadowDurationV0
             new[]{new ForwardShadowDurationTileV0{TileX=0,TileY=0}};
         var tileSize = includeField ? executionOptions!.TileSizeCells : Math.Max(xCount,yCount);
         foreach(var tile in tiles)
-        for (var yIndex = tile.TileY*tileSize; yIndex < Math.Min(yCount,(tile.TileY+1)*tileSize); yIndex++)
-        for (var xIndex = tile.TileX*tileSize; xIndex < Math.Min(xCount,(tile.TileX+1)*tileSize); xIndex++)
+        for (var yIndex = TileStart(tile.TileY,tileSize); yIndex < TileEnd(tile.TileY,tileSize,yCount); yIndex++)
+        for (var xIndex = TileStart(tile.TileX,tileSize); xIndex < TileEnd(tile.TileX,tileSize,xCount); xIndex++)
         {
             var x = minX+xIndex*resolution; var y = minY+yIndex*resolution;
             for (var sliceIndex = 0; sliceIndex < compiled.Count; sliceIndex++)
@@ -386,15 +400,20 @@ public static class ForwardShadowDurationV0
         return false;
     }
 
-    private static List<ForwardShadowDurationTileV0> PlanActiveTiles(
+    private static ActiveTilePlan PlanActiveTiles(
         IReadOnlyList<Dictionary<int,Component>> slices, GridSpecV0 grid,
         ForwardShadowDurationExecutionOptionsV0 options)
     {
-        var txCount=(grid.XCount+options.TileSizeCells-1)/options.TileSizeCells;
-        var tyCount=(grid.YCount+options.TileSizeCells-1)/options.TileSizeCells;
-        var selected=new HashSet<long>();
+        var txCount=CeilingDivide(grid.XCount,options.TileSizeCells);
+        var tyCount=CeilingDivide(grid.YCount,options.TileSizeCells);
+        var totalCount=checked((long)txCount*tyCount);
+        var plan=new ActiveTilePlan(txCount,tyCount,totalCount,!options.SparseTiles,
+            options.SparseTiles ? new ulong[checked((int)((totalCount+63)/64))] : null);
         if(!options.SparseTiles)
-            for(var ty=0;ty<tyCount;ty++)for(var tx=0;tx<txCount;tx++)selected.Add((long)ty*txCount+tx);
+        {
+            plan.SelectedCount=checked((int)totalCount);
+            plan.ActivePointCount=(long)grid.XCount*grid.YCount;
+        }
         else foreach(var slice in slices)foreach(var component in slice.Values)
             foreach(var loop in EnumerateLoops(component))
             {
@@ -405,23 +424,35 @@ public static class ForwardShadowDurationV0
                 if(ix0>ix1||iy0>iy1)continue;
                 for(var ty=iy0/options.TileSizeCells;ty<=iy1/options.TileSizeCells;ty++)
                 for(var tx=ix0/options.TileSizeCells;tx<=ix1/options.TileSizeCells;tx++)
-                    selected.Add((long)ty*txCount+tx);
+                    SelectTile(plan,tx,ty,grid,options.TileSizeCells);
             }
-        var result=new List<ForwardShadowDurationTileV0>(selected.Count);
-        foreach(var id in selected){var ty=(int)(id/txCount);result.Add(new ForwardShadowDurationTileV0{TileX=(int)(id%txCount),TileY=ty});}
-        result.Sort((a,b)=>{var y=a.TileY.CompareTo(b.TileY);return y!=0?y:a.TileX.CompareTo(b.TileX);});
+        return plan;
+    }
+
+    private static void SelectTile(ActiveTilePlan plan,int tx,int ty,GridSpecV0 grid,int size)
+    {
+        var id=(long)ty*plan.XCount+tx;
+        var word=(int)(id >> 6);var mask=1UL << (int)(id & 63);
+        if((plan.Selected![word]&mask)!=0)return;
+        plan.Selected[word]|=mask;plan.SelectedCount++;
+        plan.ActivePointCount+=(long)(TileEnd(tx,size,grid.XCount)-TileStart(tx,size))*
+            (TileEnd(ty,size,grid.YCount)-TileStart(ty,size));
+    }
+
+    private static List<ForwardShadowDurationTileV0> MaterializeActiveTiles(ActiveTilePlan plan)
+    {
+        var result=new List<ForwardShadowDurationTileV0>(plan.SelectedCount);
+        for(long id=0;id<plan.TotalCount;id++)if(plan.IsSelected(id))
+            result.Add(new ForwardShadowDurationTileV0{TileX=(int)(id%plan.XCount),TileY=(int)(id/plan.XCount)});
         return result;
     }
 
     private static IEnumerable<CompiledLoop> EnumerateLoops(Component component)
     { foreach(var loop in component.Outers)yield return loop;foreach(var loop in component.Inners)yield return loop; }
 
-    private static long CountActivePoints(IReadOnlyList<ForwardShadowDurationTileV0> tiles,GridSpecV0 grid,int size)
-    {
-        long count=0;foreach(var tile in tiles)count+=
-            (long)(Math.Min(grid.XCount,(tile.TileX+1)*size)-tile.TileX*size)*
-            (Math.Min(grid.YCount,(tile.TileY+1)*size)-tile.TileY*size);return count;
-    }
+    private static int CeilingDivide(int value,int divisor) => checked((int)(((long)value+divisor-1)/divisor));
+    private static int TileStart(int index,int size) => checked((int)((long)index*size));
+    private static int TileEnd(int index,int size,int limit) => (int)Math.Min(limit,((long)index+1)*size);
 
     public static ForwardShadowDurationEngineDiagnosticsV0 PlanResourcePreflight(
         long logicalGridPointCount,long activeEvaluationPointCount,int selectedActiveTileCount,
@@ -448,12 +479,10 @@ public static class ForwardShadowDurationV0
             SkippedTileCount=totalLogicalTileCount-selectedActiveTileCount};
     }
 
-    private static ForwardShadowDurationEngineDiagnosticsV0 CreateDiagnostics(long logical,long active,int selected,
-        GridSpecV0 grid,int sliceCount,ForwardShadowDurationExecutionOptionsV0 options)
+    private static ForwardShadowDurationEngineDiagnosticsV0 CreateDiagnostics(long logical,long active,ActiveTilePlan plan,
+        int sliceCount,ForwardShadowDurationExecutionOptionsV0 options)
     {
-        var tx=(grid.XCount+options.TileSizeCells-1)/options.TileSizeCells;
-        var ty=(grid.YCount+options.TileSizeCells-1)/options.TileSizeCells;
-        var d=PlanResourcePreflight(logical,active,selected,(long)tx*ty,sliceCount,
+        var d=PlanResourcePreflight(logical,active,plan.SelectedCount,plan.TotalCount,sliceCount,
             options.TileSizeCells,options.AvailablePhysicalMemoryBytes,logical>SmallGridMaterializationLimit);
         d.BboxPruningEnabled=options.BboxPruning;return d;
     }
