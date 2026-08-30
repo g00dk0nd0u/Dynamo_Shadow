@@ -140,6 +140,35 @@ public sealed class ForwardShadowDurationV0Tests
         Assert.Equal(0,built.Result.EngineDiagnostics.ContainmentEvaluationCount);
     }
 
+    [Fact] public void NearCapUnitTilesBlockBeforePublicTileMaterialization()
+    {
+        var settings=Settings(1,0);settings.MaxGridPoints=2_000_000;
+        var built=ForwardShadowDurationV0.BuildWithField(Snapshot(new[]{0d,30},
+            Polygons((0,"outer",Loop((0,0),(999_998,0),(999_998,0.0001),(0,0.0001))))),settings,
+            new(){TileSizeCells=1,AvailablePhysicalMemoryBytes=1});
+        var diagnostics=built.Result.EngineDiagnostics!;
+        Assert.Equal("large_grid_memory_budget_exceeded",Assert.Single(built.Result.Blockers));
+        Assert.Null(built.Field);Assert.Equal("blocked_memory",diagnostics.LargeGridPreflightStatus);
+        Assert.Equal(0,diagnostics.ContainmentEvaluationCount);
+        Assert.True(diagnostics.SelectedActiveTileCount>1_900_000);
+        Assert.Equal(1_999_998,diagnostics.TotalLogicalTileCount);
+    }
+
+    [Fact] public void HugePositiveTileSizeCollapsesSmallGridWithoutChangingValues()
+    {
+        var snapshot=Snapshot(new[]{0d,30},Polygons((0,"outer",Loop((0,0),(2,0),(2,1),(0,1)))));
+        var settings=Settings(1,.5);
+        var normal=ForwardShadowDurationV0.BuildWithField(snapshot,settings);
+        var huge=ForwardShadowDurationV0.BuildWithField(snapshot,settings,
+            new(){TileSizeCells=int.MaxValue-1});
+        Assert.True(huge.Result.Complete);
+        Assert.Equal(1,huge.Result.EngineDiagnostics!.TotalLogicalTileCount);
+        Assert.Equal(1,huge.Result.EngineDiagnostics.SelectedActiveTileCount);
+        Assert.Single(huge.Field!.ActiveTileMetadata.ActiveTiles);
+        Assert.Equal(normal.Field!.Values,huge.Field.Values);
+        Assert.Equal("row_major_y_then_x",huge.Result.GridSpec!.Ordering);
+    }
+
     [Fact] public void LargeWorkPreflightBlocksWithoutExecutingContainment()
     {
         var polygons=Polygons((0,"outer",Loop((0,0),(1399,0),(1399,1400),(0,1400))));
