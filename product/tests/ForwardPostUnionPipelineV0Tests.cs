@@ -44,8 +44,12 @@ public sealed class ForwardPostUnionPipelineV0Tests
             new ForwardShadowDurationExecutionOptionsV0{AvailablePhysicalMemoryBytes=1});
 
         Assert.Equal("large_grid_memory_budget_exceeded",Assert.Single(built.Result.Blockers));
-        Assert.False(built.Result.Complete); Assert.False(built.Result.EqualTimeContours.Available);
+        Assert.False(built.Result.Complete);
+        Assert.Equal(built.Result.Duration.Available,built.Result.Available);
+        Assert.False(built.Result.EqualTimeContours.Available);
         Assert.False(built.Result.EqualTimeContours.Complete); Assert.Null(built.DurationField);
+        Assert.DoesNotContain(ForwardEqualTimeContourV0.DiagnosticWarning,built.Result.Warnings);
+        Assert.Contains(ForwardShadowDurationV0.NumericalApproximationWarning,built.Result.Warnings);
         Assert.Equal(0,built.Result.Duration.EngineDiagnostics!.ContainmentEvaluationCount);
     }
 
@@ -55,8 +59,11 @@ public sealed class ForwardPostUnionPipelineV0Tests
         input.MaximumContourSegmentCount=1;
         var built=ForwardPostUnionPipelineV0.Build(input);
 
-        Assert.True(built.Result.Duration.Complete); Assert.NotNull(built.DurationField);
-        Assert.False(built.Result.EqualTimeContours.Complete); Assert.False(built.Result.Complete);
+        Assert.True(built.Result.Duration.Complete); Assert.True(built.Result.Duration.Available);
+        Assert.NotNull(built.DurationField);
+        Assert.False(built.Result.EqualTimeContours.Complete);
+        Assert.False(built.Result.EqualTimeContours.Available);
+        Assert.False(built.Result.Complete); Assert.False(built.Result.Available);
         Assert.Equal("equal_time_contour_segment_budget_exceeded",Assert.Single(built.Result.Blockers));
     }
 
