@@ -9,15 +9,14 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
     [Fact]
     public void MultiTimeFailureStopsAllLaterStages()
     {
-        var calls = new int[3];
+        var calls = new int[2];
         var failedMultiTime = Multi(false, "solar_input_invalid", "multi warning");
         var summary = ForwardRevitFullForwardOrchestratorV0.Run(
             () => failedMultiTime,
             () => { calls[0]++; return Snapshot(); },
-            () => { calls[1]++; return Duration(); },
-            () => { calls[2]++; return Contours(); });
+            () => { calls[1]++; return Pipeline(); });
 
-        Assert.Equal(new[] { 0, 0, 0 }, calls);
+        Assert.Equal(new[] { 0, 0 }, calls);
         AssertStopped(summary, "none", "multi_time_forward", "solar_input_invalid");
         Assert.Equal(failedMultiTime.Available, summary.Available);
         Assert.Contains(summary.Warnings, warning => warning.Code == "multi warning");
@@ -31,8 +30,7 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
         var summary = ForwardRevitFullForwardOrchestratorV0.Run(
             () => Multi(),
             () => failedSnapshot,
-            () => { laterCalls++; return Duration(); },
-            () => { laterCalls++; return Contours(); });
+            () => { laterCalls++; return Pipeline(); });
 
         Assert.Equal(0, laterCalls);
         AssertStopped(summary, "multi_time_forward", "unified_snapshot", "union_output_loop_invalid");
@@ -44,14 +42,11 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
     [Fact]
     public void DurationFailureStopsContours()
     {
-        var contourCalls = 0;
         var failedDuration = Duration(false, "max_duration_grid_points_exceeded", "duration warning");
         var summary = ForwardRevitFullForwardOrchestratorV0.Run(
             () => Multi(), () => Snapshot(),
-            () => failedDuration,
-            () => { contourCalls++; return Contours(); });
+            () => Pipeline(failedDuration, Contours()));
 
-        Assert.Equal(0, contourCalls);
         AssertStopped(summary, "unified_snapshot", "duration", "max_duration_grid_points_exceeded");
         Assert.Equal(failedDuration.Available, summary.Available);
         Assert.True(summary.SnapshotComplete);
@@ -64,8 +59,7 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
         var failedContours = Contours(
             false, "equal_time_contour_segment_budget_exceeded", "contour warning");
         var summary = ForwardRevitFullForwardOrchestratorV0.Run(
-            () => Multi(), () => Snapshot(), () => Duration(),
-            () => failedContours);
+            () => Multi(), () => Snapshot(), () => Pipeline(Duration(), failedContours));
 
         AssertStopped(summary, "duration", "equal_time_contours",
             "equal_time_contour_segment_budget_exceeded");
@@ -82,8 +76,8 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
         var summary = ForwardRevitFullForwardOrchestratorV0.Run(
             () => Multi(warning: "multi warning"),
             () => Snapshot(warning: "snapshot warning"),
-            () => Duration(warning: "duration warning"),
-            () => Contours(warning: "contour warning"));
+            () => Pipeline(Duration(warning: "duration warning"),
+                Contours(warning: "contour warning")));
 
         Assert.True(summary.Available);
         Assert.True(summary.Complete);
@@ -113,7 +107,7 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
         };
 
         var summary = ForwardRevitFullForwardOrchestratorV0.Run(
-            () => Multi(warnings: warnings), () => Snapshot(), () => Duration(), () => Contours());
+            () => Multi(warnings: warnings), () => Snapshot(), () => Pipeline());
 
         Assert.Collection(summary.Warnings,
             warning => AssertWarning(warning, "projection", 0, "same_warning"),
@@ -168,5 +162,16 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
                 System.Array.Empty<EqualTimeContourV0>(),
             Blockers = blocker is null ? System.Array.Empty<string>() : new[] { blocker },
             Warnings = warning is null ? System.Array.Empty<string>() : new[] { warning }
+        };
+
+    private static ForwardPostUnionPipelineBuildResultV0 Pipeline(
+        ForwardShadowDurationResultV0? duration = null,
+        ForwardEqualTimeContourResultV0? contours = null) => new() {
+            Result = new ForwardPostUnionPipelineResultV0 {
+                Available = true,
+                Complete = (duration ?? Duration()).Complete && (contours ?? Contours()).Complete,
+                Duration = duration ?? Duration(),
+                EqualTimeContours = contours ?? Contours()
+            }
         };
 }

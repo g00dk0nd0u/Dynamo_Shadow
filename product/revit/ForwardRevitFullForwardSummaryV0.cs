@@ -31,13 +31,11 @@ public static class ForwardRevitFullForwardOrchestratorV0
     public static ForwardRevitFullForwardSummaryV0 Run(
         Func<ForwardRevitMultiTimeSummaryV0> runMultiTime,
         Func<ForwardUnifiedShadowSliceSnapshotV0> createSnapshot,
-        Func<ForwardShadowDurationResultV0> buildDuration,
-        Func<ForwardEqualTimeContourResultV0> buildContours)
+        Func<ForwardPostUnionPipelineBuildResultV0> runPostUnionPipeline)
     {
         if (runMultiTime is null) throw new ArgumentNullException(nameof(runMultiTime));
         if (createSnapshot is null) throw new ArgumentNullException(nameof(createSnapshot));
-        if (buildDuration is null) throw new ArgumentNullException(nameof(buildDuration));
-        if (buildContours is null) throw new ArgumentNullException(nameof(buildContours));
+        if (runPostUnionPipeline is null) throw new ArgumentNullException(nameof(runPostUnionPipeline));
 
         var warnings = new List<ForwardRevitStageWarningV0>();
         var multiTime = runMultiTime();
@@ -51,13 +49,14 @@ public static class ForwardRevitFullForwardOrchestratorV0
             return Failed(snapshot.Available, "multi_time_forward", "unified_snapshot",
                 snapshot.Blockers, warnings, multiTimeComplete: true);
 
-        var duration = buildDuration();
+        var postUnion = runPostUnionPipeline();
+        var duration = postUnion.Result.Duration;
         AddWarnings(warnings, "duration", duration.Warnings);
         if (!duration.Complete)
             return Failed(duration.Available, "unified_snapshot", "duration", duration.Blockers,
                 warnings, true, true, durationGridPointCount: duration.GridPointCount);
 
-        var contours = buildContours();
+        var contours = postUnion.Result.EqualTimeContours;
         AddWarnings(warnings, "equal_time_contours", contours.Warnings);
         if (!contours.Complete)
             return Failed(contours.Available, "duration", "equal_time_contours", contours.Blockers,
