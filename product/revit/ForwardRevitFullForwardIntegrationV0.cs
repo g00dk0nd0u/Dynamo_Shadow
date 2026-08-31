@@ -56,12 +56,17 @@ public static class ForwardRevitFullForwardIntegratorV0
                 () => multiTime.Summary,
                 () => snapshot = ForwardRevitUnifiedShadowSliceSnapshotAdapterV0.Create(multiTime),
                 () => {
-                    var built = ForwardShadowDurationV0.BuildWithField(snapshot, durationSettings);
-                    durationField = built.Field;
-                    return duration = built.Result;
-                },
-                () => contours = ForwardEqualTimeContourV0.Build(duration, contourSettings,
-                    maximumContourSegmentCount, durationField));
+                    var built = ForwardPostUnionPipelineV0.Build(new ForwardPostUnionPipelineInputV0 {
+                        Snapshot = snapshot,
+                        DurationSettings = durationSettings,
+                        ContourSettings = contourSettings,
+                        MaximumContourSegmentCount = maximumContourSegmentCount
+                    });
+                    duration = built.Result.Duration;
+                    durationField = built.DurationField;
+                    contours = built.Result.EqualTimeContours;
+                    return built;
+                });
             return new ForwardRevitFullForwardIntegrationResultV0(
                 multiTime, snapshot, duration, durationField, contours, summary);
         }
