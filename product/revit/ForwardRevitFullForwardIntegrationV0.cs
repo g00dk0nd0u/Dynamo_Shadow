@@ -64,7 +64,9 @@ public static class ForwardRevitFullForwardIntegratorV0
                     });
                     duration = built.Result.Duration;
                     durationField = built.DurationField;
-                    contours = built.Result.EqualTimeContours;
+                    contours = built.Result.Duration.Complete
+                        ? built.Result.EqualTimeContours
+                        : null;
                     return built;
                 });
             return new ForwardRevitFullForwardIntegrationResultV0(
