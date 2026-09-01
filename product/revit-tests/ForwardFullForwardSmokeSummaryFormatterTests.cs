@@ -21,7 +21,9 @@ public sealed class ForwardFullForwardSmokeSummaryFormatterTests
         Assert.Contains("duration grid point count: 42", text);
         Assert.Contains("contour count: 3", text);
         Assert.Contains("blockers: none", text);
-        Assert.Contains("warnings: none", text);
+        Assert.Contains(
+            "warnings: equal_time_contours:Contour levels are technical/diagnostic time levels, not statutory thresholds.",
+            text);
         Assert.Contains("permit_ready_certified = false", text);
     }
 
