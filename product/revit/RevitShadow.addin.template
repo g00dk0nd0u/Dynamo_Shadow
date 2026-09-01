@@ -9,4 +9,13 @@
     <VendorId>DYSH</VendorId>
     <VendorDescription>Dynamo Shadow development smoke test</VendorDescription>
   </AddIn>
+  <AddIn Type="Command">
+    <Name>Dynamo Shadow Full Forward Development Smoke Test</Name>
+    <Text>Dynamo Shadow Full Forward Development Smoke Test</Text>
+    <Assembly>__REVIT_SHADOW_ASSEMBLY__</Assembly>
+    <AddInId>88F33200-E215-45C6-B244-F130FDB80959</AddInId>
+    <FullClassName>RevitShadow.ForwardFullForwardSmokeCommand</FullClassName>
+    <VendorId>DYSH</VendorId>
+    <VendorDescription>Dynamo Shadow DEVELOPMENT / SMOKE TEST ONLY</VendorDescription>
+  </AddIn>
 </RevitAddIns>
