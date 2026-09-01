@@ -114,6 +114,46 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
             warning => AssertWarning(warning, "projection", 1, "same_warning"));
     }
 
+    [Fact]
+    public void DurationFailureDoesNotExposeContours()
+    {
+        var contours = ForwardRevitFullForwardContourExposureV0.Select(
+            Duration(complete: false), new ForwardShadowDurationFieldV0(), Contours());
+
+        Assert.Null(contours);
+    }
+
+    [Fact]
+    public void CompletedDurationWithFieldExposesContours()
+    {
+        var expected = Contours();
+        var contours = ForwardRevitFullForwardContourExposureV0.Select(
+            Duration(), new ForwardShadowDurationFieldV0(), expected);
+
+        Assert.Same(expected, contours);
+    }
+
+    [Fact]
+    public void CompletedDurationWithoutFieldDoesNotExposeContours()
+    {
+        var contours = ForwardRevitFullForwardContourExposureV0.Select(
+            Duration(), durationField: null, Contours());
+
+        Assert.Null(contours);
+    }
+
+    [Fact]
+    public void ContourBlockerAfterDurationSuccessStillExposesContourResult()
+    {
+        var expected = Contours(false, "equal_time_contour_segment_budget_exceeded");
+        var contours = ForwardRevitFullForwardContourExposureV0.Select(
+            Duration(), new ForwardShadowDurationFieldV0(), expected);
+
+        Assert.Same(expected, contours);
+        Assert.False(contours!.Complete);
+        Assert.Contains("equal_time_contour_segment_budget_exceeded", contours.Blockers);
+    }
+
     private static void AssertWarning(ForwardRevitStageWarningV0 warning,
         string stage, int? sampleIndex, string code)
     {
