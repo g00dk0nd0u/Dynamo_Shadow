@@ -1,0 +1,384 @@
+{
+  "schema_version": "forward_post_union_parity_fixture_v0",
+  "input": {
+    "unified_shadow_slices": {
+      "complete": true,
+      "slices": [
+        {
+          "slice_index": 0,
+          "sample_index": 0,
+          "true_solar_minutes": 540.0,
+          "true_solar_time": "09:00",
+          "complete": true,
+          "polygons": [
+            {
+              "polygon_index": 0,
+              "component_index": 0,
+              "role": "outer",
+              "orientation": "ccw",
+              "closed": true,
+              "point_count": 4,
+              "area_m2": 4.0,
+              "generation_method": "revit_boolean_union_curve_loop_line_exact",
+              "points_m": [
+                {
+                  "x": 0.0,
+                  "y": 0.0
+                },
+                {
+                  "x": 2.0,
+                  "y": 0.0
+                },
+                {
+                  "x": 2.0,
+                  "y": 2.0
+                },
+                {
+                  "x": 0.0,
+                  "y": 2.0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "slice_index": 1,
+          "sample_index": 1,
+          "true_solar_minutes": 560.0,
+          "true_solar_time": "09:20",
+          "complete": true,
+          "polygons": [
+            {
+              "polygon_index": 0,
+              "component_index": 0,
+              "role": "outer",
+              "orientation": "ccw",
+              "closed": true,
+              "point_count": 4,
+              "area_m2": 4.0,
+              "generation_method": "revit_boolean_union_curve_loop_line_exact",
+              "points_m": [
+                {
+                  "x": 1.0,
+                  "y": 0.0
+                },
+                {
+                  "x": 3.0,
+                  "y": 0.0
+                },
+                {
+                  "x": 3.0,
+                  "y": 2.0
+                },
+                {
+                  "x": 1.0,
+                  "y": 2.0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "slice_index": 2,
+          "sample_index": 2,
+          "true_solar_minutes": 590.0,
+          "true_solar_time": "09:50",
+          "complete": true,
+          "polygons": [
+            {
+              "polygon_index": 0,
+              "component_index": 0,
+              "role": "outer",
+              "orientation": "ccw",
+              "closed": true,
+              "point_count": 4,
+              "area_m2": 4.0,
+              "generation_method": "revit_boolean_union_curve_loop_line_exact",
+              "points_m": [
+                {
+                  "x": 1.0,
+                  "y": 0.0
+                },
+                {
+                  "x": 3.0,
+                  "y": 0.0
+                },
+                {
+                  "x": 3.0,
+                  "y": 2.0
+                },
+                {
+                  "x": 1.0,
+                  "y": 2.0
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "duration_settings": {
+      "grid_resolution_m": 1.0,
+      "analysis_margin_m": 1.0,
+      "max_duration_grid_points": 1000
+    },
+    "contour_settings": {
+      "equal_time_contour_levels_minutes": [
+        10.0,
+        25.0,
+        40.0
+      ]
+    }
+  },
+  "expected": {
+    "grid_spec": {
+      "x_count": 6,
+      "y_count": 5,
+      "origin_x_m": -1.0,
+      "origin_y_m": -1.0,
+      "resolution_m": 1.0,
+      "ordering": "row_major_y_then_x"
+    },
+    "logical_grid_point_count": 30,
+    "maximum_shadow_duration_minutes": 50.0,
+    "shadowed_point_count": 12,
+    "duration_values_minutes": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      10.0,
+      50.0,
+      50.0,
+      40.0,
+      0.0,
+      0.0,
+      10.0,
+      50.0,
+      50.0,
+      40.0,
+      0.0,
+      0.0,
+      10.0,
+      50.0,
+      50.0,
+      40.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "requested_levels_minutes": [
+      10.0,
+      25.0,
+      40.0
+    ],
+    "generated_levels_minutes": [
+      10.0,
+      25.0,
+      40.0
+    ],
+    "contour_count": 3,
+    "closed_contour_count": 3,
+    "open_contour_count": 0,
+    "contours": [
+      {
+        "level_minutes": 10.0,
+        "contour_index": 0,
+        "closed": true,
+        "point_count": 13,
+        "length_m": 12.68506847798286,
+        "points_m": [
+          {
+            "x": 0.0,
+            "y": 0.0
+          },
+          {
+            "x": 0.0,
+            "y": 1.0
+          },
+          {
+            "x": 0.0,
+            "y": 2.0
+          },
+          {
+            "x": 1.0,
+            "y": 2.8
+          },
+          {
+            "x": 2.0,
+            "y": 2.8
+          },
+          {
+            "x": 3.0,
+            "y": 2.75
+          },
+          {
+            "x": 3.75,
+            "y": 2.0
+          },
+          {
+            "x": 3.75,
+            "y": 1.0
+          },
+          {
+            "x": 3.75,
+            "y": 0.0
+          },
+          {
+            "x": 3.0,
+            "y": -0.75
+          },
+          {
+            "x": 2.0,
+            "y": -0.8
+          },
+          {
+            "x": 1.0,
+            "y": -0.8
+          },
+          {
+            "x": 0.0,
+            "y": 0.0
+          }
+        ]
+      },
+      {
+        "level_minutes": 25.0,
+        "contour_index": 0,
+        "closed": true,
+        "point_count": 13,
+        "length_m": 10.67700566821267,
+        "points_m": [
+          {
+            "x": 0.375,
+            "y": 0.0
+          },
+          {
+            "x": 0.375,
+            "y": 1.0
+          },
+          {
+            "x": 0.375,
+            "y": 2.0
+          },
+          {
+            "x": 1.0,
+            "y": 2.5
+          },
+          {
+            "x": 2.0,
+            "y": 2.5
+          },
+          {
+            "x": 3.0,
+            "y": 2.375
+          },
+          {
+            "x": 3.375,
+            "y": 2.0
+          },
+          {
+            "x": 3.375,
+            "y": 1.0
+          },
+          {
+            "x": 3.375,
+            "y": 0.0
+          },
+          {
+            "x": 3.0,
+            "y": -0.375
+          },
+          {
+            "x": 2.0,
+            "y": -0.5
+          },
+          {
+            "x": 1.0,
+            "y": -0.5
+          },
+          {
+            "x": 0.375,
+            "y": 0.0
+          }
+        ]
+      },
+      {
+        "level_minutes": 40.0,
+        "contour_index": 0,
+        "closed": true,
+        "point_count": 11,
+        "length_m": 8.679920229180398,
+        "points_m": [
+          {
+            "x": 0.75,
+            "y": 0.0
+          },
+          {
+            "x": 0.75,
+            "y": 1.0
+          },
+          {
+            "x": 0.75,
+            "y": 2.0
+          },
+          {
+            "x": 1.0,
+            "y": 2.2
+          },
+          {
+            "x": 2.0,
+            "y": 2.2
+          },
+          {
+            "x": 3.0,
+            "y": 2.0
+          },
+          {
+            "x": 3.0,
+            "y": 1.0
+          },
+          {
+            "x": 3.0,
+            "y": 0.0
+          },
+          {
+            "x": 2.0,
+            "y": -0.2
+          },
+          {
+            "x": 1.0,
+            "y": -0.2
+          },
+          {
+            "x": 0.75,
+            "y": 0.0
+          }
+        ]
+      }
+    ],
+    "changing_state_point": {
+      "x_m": 0.0,
+      "y_m": 0.0,
+      "states": [
+        true,
+        false,
+        false
+      ],
+      "duration_minutes": 10.0
+    },
+    "permit_ready_certified": false
+  },
+  "tolerances": {
+    "coordinate_m": 1e-06,
+    "duration_minutes": 1e-09,
+    "length_m": 1e-06
+  }
+}
