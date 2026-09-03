@@ -49,6 +49,9 @@ public sealed class ForwardPostUnionParityV0Tests
     private static void AssertDuration(JsonElement expected, ForwardPostUnionPipelineBuildResultV0 built)
     {
         var actual = built.Result.Duration;
+        var expectedTemporalStep = expected.GetProperty("temporal_step_minutes");
+        Assert.Equal(expectedTemporalStep.ValueKind == JsonValueKind.Null
+            ? (double?)null : expectedTemporalStep.GetDouble(), actual.TemporalStepMinutes);
         var grid = expected.GetProperty("grid_spec");
         Assert.NotNull(actual.GridSpec);
         Assert.Equal(grid.GetProperty("origin_x_m").GetDouble(), actual.GridSpec!.OriginXM, CoordinateTolerance);

@@ -19,6 +19,7 @@ def test_python_reference_matches_post_union_parity_fixture():
     contours = build_equal_time_contours(duration, source["contour_settings"])
 
     assert duration["complete"] and contours["complete"]
+    assert duration["temporal_step_minutes"] is expected["temporal_step_minutes"]
     assert duration["grid_spec"] == expected["grid_spec"]
     assert len(duration["duration_grid"]) == expected["logical_grid_point_count"]
     assert duration["maximum_shadow_duration_minutes"] == pytest.approx(

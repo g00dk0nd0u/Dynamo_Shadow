@@ -131,6 +131,7 @@
     }
   },
   "expected": {
+    "temporal_step_minutes": null,
     "grid_spec": {
       "x_count": 6,
       "y_count": 5,
