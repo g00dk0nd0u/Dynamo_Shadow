@@ -34,5 +34,8 @@
     <None Include="../../tests/fixtures/parity/forward_portable_parity_v0.json"
           Link="fixtures/parity/forward_portable_parity_v0.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../tests/fixtures/parity/forward_post_union_v0.json"
+          Link="fixtures/parity/forward_post_union_v0.json"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
