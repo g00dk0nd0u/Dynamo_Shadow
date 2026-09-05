@@ -178,7 +178,7 @@ assemblies before implementation proves they are needed.
 - Geometry extraction must be read-only.
 - Do not create Revit elements during geometry diagnostics.
 - Read each selected shadow caster separately.
-- Do not merge selected casters into a temporary unified Revit model.
+- Do not merge selected casters into a temporary unified model.
 - Do not auto-extract Walls, Floors, Roofs, Equipment, or existing model elements.
 - Mass / Generic Model shadow caster proxy remains the accepted initial source.
 - BoundingBox may be used only for diagnostic summary or future analysis extent estimation.
