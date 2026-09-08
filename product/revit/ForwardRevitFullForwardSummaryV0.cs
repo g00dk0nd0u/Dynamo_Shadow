@@ -11,6 +11,9 @@ public sealed class ForwardRevitFullForwardSummaryV0
     public bool Complete { get; internal set; }
     public string FinalCompletedStage { get; internal set; } = "none";
     public string? BlockerStage { get; internal set; }
+    public string? BlockerCauseStage { get; internal set; }
+    public int? BlockerSampleIndex { get; internal set; }
+    public double? BlockerTrueSolarMinutes { get; internal set; }
     public bool MultiTimeComplete { get; internal set; }
     public bool SnapshotComplete { get; internal set; }
     public bool DurationComplete { get; internal set; }
@@ -41,7 +44,10 @@ public static class ForwardRevitFullForwardOrchestratorV0
         var multiTime = runMultiTime();
         warnings.AddRange(multiTime.Warnings);
         if (!multiTime.Complete)
-            return Failed(multiTime.Available, "none", "multi_time_forward", multiTime.Blockers, warnings);
+            return Failed(multiTime.Available, "none", "multi_time_forward", multiTime.Blockers, warnings,
+                blockerCauseStage: multiTime.BlockerStage,
+                blockerSampleIndex: multiTime.BlockerSampleIndex,
+                blockerTrueSolarMinutes: multiTime.BlockerTrueSolarMinutes);
 
         var snapshot = createSnapshot();
         AddWarnings(warnings, "unified_snapshot", snapshot.Warnings);
@@ -81,8 +87,11 @@ public static class ForwardRevitFullForwardOrchestratorV0
         string blockerStage, IReadOnlyList<string> blockers,
         IReadOnlyList<ForwardRevitStageWarningV0> warnings,
         bool multiTimeComplete = false, bool snapshotComplete = false, bool durationComplete = false,
-        int durationGridPointCount = 0, int contourCount = 0) => new() {
+        int durationGridPointCount = 0, int contourCount = 0, string? blockerCauseStage = null,
+        int? blockerSampleIndex = null, double? blockerTrueSolarMinutes = null) => new() {
             Available = available, FinalCompletedStage = completedStage, BlockerStage = blockerStage,
+            BlockerCauseStage = blockerCauseStage, BlockerSampleIndex = blockerSampleIndex,
+            BlockerTrueSolarMinutes = blockerTrueSolarMinutes,
             MultiTimeComplete = multiTimeComplete, SnapshotComplete = snapshotComplete,
             DurationComplete = durationComplete, DurationGridPointCount = durationGridPointCount,
             ContourCount = contourCount, Blockers = blockers, Warnings = warnings

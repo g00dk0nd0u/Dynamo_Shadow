@@ -20,13 +20,14 @@ public static class ForwardRevitMultiTimeIntegratorV0
         var context = ForwardRevitProjectContextExtractorV0.Extract(document, selectedLevel,
             fallbackAverageGroundLevelElevationM, measurementHeightM, explicitLatitudeDeg);
         if (!context.Complete)
-            return Failed(owned, context.Blockers, Warnings("project_context", context.Warnings));
+            return Failed(owned, "project_context", context.Blockers,
+                Warnings("project_context", context.Warnings));
         var caster = ForwardRevitCasterGeometryExtractorV0.Extract(selectedCasterElements);
         if (!caster.Summary.Complete)
         {
             var failedWarnings = Warnings("project_context", context.Warnings);
             failedWarnings.AddRange(Warnings("caster_extraction", caster.Summary.Warnings));
-            return Failed(owned, caster.Summary.Blockers, failedWarnings);
+            return Failed(owned, "caster_extraction", caster.Summary.Blockers, failedWarnings);
         }
 
         // TrueNorthDeg is already the resolved ProjectContext model rotation. Do not rotate again in Revit.
@@ -69,8 +70,10 @@ public static class ForwardRevitMultiTimeIntegratorV0
     }
 
     private static ForwardRevitMultiTimeIntegrationResultV0 Failed(
-        IReadOnlyList<ForwardRevitSingleSliceIntegrationResultV0> owned, IEnumerable<string> blockers,
+        IReadOnlyList<ForwardRevitSingleSliceIntegrationResultV0> owned, string blockerStage,
+        IEnumerable<string> blockers,
         IReadOnlyList<ForwardRevitStageWarningV0> warnings) => new(owned,
-            new ForwardRevitMultiTimeSummaryV0 { Blockers = new List<string>(blockers), Warnings = warnings });
+            new ForwardRevitMultiTimeSummaryV0 { BlockerStage = blockerStage,
+                Blockers = new List<string>(blockers), Warnings = warnings });
 }
 #endif
