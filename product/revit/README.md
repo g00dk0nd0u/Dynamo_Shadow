@@ -1,48 +1,52 @@
 # RevitShadow development smoke add-in
 
-This directory contains the first development-only compiled Revit host. It is a
-single read-only `IExternalCommand` that displays the Phase 5B project-context
-diagnostic. It is not the full Forward product, has no ribbon or installer, and
-has not yet been validated on a real Revit machine. `permit_ready_certified`
-always remains `false`.
+This directory contains the development-only compiled Revit host used to validate
+the compiled Forward pipeline. It is not the production Forward product, has no
+ribbon or installer, and has not yet been validated end-to-end on a real Revit
+2025 or Revit 2026 machine. `permit_ready_certified` always remains `false`.
 
-Phase 5D adds a separate native shadow-caster geometry extraction boundary for
-already-resolved Revit **Mass** and **Generic Model** elements. It recursively
-reads `GeometryElement` and transformed instance geometry while retaining usable
-native `Solid` objects inside the Revit adapter. Bounding boxes are explicitly
-not used as shadow geometry, and meshes are not converted into caster geometry.
-At the Phase 5D boundary, projection, Boolean operations, duration accumulation,
-contours, and preview remained future work. This Revit-enabled path has not been
-compiled or executed on a real Revit installation.
+## Current compiled Forward scope
 
-Phase 5E-A adds a single-time-slice, read-only formal projection boundary. It
-splits native solids, clips them above the measurement plane, optionally splits
-the clipped result again, and uses `ExtrusionAnalyzer.Create`,
-`GetExtrusionBase`, and `Face.GetEdgesAsCurveLoops` without a convex-hull,
-bounding-box, mesh, or libG fallback. Native loops remain in the Revit-layer
-result while the companion summary is host-neutral. Phase 5E-B separately adds
-per-slice native union. It preserves each projected face loop collection, creates
-a temporary 0.1 m extrusion, performs Revit Boolean union with one
-reversed-operand retry, splits disconnected volumes, and returns owned
-base-face loop copies. There is no polygon fallback or silent Boolean-failure
-fallback; area checks use Revit metre/m² conversions. This path remains
-unvalidated on a real Revit host.
+`RevitShadow.addin.template` exposes two read-only development commands:
 
-Phase 5F-B adds the compiled multi-time orchestration boundary through native
-per-slice union. It reuses the portable inclusive true-solar-time timeline and
-resolved ProjectContext True North rotation, extracts project/caster data once,
-and passes each model-coordinate direction to the unchanged native projection
-and union stages through the same resolved single-slice tail used by Phase 5F-A.
-Stage-tagged warnings remain available in the host-neutral summary. The
-aggregate result owns every completed per-slice result and its native union;
-any solar or native slice blocker stops processing with its sample index and
-keeps the aggregate incomplete. Duration, contours, DirectShape, and permit
-certification are not part of this boundary.
+- `RevitShadow.ForwardProjectContextSmokeCommand`
+- `RevitShadow.ForwardFullForwardSmokeCommand`
 
-Compiled-product support for this package is limited to Revit 2025 and 2026,
-which use `net8.0-windows`. Build separately against the Autodesk assemblies
-shipped with the Revit version that will load the package; matching target
-frameworks do not make version-specific builds interchangeable.
+The project-context command exercises the live Revit project-context boundary.
+The Full Forward development command connects the currently implemented compiled
+pipeline:
+
+```text
+project context / selected caster extraction
+→ multi-time solar orchestration
+→ native formal projection
+→ native per-slice union
+→ unified shadow-slice snapshot
+→ shadow-duration accumulation
+→ equal-time contour generation
+→ compact diagnostic summary
+```
+
+The formal caster contract remains user-selected Revit **Mass** / **Generic
+Model** geometry. Native Revit geometry is preserved through projection and
+union; BoundingBox, mesh, convex-hull, and libG geometry are not formal
+fallbacks. A blocker in a native stage stops the pipeline instead of silently
+reducing accuracy or substituting diagnostic geometry.
+
+The Full Forward smoke command is intentionally read-only and does not create
+preview or result elements. Its fixed measurement height, latitude, solar
+sample range, grid resolution, and contour settings are development smoke-test
+constants only; they are not production, ordinance, or legal settings.
+
+Host-neutral CI covers the portable and orchestration contracts without Autodesk
+binaries. Code compiled only under `REVIT_API` is excluded from the normal CI
+build, so successful CI is not evidence of real-machine Revit 2025/2026 load or
+execution. End-to-end real-machine validation remains pending.
+
+Compiled-product support for this smoke package is limited to Revit 2025 and
+2026, which use `net8.0-windows`. Build separately against the Autodesk
+assemblies shipped with the Revit version that will load the package; matching
+target frameworks do not make version-specific builds interchangeable.
 
 ## Host-neutral build and tests
 
@@ -65,13 +69,36 @@ Supply the directory containing both Autodesk-provided `RevitAPI.dll` and
 dotnet build product/revit/RevitShadow.csproj --configuration Release -p:EnableRevitApi=true -p:RevitApiDir="C:\path\to\Revit"
 ```
 
-The development command is
-`RevitShadow.ForwardProjectContextSmokeCommand`. It obtains the active view's
+### Project Context smoke command
+
+`RevitShadow.ForwardProjectContextSmokeCommand` obtains the active view's
 `GenLevel`; an unavailable level is an explicit blocker rather than a reason to
-select another Level. The command uses visibly test-only constants for the
-measurement height, latitude, and fallback AGL, then invokes
-`ForwardRevitProjectContextDiagnosticV0.Extract` without duplicating extraction
-logic.
+select another Level. It invokes the existing project-context extraction path
+without duplicating extraction logic.
+
+### Full Forward development smoke command
+
+`RevitShadow.ForwardFullForwardSmokeCommand` also requires the active view to
+have a `GenLevel`. It passes the current Revit selection to the existing
+integrator, which enforces the Mass / Generic Model caster contract, then runs
+the connected compiled pipeline through equal-time contours.
+
+The compact TaskDialog summary reports:
+
+- `available`
+- `complete`
+- `final completed stage`
+- `blocker stage`
+- `duration grid point count`
+- `contour count`
+- blockers
+- warnings
+- `permit_ready_certified`
+
+A complete Full Forward smoke run is expected to finish with
+`final completed stage = equal_time_contours`. A failed stage must be recorded
+and investigated from its structured blocker rather than worked around with a
+silent fallback.
 
 ## Build a manual-install package
 
@@ -95,10 +122,14 @@ The script substitutes the absolute packaged `RevitShadow.dll` path into
 `RevitShadow.addin.template`. It builds and packages only; it never writes to
 ProgramData. To install later, keep both DLLs at the generated package path and
 copy only `RevitShadow.addin` to
-`C:\ProgramData\Autodesk\Revit\Addins\<year>\`. After restarting Revit, the
-external command is expected under **Add-Ins > External Tools > Dynamo Shadow
-Project Context Smoke Test**.
+`C:\ProgramData\Autodesk\Revit\Addins\<year>\`.
 
-The TaskDialog reports `available`, `complete`, AGL elevation/source,
-measurement height/plane, True North, latitude, blockers, warnings, and
-`permit_ready_certified`. No Revit API object is displayed or serialized.
+After restarting Revit, **Add-Ins > External Tools** is expected to contain:
+
+- **Dynamo Shadow Project Context Smoke Test**
+- **Dynamo Shadow Full Forward Development Smoke Test**
+
+The package is for development validation only. Real-machine results should
+record the Revit year/build, selected caster category/count, active Level, True
+North, blockers/warnings, and the final completed stage. None of these smoke
+results changes `permit_ready_certified=false`.
