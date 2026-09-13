@@ -10,7 +10,9 @@ The current single Dynamo graph exposes eight Dynamo Player inputs, while the Py
 
 Current implemented prototype scope includes: Forward / Reverse Analysis Mode selection in one Player graph, low-rise reverse-shadow calculation and preview, multiple Mass / Generic Model shadow-caster selection, Revit geometry extraction, footprint extraction prototype, NOAA solar calculation, true solar time, formal time-slice shadow projection, per-time-slice Revit-native union, grid/trapezoidal shadow-duration accumulation, equal-time contour generation, equal-time contour DirectShape preview, placed Revit Area site-boundary extraction for one outer straight-segment loop with no holes, 5 m / 10 m / beyond-10 m distance masks, near/far maximum shadow duration and maximum points, fixed 5 m / 10 m signed-distance contour data, selected regulatory preset comparison, Fast / Standard / High Player accuracy selection, and pure-Python regression tests.
 
-Currently unimplemented scope includes: formal legal pass/fail judgement, automatic municipal ordinance selection, road/water/elevation-difference relaxations, verification report output, high-rise reverse-shadow workflows, C# Revit add-in, product UI, installer, and permit certification.
+Compiled development scope also includes a Revit 2025/2026 read-only smoke host with two `IExternalCommand` entries: `ForwardProjectContextSmokeCommand` and `ForwardFullForwardSmokeCommand`. The Full Forward development command connects project context and caster extraction, multi-time native projection and per-slice union, unified snapshot creation, duration accumulation, equal-time contour generation, and a compact diagnostic summary. The Revit API-enabled compiled path remains pending end-to-end real-machine validation on Revit 2025/2026.
+
+Currently unimplemented scope includes: formal legal pass/fail judgement, automatic municipal ordinance selection, road/water/elevation-difference relaxations, verification report output, high-rise reverse-shadow workflows, production Revit add-in/ribbon UI, installer, and permit certification.
 
 ## Architecture direction
 
