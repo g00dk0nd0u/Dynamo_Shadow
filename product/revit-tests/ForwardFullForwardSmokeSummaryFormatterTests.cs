@@ -43,6 +43,25 @@ public sealed class ForwardFullForwardSmokeSummaryFormatterTests
         Assert.Contains("warnings: duration:grid_warning", text);
     }
 
+    [Fact]
+    public void FormatsMultiTimeFailureDetails()
+    {
+        var failed = new ForwardRevitMultiTimeSummaryV0 {
+            BlockerStage = "projection", BlockerSampleIndex = 2,
+            BlockerTrueSolarMinutes = 735.5,
+            Blockers = new[] { "formal_projection_failed" }
+        };
+        var summary = ForwardRevitFullForwardOrchestratorV0.Run(
+            () => failed, () => Snapshot(), () => Pipeline(Duration(), Contours()));
+
+        var text = ForwardFullForwardSmokeSummaryFormatter.Format(summary);
+
+        Assert.Contains("blocker stage: multi_time_forward", text);
+        Assert.Contains("blocker cause stage: projection", text);
+        Assert.Contains("blocker sample index: 2", text);
+        Assert.Contains("blocker true solar minutes: 735.5", text);
+    }
+
     private static ForwardRevitMultiTimeSummaryV0 MultiTime() => new() {
         Available = true, Complete = true
     };

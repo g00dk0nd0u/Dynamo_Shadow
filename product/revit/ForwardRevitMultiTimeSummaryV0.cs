@@ -38,7 +38,9 @@ public sealed class ForwardRevitMultiTimeSummaryV0
     public bool Available { get; set; }
     public bool Complete { get; set; }
     public IReadOnlyList<ForwardRevitTimeSliceSummaryV0> Slices { get; set; } = Array.Empty<ForwardRevitTimeSliceSummaryV0>();
+    public string? BlockerStage { get; set; }
     public int? BlockerSampleIndex { get; set; }
+    public double? BlockerTrueSolarMinutes { get; set; }
     public IReadOnlyList<string> Blockers { get; set; } = Array.Empty<string>();
     public IReadOnlyList<ForwardRevitStageWarningV0> Warnings { get; set; } = Array.Empty<ForwardRevitStageWarningV0>();
     public bool PermitReadyCertified => false;
@@ -59,7 +61,7 @@ public static class ForwardRevitMultiTimeOrchestratorV0
             warnings.Add(new ForwardRevitStageWarningV0 { Stage = "solar", Code = warning });
         if (!solar.Complete)
             return new ForwardRevitMultiTimeSummaryV0 { Slices = slices,
-                BlockerSampleIndex = solar.Samples.Count, Blockers = new List<string>(solar.Blockers), Warnings = warnings };
+                BlockerStage = "solar", Blockers = new List<string>(solar.Blockers), Warnings = warnings };
         foreach (var sample in solar.Samples)
         {
             var outcome = executeSlice(sample);
@@ -75,7 +77,9 @@ public static class ForwardRevitMultiTimeOrchestratorV0
             warnings.AddRange(outcome.Warnings);
             if (!slice.Complete)
                 return new ForwardRevitMultiTimeSummaryV0 { Slices = slices,
-                    BlockerSampleIndex = sample.SampleIndex, Blockers = slice.Blockers, Warnings = warnings };
+                    BlockerStage = slice.BlockerStage, BlockerSampleIndex = sample.SampleIndex,
+                    BlockerTrueSolarMinutes = sample.TrueSolarMinutes,
+                    Blockers = slice.Blockers, Warnings = warnings };
         }
         return new ForwardRevitMultiTimeSummaryV0 { Available = true, Complete = true,
             Slices = slices, Warnings = warnings };

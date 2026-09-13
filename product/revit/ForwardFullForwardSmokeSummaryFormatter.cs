@@ -17,6 +17,9 @@ public static class ForwardFullForwardSmokeSummaryFormatter
             $"complete: {Bool(summary.Complete)}",
             $"final completed stage: {summary.FinalCompletedStage}",
             $"blocker stage: {summary.BlockerStage ?? "none"}",
+            $"blocker cause stage: {summary.BlockerCauseStage ?? "none"}",
+            $"blocker sample index: {FormatNullable(summary.BlockerSampleIndex)}",
+            $"blocker true solar minutes: {FormatNullable(summary.BlockerTrueSolarMinutes)}",
             $"duration grid point count: {summary.DurationGridPointCount}",
             $"contour count: {summary.ContourCount}",
             $"blockers: {Join(summary.Blockers)}",
@@ -37,4 +40,7 @@ public static class ForwardFullForwardSmokeSummaryFormatter
     }
 
     private static string Bool(bool value) => value ? "true" : "false";
+
+    private static string FormatNullable<T>(T? value) where T : struct =>
+        value.HasValue ? Convert.ToString(value.Value, System.Globalization.CultureInfo.InvariantCulture)! : "none";
 }

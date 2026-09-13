@@ -36,6 +36,8 @@ public sealed class ForwardRevitMultiTimeOrchestratorV0Tests
         Assert.False(actual.Available);
         Assert.False(actual.Complete);
         Assert.Equal(1, actual.BlockerSampleIndex);
+        Assert.Equal("union", actual.BlockerStage);
+        Assert.Equal(720d, actual.BlockerTrueSolarMinutes);
         Assert.Equal("union", actual.Slices[^1].BlockerStage);
         Assert.Contains("revit_boolean_union_failed", actual.Blockers);
         Assert.False(actual.PermitReadyCertified);
@@ -49,7 +51,9 @@ public sealed class ForwardRevitMultiTimeOrchestratorV0Tests
             TrueSolarStartMinutes = 0, TrueSolarEndMinutes = 60, SunTimeStepMinutes = 30 });
         var actual = ForwardRevitMultiTimeOrchestratorV0.Run(solar, _ => throw new Xunit.Sdk.XunitException("must not execute"));
         Assert.False(actual.Complete);
-        Assert.Equal(0, actual.BlockerSampleIndex);
+        Assert.Equal("solar", actual.BlockerStage);
+        Assert.Null(actual.BlockerSampleIndex);
+        Assert.Null(actual.BlockerTrueSolarMinutes);
         Assert.Contains("solar_sample_at_or_below_horizon", actual.Blockers);
     }
 

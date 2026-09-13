@@ -23,6 +23,50 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
     }
 
     [Fact]
+    public void MiddleUnionFailureRetainsCauseSampleAndTrueSolarTimeToFinalSummary()
+    {
+        var visited = new List<int>();
+        var laterCalls = new int[2];
+        var summary = ForwardRevitFullForwardOrchestratorV0.Run(
+            () => ForwardRevitMultiTimeOrchestratorV0.Run(Solar(), sample => {
+                visited.Add(sample.SampleIndex);
+                return new ForwardRevitTimeSliceOutcomeV0 {
+                    Complete = sample.SampleIndex != 1,
+                    BlockerStage = sample.SampleIndex == 1 ? "union" : null,
+                    Blockers = sample.SampleIndex == 1
+                        ? new[] { "revit_boolean_union_failed" }
+                        : System.Array.Empty<string>()
+                };
+            }),
+            () => { laterCalls[0]++; return Snapshot(); },
+            () => { laterCalls[1]++; return Pipeline(); });
+
+        Assert.Equal(new[] { 0, 1 }, visited);
+        Assert.Equal(new[] { 0, 0 }, laterCalls);
+        AssertStopped(summary, "none", "multi_time_forward", "revit_boolean_union_failed");
+        Assert.Equal("union", summary.BlockerCauseStage);
+        Assert.Equal(1, summary.BlockerSampleIndex);
+        Assert.Equal(720d, summary.BlockerTrueSolarMinutes);
+    }
+
+    [Theory]
+    [InlineData("project_context")]
+    [InlineData("caster_extraction")]
+    [InlineData("solar")]
+    public void PreSliceFailureRetainsCauseWithoutInventingTime(string causeStage)
+    {
+        var failed = Multi(false, "input_failed");
+        failed.BlockerStage = causeStage;
+
+        var summary = ForwardRevitFullForwardOrchestratorV0.Run(
+            () => failed, () => Snapshot(), () => Pipeline());
+
+        Assert.Equal(causeStage, summary.BlockerCauseStage);
+        Assert.Null(summary.BlockerSampleIndex);
+        Assert.Null(summary.BlockerTrueSolarMinutes);
+    }
+
+    [Fact]
     public void SnapshotFailureStopsDurationAndContours()
     {
         var laterCalls = 0;
@@ -83,6 +127,9 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
         Assert.True(summary.Complete);
         Assert.Equal("equal_time_contours", summary.FinalCompletedStage);
         Assert.Null(summary.BlockerStage);
+        Assert.Null(summary.BlockerCauseStage);
+        Assert.Null(summary.BlockerSampleIndex);
+        Assert.Null(summary.BlockerTrueSolarMinutes);
         Assert.True(summary.MultiTimeComplete);
         Assert.True(summary.SnapshotComplete);
         Assert.True(summary.DurationComplete);
@@ -180,6 +227,11 @@ public sealed class ForwardRevitFullForwardOrchestratorV0Tests
             Warnings = warnings ?? (warning is null ? System.Array.Empty<ForwardRevitStageWarningV0>() :
                 new[] { new ForwardRevitStageWarningV0 { Stage = "test", Code = warning } })
         };
+
+    private static SolarResultV0 Solar() => ForwardSolarTimelineV0.Build(new ForwardSolarTimelineInputV0 {
+        LatitudeDeg = 35.6812, SolarDeclinationDeg = -23.439, TrueNorthDeg = 30,
+        TrueSolarStartMinutes = 600, TrueSolarEndMinutes = 840, SunTimeStepMinutes = 120
+    });
 
     private static ForwardUnifiedShadowSliceSnapshotV0 Snapshot(bool complete = true,
         string? blocker = null, string? warning = null) => new() {
